@@ -269,20 +269,28 @@ function EmptyState({ hasItems, onImport }: { hasItems: boolean; onImport: () =>
         <ImageIcon className="h-7 w-7" />
       </div>
       <h2 className="text-xl font-semibold">
-        {hasItems ? "Nothing matches" : "Your private gallery"}
+        {hasItems ? "Ничего не найдено" : "Здесь будут ваши изображения"}
       </h2>
       <p className="mt-2 text-sm text-muted-foreground">
         {hasItems
-          ? "Try clearing the search or selected tags."
-          : "Import a folder of images. Everything stays in your browser — no upload, no account."}
+          ? "Попробуйте сбросить поиск или фильтр тегов."
+          : "Добавьте папку с изображениями, чтобы начать. Файлы остаются у вас на диске — ничего не загружается в сеть."}
       </p>
       {!hasItems && (
         <Button className="mt-6" onClick={onImport}>
-          <FolderPlus /> Choose folder
+          <FolderPlus /> Импорт папки
         </Button>
       )}
     </div>
   );
+}
+
+function pluralImages(n: number) {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return "изображение";
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return "изображения";
+  return "изображений";
 }
 
 async function walkDir(
