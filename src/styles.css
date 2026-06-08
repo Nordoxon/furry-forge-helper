@@ -60,6 +60,14 @@
   --border: oklch(0.28 0.02 270);
   --input: oklch(0.28 0.02 270);
   --ring: oklch(0.78 0.17 75);
+  --sidebar: oklch(0.18 0.018 270);
+  --sidebar-foreground: oklch(0.95 0.005 270);
+  --sidebar-primary: oklch(0.78 0.17 75);
+  --sidebar-primary-foreground: oklch(0.2 0.02 270);
+  --sidebar-accent: oklch(0.26 0.02 270);
+  --sidebar-accent-foreground: oklch(0.97 0.005 270);
+  --sidebar-border: oklch(0.26 0.02 270);
+  --sidebar-ring: oklch(0.78 0.17 75);
 }
 
 @layer base {
