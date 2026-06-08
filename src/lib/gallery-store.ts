@@ -41,10 +41,11 @@ export async function clearAll() {
 }
 
 export async function verifyPermission(handle: FileSystemFileHandle): Promise<boolean> {
-  // @ts-expect-error - non-standard but supported
+  const h = handle as unknown as {
+    queryPermission: (o: { mode: string }) => Promise<PermissionState>;
+    requestPermission: (o: { mode: string }) => Promise<PermissionState>;
+  };
   const opts = { mode: "read" };
-  // @ts-expect-error
-  if ((await handle.queryPermission(opts)) === "granted") return true;
-  // @ts-expect-error
-  return (await handle.requestPermission(opts)) === "granted";
+  if ((await h.queryPermission(opts)) === "granted") return true;
+  return (await h.requestPermission(opts)) === "granted";
 }
