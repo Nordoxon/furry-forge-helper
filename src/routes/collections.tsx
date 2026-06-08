@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Plus, Trash2, FolderHeart, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -6,15 +6,16 @@ import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import {
   type Collection,
-  type GalleryItem,
+  type FileItem,
+  type Tag,
   createCollection,
   deleteCollection,
   getAllCollections,
   getAllItems,
-  saveItem,
+  getAllTags,
   deleteItem,
 } from "@/lib/gallery-store";
-import { useUrlCache, Thumb, type ItemWithUrl } from "@/components/gallery-shared";
+import { useUrlCache, Thumb } from "@/components/gallery-shared";
 import { DetailPanel } from "@/components/detail-panel";
 
 export const Route = createFileRoute("/collections")({
@@ -29,65 +30,57 @@ export const Route = createFileRoute("/collections")({
 
 function CollectionsPage() {
   const [collections, setCollections] = useState<Collection[]>([]);
-  const [items, setItems] = useState<GalleryItem[]>([]);
+  const [items, setItems] = useState<FileItem[]>([]);
+  const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [newName, setNewName] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const { ensureUrl, release } = useUrlCache();
 
-  async function refresh() {
-    const [cs, is] = await Promise.all([getAllCollections(), getAllItems()]);
+  const refresh = useCallback(async () => {
+    const [cs, is, ts] = await Promise.all([getAllCollections(), getAllItems(), getAllTags()]);
     setCollections(cs);
     setItems(is);
-    if (!activeId && cs.length) setActiveId(cs[0].id);
-  }
+    setTags(ts);
+    setActiveId((prev) => prev ?? cs[0]?.id ?? null);
+  }, []);
 
   useEffect(() => {
     refresh().finally(() => setLoading(false));
-  }, []);
+  }, [refresh]);
 
   async function handleCreate() {
     const name = newName.trim();
     if (!name) return;
     const c = await createCollection(name);
-    setCollections((prev) => [c, ...prev]);
-    setActiveId(c.id);
     setNewName("");
+    setActiveId(c.id);
+    await refresh();
   }
 
   async function handleDelete(id: string) {
     if (!confirm("Delete this collection? Images remain in the library.")) return;
     await deleteCollection(id);
-    setCollections((prev) => prev.filter((c) => c.id !== id));
     if (activeId === id) setActiveId(null);
+    await refresh();
   }
 
   const active = collections.find((c) => c.id === activeId) ?? null;
-  const activeItems = useMemo<ItemWithUrl[]>(() => {
+  const tagsById = useMemo(() => new Map(tags.map((t) => [t.id, t])), [tags]);
+  const activeItems = useMemo<FileItem[]>(() => {
     if (!active) return [];
     const map = new Map(items.map((i) => [i.id, i]));
-    return active.fileIds.map((id) => map.get(id)).filter(Boolean) as ItemWithUrl[];
+    return active.fileIds.map((id) => map.get(id)).filter(Boolean) as FileItem[];
   }, [active, items]);
 
   const selected = items.find((i) => i.id === selectedId) ?? null;
 
-  async function updateTags(id: string, tags: string[]) {
-    const item = items.find((i) => i.id === id);
-    if (!item) return;
-    const next = { ...item, tags };
-    await saveItem(next);
-    setItems((prev) => prev.map((i) => (i.id === id ? next : i)));
-  }
-
   async function removeItem(id: string) {
     await deleteItem(id);
     release(id);
-    setItems((prev) => prev.filter((i) => i.id !== id));
-    setCollections((prev) =>
-      prev.map((c) => ({ ...c, fileIds: c.fileIds.filter((x) => x !== id) })),
-    );
     if (selectedId === id) setSelectedId(null);
+    await refresh();
   }
 
   if (loading) {
@@ -165,7 +158,13 @@ function CollectionsPage() {
             ) : (
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
                 {activeItems.map((item) => (
-                  <Thumb key={item.id} item={item} ensureUrl={ensureUrl} onOpen={() => setSelectedId(item.id)} />
+                  <Thumb
+                    key={item.id}
+                    item={item}
+                    ensureUrl={ensureUrl}
+                    tagsById={tagsById}
+                    onOpen={() => setSelectedId(item.id)}
+                  />
                 ))}
               </div>
             )}
@@ -180,7 +179,7 @@ function CollectionsPage() {
               key={selected.id}
               item={selected}
               ensureUrl={ensureUrl}
-              onSave={(tags) => updateTags(selected.id, tags)}
+              onChange={refresh}
               onRemove={() => removeItem(selected.id)}
             />
           )}

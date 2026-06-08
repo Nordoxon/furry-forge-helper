@@ -6,61 +6,77 @@ import { Badge } from "@/components/ui/badge";
 import { SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import {
   type Collection,
+  type Tag,
+  ensureTagByName,
   getAllCollections,
+  getAllTags,
   toggleItemInCollection,
+  assignTag,
+  unassignTag,
 } from "@/lib/gallery-store";
 import type { ItemWithUrl } from "./gallery-shared";
 
 export function DetailPanel({
   item,
   ensureUrl,
-  onSave,
+  onChange,
   onRemove,
 }: {
   item: ItemWithUrl;
   ensureUrl: (item: ItemWithUrl) => Promise<string | undefined>;
-  onSave: (tags: string[]) => void;
+  /** Called after any DB mutation that affects this item. */
+  onChange: () => void;
   onRemove: () => void;
 }) {
   const [url, setUrl] = useState<string | undefined>();
-  const [tags, setTags] = useState<string[]>(item.tags);
   const [input, setInput] = useState("");
   const [collections, setCollections] = useState<Collection[]>([]);
+  const [tags, setTags] = useState<Tag[]>([]);
 
   useEffect(() => {
     ensureUrl(item).then(setUrl);
   }, [item.id]);
 
   useEffect(() => {
-    setTags(item.tags);
-  }, [item.id]);
+    Promise.all([getAllCollections(), getAllTags()]).then(([cs, ts]) => {
+      setCollections(cs);
+      setTags(ts);
+    });
+  }, [item.id, item.tagIds.length, item.collectionIds.length]);
 
-  useEffect(() => {
-    getAllCollections().then(setCollections);
-  }, [item.id]);
+  const tagsById = new Map(tags.map((t) => [t.id, t]));
+  const itemTags = item.tagIds
+    .map((id) => tagsById.get(id))
+    .filter(Boolean) as Tag[];
 
-  function addTag(raw: string) {
-    const next = raw
+  async function addTag(raw: string) {
+    const names = raw
       .split(",")
-      .map((t) => t.trim().toLowerCase().replace(/^#/, ""))
-      .filter(Boolean)
-      .filter((t) => !tags.includes(t));
-    if (next.length === 0) return;
-    const updated = [...tags, ...next];
-    setTags(updated);
-    onSave(updated);
+      .map((t) => t.trim())
+      .filter(Boolean);
+    if (names.length === 0) return;
+    for (const n of names) {
+      try {
+        const tag = await ensureTagByName(n);
+        await assignTag(item.id, tag.id);
+      } catch {
+        // ignore empty after normalization
+      }
+    }
     setInput("");
+    setTags(await getAllTags());
+    onChange();
   }
 
-  function removeTag(t: string) {
-    const updated = tags.filter((x) => x !== t);
-    setTags(updated);
-    onSave(updated);
+  async function removeTag(tagId: string) {
+    await unassignTag(item.id, tagId);
+    onChange();
   }
 
   async function toggleCollection(c: Collection) {
-    const updated = await toggleItemInCollection(c.id, item.id);
-    if (updated) setCollections((prev) => prev.map((x) => (x.id === c.id ? updated : x)));
+    await toggleItemInCollection(c.id, item.id);
+    setCollections(await getAllCollections());
+    onChange();
   }
 
   return (
@@ -86,11 +102,11 @@ export function DetailPanel({
             <TagIcon className="h-3.5 w-3.5" /> Tags
           </div>
           <div className="mb-3 flex flex-wrap gap-1.5">
-            {tags.length === 0 && <span className="text-sm text-muted-foreground">No tags yet</span>}
-            {tags.map((t) => (
-              <Badge key={t} variant="secondary" className="gap-1 pr-1 text-xs">
-                #{t}
-                <button onClick={() => removeTag(t)} className="ml-1 rounded p-0.5 hover:bg-destructive/30">
+            {itemTags.length === 0 && <span className="text-sm text-muted-foreground">No tags yet</span>}
+            {itemTags.map((t) => (
+              <Badge key={t.id} variant="secondary" className="gap-1 pr-1 text-xs">
+                #{t.name}
+                <button onClick={() => removeTag(t.id)} className="ml-1 rounded p-0.5 hover:bg-destructive/30">
                   <X className="h-3 w-3" />
                 </button>
               </Badge>
@@ -125,7 +141,7 @@ export function DetailPanel({
           ) : (
             <div className="flex flex-wrap gap-1.5">
               {collections.map((c) => {
-                const inside = c.fileIds.includes(item.id);
+                const inside = item.collectionIds.includes(c.id);
                 return (
                   <button
                     key={c.id}

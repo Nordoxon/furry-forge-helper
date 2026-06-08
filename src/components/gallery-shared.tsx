@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
-import { type GalleryItem, getHandle, verifyPermission } from "@/lib/gallery-store";
+import { type FileItem, type Tag, getHandle, verifyPermission } from "@/lib/gallery-store";
 
-export type ItemWithUrl = GalleryItem & { url?: string };
+export type ItemWithUrl = FileItem & { url?: string };
 
 export function useUrlCache() {
   const urlCache = useRef<Map<string, string>>(new Map());
@@ -33,10 +33,12 @@ export function useUrlCache() {
 export function Thumb({
   item,
   ensureUrl,
+  tagsById,
   onOpen,
 }: {
   item: ItemWithUrl;
   ensureUrl: (item: ItemWithUrl) => Promise<string | undefined>;
+  tagsById: Map<string, Tag>;
   onOpen: () => void;
 }) {
   const [url, setUrl] = useState<string | undefined>();
@@ -50,6 +52,10 @@ export function Thumb({
       alive = false;
     };
   }, [item.id]);
+
+  const tagNames = item.tagIds
+    .map((id) => tagsById.get(id)?.name)
+    .filter(Boolean) as string[];
 
   return (
     <button
@@ -69,8 +75,8 @@ export function Thumb({
       )}
       <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-2 opacity-0 transition group-hover:opacity-100">
         <p className="truncate text-xs font-medium text-white">{item.name}</p>
-        {item.tags.length > 0 && (
-          <p className="truncate text-[10px] text-white/70">{item.tags.map((t) => `#${t}`).join(" ")}</p>
+        {tagNames.length > 0 && (
+          <p className="truncate text-[10px] text-white/70">{tagNames.map((n) => `#${n}`).join(" ")}</p>
         )}
       </div>
     </button>
