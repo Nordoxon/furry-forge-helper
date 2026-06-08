@@ -422,8 +422,8 @@ async function walkDir(
   prefix: string,
   visit: (path: string, file: FileSystemFileHandle) => Promise<void>,
 ) {
-  // @ts-expect-error - async iterator
-  for await (const entry of dir.values()) {
+  const d = dir as unknown as { values: () => AsyncIterable<FileSystemHandle> };
+  for await (const entry of d.values()) {
     if (entry.kind === "file") await visit(prefix, entry as FileSystemFileHandle);
     else if (entry.kind === "directory") await walkDir(entry as FileSystemDirectoryHandle, `${prefix}/${entry.name}`, visit);
   }
