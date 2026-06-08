@@ -35,7 +35,7 @@ const IMAGE_EXT = /\.(jpe?g|png|gif|webp|avif|bmp|svg)$/i;
 function Index() {
   const navigate = useNavigate({ from: "/" });
   const { tags: tagsParam } = Route.useSearch();
-  const selectedTags = useMemo(
+  const selectedTags = useMemo<string[]>(
     () => (tagsParam ? tagsParam.split(",").filter(Boolean) : []),
     [tagsParam],
   );
