@@ -84,9 +84,9 @@ function TagsPage() {
     <div className="mx-auto max-w-[1600px] px-6 py-8">
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold">Tags</h1>
+          <h1 className="text-2xl font-semibold">Теги</h1>
           <p className="text-sm text-muted-foreground">
-            {tags.length} tag{tags.length === 1 ? "" : "s"} across {items.length} images
+            Быстрая фильтрация контента — нажмите на тег, чтобы увидеть файлы
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -94,11 +94,11 @@ function TagsPage() {
             value={newTag}
             onChange={(e) => setNewTag(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleCreate()}
-            placeholder="New tag name"
+            placeholder="Новый тег"
             className="w-56"
           />
           <Button onClick={handleCreate} disabled={!newTag.trim()}>
-            <Plus /> Create
+            <Plus /> Создать
           </Button>
         </div>
       </div>
@@ -108,8 +108,26 @@ function TagsPage() {
           <Loader2 className="h-6 w-6 animate-spin" />
         </div>
       ) : sorted.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border/70 p-12 text-center text-sm text-muted-foreground">
-          No tags yet. Create one above, or open an image and add tags inline.
+        <div className="mx-auto mt-12 max-w-md rounded-2xl border border-dashed border-border/80 bg-card/50 p-12 text-center">
+          <div className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-primary/10 text-primary">
+            <TagIcon className="h-7 w-7" />
+          </div>
+          <h2 className="text-xl font-semibold">Пока нет тегов</h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Теги помогают быстро находить нужные файлы. Создайте первый или добавьте прямо на карточке файла.
+          </p>
+          <div className="mt-6 flex items-center justify-center gap-2">
+            <Input
+              value={newTag}
+              onChange={(e) => setNewTag(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleCreate()}
+              placeholder="Например: персонаж"
+              className="max-w-xs"
+            />
+            <Button onClick={handleCreate} disabled={!newTag.trim()}>
+              <Plus /> Создать
+            </Button>
+          </div>
         </div>
       ) : (
         <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
