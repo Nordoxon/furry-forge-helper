@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { X, Tag as TagIcon, Trash2, Loader2, FolderHeart, Check } from "lucide-react";
+import { X, Tag as TagIcon, Trash2, Loader2, FolderHeart, Check, Pencil, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +13,9 @@ import {
   toggleItemInCollection,
   assignTag,
   unassignTag,
+  renameFile,
+  createCollection,
+  addFileToCollection,
 } from "@/lib/gallery-store";
 import type { ItemWithUrl } from "./gallery-shared";
 
@@ -32,10 +35,18 @@ export function DetailPanel({
   const [input, setInput] = useState("");
   const [collections, setCollections] = useState<Collection[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState(item.name);
+  const [newCollection, setNewCollection] = useState("");
 
   useEffect(() => {
     ensureUrl(item).then(setUrl);
   }, [item.id]);
+
+  useEffect(() => {
+    setNameDraft(item.name);
+    setEditingName(false);
+  }, [item.id, item.name]);
 
   useEffect(() => {
     Promise.all([getAllCollections(), getAllTags()]).then(([cs, ts]) => {
@@ -60,7 +71,7 @@ export function DetailPanel({
         const tag = await ensureTagByName(n);
         await assignTag(item.id, tag.id);
       } catch {
-        // ignore empty after normalization
+        /* skip empty */
       }
     }
     setInput("");
@@ -79,10 +90,55 @@ export function DetailPanel({
     onChange();
   }
 
+  async function commitName() {
+    if (nameDraft.trim() && nameDraft !== item.name) {
+      await renameFile(item.id, nameDraft);
+      onChange();
+    }
+    setEditingName(false);
+  }
+
+  async function quickCreateCollection() {
+    const name = newCollection.trim();
+    if (!name) return;
+    const c = await createCollection(name);
+    await addFileToCollection(c.id, item.id);
+    setNewCollection("");
+    setCollections(await getAllCollections());
+    onChange();
+  }
+
   return (
     <div className="flex flex-col">
       <SheetHeader className="border-b border-border/60 p-6">
-        <SheetTitle className="truncate pr-8">{item.name}</SheetTitle>
+        {editingName ? (
+          <div className="flex items-center gap-2">
+            <Input
+              autoFocus
+              value={nameDraft}
+              onChange={(e) => setNameDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") commitName();
+                if (e.key === "Escape") {
+                  setNameDraft(item.name);
+                  setEditingName(false);
+                }
+              }}
+            />
+            <Button size="icon" variant="ghost" onClick={commitName}>
+              <Check className="h-4 w-4" />
+            </Button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setEditingName(true)}
+            className="group flex items-center gap-2 text-left"
+            title="Переименовать"
+          >
+            <SheetTitle className="truncate pr-2">{item.name}</SheetTitle>
+            <Pencil className="h-3.5 w-3.5 text-muted-foreground opacity-0 transition group-hover:opacity-100" />
+          </button>
+        )}
         <p className="truncate text-xs text-muted-foreground">{item.path}</p>
       </SheetHeader>
 
@@ -96,17 +152,23 @@ export function DetailPanel({
         )}
       </div>
 
-      <div className="space-y-5 p-6">
-        <div>
+      <div className="space-y-6 p-6">
+        <section>
           <div className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            <TagIcon className="h-3.5 w-3.5" /> Tags
+            <TagIcon className="h-3.5 w-3.5" /> Теги
           </div>
           <div className="mb-3 flex flex-wrap gap-1.5">
-            {itemTags.length === 0 && <span className="text-sm text-muted-foreground">No tags yet</span>}
+            {itemTags.length === 0 && (
+              <span className="text-sm text-muted-foreground">Нет тегов. Добавьте первый ↓</span>
+            )}
             {itemTags.map((t) => (
               <Badge key={t.id} variant="secondary" className="gap-1 pr-1 text-xs">
                 #{t.name}
-                <button onClick={() => removeTag(t.id)} className="ml-1 rounded p-0.5 hover:bg-destructive/30">
+                <button
+                  onClick={() => removeTag(t.id)}
+                  className="ml-1 rounded p-0.5 hover:bg-destructive/30"
+                  title="Убрать тег"
+                >
                   <X className="h-3 w-3" />
                 </button>
               </Badge>
@@ -122,24 +184,24 @@ export function DetailPanel({
                   addTag(input);
                 }
               }}
-              placeholder="Add tag, press Enter (or comma-separate)"
+              placeholder="Например: персонаж, портрет"
             />
             <Button onClick={() => addTag(input)} disabled={!input.trim()}>
-              Add
+              <Plus /> Добавить
             </Button>
           </div>
-        </div>
+        </section>
 
-        <div>
+        <section>
           <div className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            <FolderHeart className="h-3.5 w-3.5" /> Collections
+            <FolderHeart className="h-3.5 w-3.5" /> Коллекции
           </div>
           {collections.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              No collections yet. Create one from the Collections tab.
+              Пока нет коллекций. Создайте первую ↓
             </p>
           ) : (
-            <div className="flex flex-wrap gap-1.5">
+            <div className="mb-3 flex flex-wrap gap-1.5">
               {collections.map((c) => {
                 const inside = item.collectionIds.includes(c.id);
                 return (
@@ -151,29 +213,45 @@ export function DetailPanel({
                         ? "bg-primary text-primary-foreground"
                         : "bg-secondary text-secondary-foreground hover:bg-accent"
                     }`}
+                    title={inside ? "Убрать из коллекции" : "Добавить в коллекцию"}
                   >
-                    {inside && <Check className="h-3 w-3" />}
+                    {inside ? <Check className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
                     {c.name}
                   </button>
                 );
               })}
             </div>
           )}
-        </div>
+          <div className="flex gap-2">
+            <Input
+              value={newCollection}
+              onChange={(e) => setNewCollection(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && quickCreateCollection()}
+              placeholder="Новая коллекция…"
+            />
+            <Button
+              variant="outline"
+              onClick={quickCreateCollection}
+              disabled={!newCollection.trim()}
+            >
+              <Plus /> Создать
+            </Button>
+          </div>
+        </section>
 
-        <div className="grid grid-cols-2 gap-3 text-xs text-muted-foreground">
+        <section className="grid grid-cols-2 gap-3 rounded-lg bg-muted/40 p-3 text-xs text-muted-foreground">
           <div>
-            <div className="uppercase tracking-wider">Size</div>
-            <div className="text-foreground">{(item.size / 1024).toFixed(1)} KB</div>
+            <div className="uppercase tracking-wider">Размер</div>
+            <div className="text-foreground">{(item.size / 1024).toFixed(1)} КБ</div>
           </div>
           <div>
-            <div className="uppercase tracking-wider">Type</div>
+            <div className="uppercase tracking-wider">Тип</div>
             <div className="text-foreground">{item.type}</div>
           </div>
-        </div>
+        </section>
 
         <Button variant="destructive" className="w-full" onClick={onRemove}>
-          <Trash2 /> Remove from gallery
+          <Trash2 /> Убрать из библиотеки
         </Button>
       </div>
     </div>
