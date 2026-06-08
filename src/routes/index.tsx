@@ -15,10 +15,10 @@ import {
 import { useUrlCache, Thumb, type ItemWithUrl } from "@/components/gallery-shared";
 import { DetailPanel } from "@/components/detail-panel";
 
-type Search = { tags?: string };
+type SearchParams = { tags?: string };
 
 export const Route = createFileRoute("/")({
-  validateSearch: (s: Record<string, unknown>): Search => ({
+  validateSearch: (s: Record<string, unknown>): SearchParams => ({
     tags: typeof s.tags === "string" ? s.tags : undefined,
   }),
   head: () => ({
