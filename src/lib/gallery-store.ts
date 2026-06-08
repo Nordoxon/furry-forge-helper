@@ -129,6 +129,13 @@ export async function unassignTag(fileId: string, tagId: string) {
   if (!item) return;
   await saveItem({ ...item, tagIds: item.tagIds.filter((t) => t !== tagId) });
 }
+export async function renameFile(id: string, name: string) {
+  const item = await getItem(id);
+  if (!item) return;
+  const next = name.trim();
+  if (!next || next === item.name) return;
+  await saveItem({ ...item, name: next });
+}
 
 // ─── files ──────────────────────────────────────────────────────────────
 type RawFile = Partial<FileItem> & {
