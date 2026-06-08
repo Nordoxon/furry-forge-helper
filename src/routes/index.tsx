@@ -1,43 +1,51 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
-import { Search, FolderPlus, X, Trash2, Tag as TagIcon, ImageIcon, Loader2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { Search, FolderPlus, Trash2, ImageIcon, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import {
   type GalleryItem,
   saveItem,
   saveHandle,
-  getHandle,
   getAllItems,
   deleteItem,
   clearAll,
-  verifyPermission,
 } from "@/lib/gallery-store";
+import { useUrlCache, Thumb, type ItemWithUrl } from "@/components/gallery-shared";
+import { DetailPanel } from "@/components/detail-panel";
+
+type Search = { tags?: string };
 
 export const Route = createFileRoute("/")({
+  validateSearch: (s: Record<string, unknown>): Search => ({
+    tags: typeof s.tags === "string" ? s.tags : undefined,
+  }),
   head: () => ({
     meta: [
-      { title: "Local Image Vault — Offline Gallery" },
+      { title: "Library — Local Image Vault" },
       { name: "description", content: "Private offline gallery. Import folders, tag photos, search — all stored locally in your browser." },
     ],
   }),
   component: Index,
 });
 
-type ItemWithUrl = GalleryItem & { url?: string };
-
 const IMAGE_EXT = /\.(jpe?g|png|gif|webp|avif|bmp|svg)$/i;
 
 function Index() {
+  const navigate = useNavigate({ from: "/" });
+  const { tags: tagsParam } = Route.useSearch();
+  const selectedTags = useMemo(
+    () => (tagsParam ? tagsParam.split(",").filter(Boolean) : []),
+    [tagsParam],
+  );
+
   const [items, setItems] = useState<ItemWithUrl[]>([]);
   const [query, setQuery] = useState("");
-  const [activeTag, setActiveTag] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
   const [loading, setLoading] = useState(true);
-  const urlCache = useRef<Map<string, string>>(new Map());
+  const { ensureUrl, release } = useUrlCache();
 
   useEffect(() => {
     (async () => {
@@ -45,21 +53,19 @@ function Index() {
       setItems(data);
       setLoading(false);
     })();
-    return () => {
-      urlCache.current.forEach((u) => URL.revokeObjectURL(u));
-      urlCache.current.clear();
-    };
   }, []);
 
-  async function ensureUrl(item: ItemWithUrl): Promise<string | undefined> {
-    if (urlCache.current.has(item.id)) return urlCache.current.get(item.id);
-    const handle = await getHandle(item.id);
-    if (!handle) return;
-    if (!(await verifyPermission(handle))) return;
-    const file = await handle.getFile();
-    const url = URL.createObjectURL(file);
-    urlCache.current.set(item.id, url);
-    return url;
+  function setSelectedTags(next: string[]) {
+    navigate({
+      search: { tags: next.length ? next.join(",") : undefined },
+      replace: true,
+    });
+  }
+
+  function toggleTag(t: string) {
+    setSelectedTags(
+      selectedTags.includes(t) ? selectedTags.filter((x) => x !== t) : [...selectedTags, t],
+    );
   }
 
   async function importFolder() {
@@ -108,14 +114,14 @@ function Index() {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return items.filter((i) => {
-      if (activeTag && !i.tags.includes(activeTag)) return false;
+      if (selectedTags.length && !selectedTags.every((t) => i.tags.includes(t))) return false;
       if (!q) return true;
       return (
         i.name.toLowerCase().includes(q) ||
         i.tags.some((t) => t.toLowerCase().includes(q))
       );
     });
-  }, [items, query, activeTag]);
+  }, [items, query, selectedTags]);
 
   async function updateTags(id: string, tags: string[]) {
     const item = items.find((i) => i.id === id);
@@ -127,9 +133,7 @@ function Index() {
 
   async function removeItem(id: string) {
     await deleteItem(id);
-    const url = urlCache.current.get(id);
-    if (url) URL.revokeObjectURL(url);
-    urlCache.current.delete(id);
+    release(id);
     setItems((prev) => prev.filter((i) => i.id !== id));
     if (selectedId === id) setSelectedId(null);
   }
@@ -137,25 +141,18 @@ function Index() {
   async function handleClearAll() {
     if (!confirm("Remove all imported images from the gallery? Your original files stay on disk.")) return;
     await clearAll();
-    urlCache.current.forEach((u) => URL.revokeObjectURL(u));
-    urlCache.current.clear();
     setItems([]);
   }
 
   const selected = items.find((i) => i.id === selectedId) ?? null;
 
   return (
-    <div className="min-h-screen">
-      <header className="sticky top-0 z-30 border-b border-border/60 bg-background/70 backdrop-blur-xl">
+    <div>
+      <header className="border-b border-border/60 bg-background/70 backdrop-blur-xl">
         <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-3 px-6 py-4">
-          <div className="flex items-center gap-2">
-            <div className="grid h-9 w-9 place-items-center rounded-lg bg-primary text-primary-foreground">
-              <ImageIcon className="h-5 w-5" />
-            </div>
-            <div>
-              <h1 className="text-lg font-semibold leading-none">Vault</h1>
-              <p className="text-xs text-muted-foreground">local · offline · private</p>
-            </div>
+          <div>
+            <h1 className="text-lg font-semibold leading-none">Library</h1>
+            <p className="text-xs text-muted-foreground">{items.length} images</p>
           </div>
 
           <div className="relative ml-auto w-full max-w-md">
@@ -180,26 +177,41 @@ function Index() {
         </div>
 
         {allTags.length > 0 && (
-          <div className="mx-auto flex max-w-[1600px] flex-wrap gap-2 px-6 pb-3">
+          <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-2 px-6 pb-3">
             <button
-              onClick={() => setActiveTag(null)}
+              onClick={() => setSelectedTags([])}
               className={`rounded-full px-3 py-1 text-xs transition ${
-                activeTag === null ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground hover:bg-accent"
+                selectedTags.length === 0
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-secondary text-secondary-foreground hover:bg-accent"
               }`}
             >
               All · {items.length}
             </button>
-            {allTags.map(([t, count]) => (
+            {allTags.map(([t, count]) => {
+              const on = selectedTags.includes(t);
+              return (
+                <button
+                  key={t}
+                  onClick={() => toggleTag(t)}
+                  className={`rounded-full px-3 py-1 text-xs transition ${
+                    on
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-secondary text-secondary-foreground hover:bg-accent"
+                  }`}
+                >
+                  #{t} · {count}
+                </button>
+              );
+            })}
+            {selectedTags.length > 0 && (
               <button
-                key={t}
-                onClick={() => setActiveTag(activeTag === t ? null : t)}
-                className={`rounded-full px-3 py-1 text-xs transition ${
-                  activeTag === t ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground hover:bg-accent"
-                }`}
+                onClick={() => setSelectedTags([])}
+                className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs text-muted-foreground hover:text-foreground"
               >
-                #{t} · {count}
+                <X className="h-3 w-3" /> clear
               </button>
-            ))}
+            )}
           </div>
         )}
       </header>
@@ -237,163 +249,6 @@ function Index() {
   );
 }
 
-function Thumb({
-  item,
-  ensureUrl,
-  onOpen,
-}: {
-  item: ItemWithUrl;
-  ensureUrl: (item: ItemWithUrl) => Promise<string | undefined>;
-  onOpen: () => void;
-}) {
-  const [url, setUrl] = useState<string | undefined>();
-  const [err, setErr] = useState(false);
-  useEffect(() => {
-    let alive = true;
-    ensureUrl(item).then((u) => alive && (u ? setUrl(u) : setErr(true))).catch(() => alive && setErr(true));
-    return () => {
-      alive = false;
-    };
-  }, [item.id]);
-
-  return (
-    <button
-      onClick={onOpen}
-      className="group relative aspect-square overflow-hidden rounded-xl border border-border/60 bg-card text-left transition hover:border-primary/60 hover:shadow-lg hover:shadow-primary/10"
-    >
-      {url ? (
-        <img src={url} alt={item.name} className="h-full w-full object-cover transition group-hover:scale-105" loading="lazy" />
-      ) : err ? (
-        <div className="grid h-full place-items-center px-2 text-center text-xs text-muted-foreground">
-          File unavailable
-        </div>
-      ) : (
-        <div className="grid h-full place-items-center bg-muted">
-          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-        </div>
-      )}
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-2 opacity-0 transition group-hover:opacity-100">
-        <p className="truncate text-xs font-medium text-white">{item.name}</p>
-        {item.tags.length > 0 && (
-          <p className="truncate text-[10px] text-white/70">{item.tags.map((t) => `#${t}`).join(" ")}</p>
-        )}
-      </div>
-    </button>
-  );
-}
-
-function DetailPanel({
-  item,
-  ensureUrl,
-  onSave,
-  onRemove,
-}: {
-  item: ItemWithUrl;
-  ensureUrl: (item: ItemWithUrl) => Promise<string | undefined>;
-  onSave: (tags: string[]) => void;
-  onRemove: () => void;
-}) {
-  const [url, setUrl] = useState<string | undefined>();
-  const [tags, setTags] = useState<string[]>(item.tags);
-  const [input, setInput] = useState("");
-
-  useEffect(() => {
-    ensureUrl(item).then(setUrl);
-  }, [item.id]);
-
-  useEffect(() => {
-    setTags(item.tags);
-  }, [item.id]);
-
-  function addTag(raw: string) {
-    const next = raw
-      .split(",")
-      .map((t) => t.trim().toLowerCase().replace(/^#/, ""))
-      .filter(Boolean)
-      .filter((t) => !tags.includes(t));
-    if (next.length === 0) return;
-    const updated = [...tags, ...next];
-    setTags(updated);
-    onSave(updated);
-    setInput("");
-  }
-
-  function removeTag(t: string) {
-    const updated = tags.filter((x) => x !== t);
-    setTags(updated);
-    onSave(updated);
-  }
-
-  return (
-    <div className="flex flex-col">
-      <SheetHeader className="border-b border-border/60 p-6">
-        <SheetTitle className="truncate pr-8">{item.name}</SheetTitle>
-        <p className="truncate text-xs text-muted-foreground">{item.path}</p>
-      </SheetHeader>
-
-      <div className="bg-black/30 p-4">
-        {url ? (
-          <img src={url} alt={item.name} className="mx-auto max-h-[60vh] w-auto rounded-lg object-contain" />
-        ) : (
-          <div className="grid h-64 place-items-center text-muted-foreground">
-            <Loader2 className="h-5 w-5 animate-spin" />
-          </div>
-        )}
-      </div>
-
-      <div className="space-y-4 p-6">
-        <div>
-          <div className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            <TagIcon className="h-3.5 w-3.5" /> Tags
-          </div>
-          <div className="mb-3 flex flex-wrap gap-1.5">
-            {tags.length === 0 && <span className="text-sm text-muted-foreground">No tags yet</span>}
-            {tags.map((t) => (
-              <Badge key={t} variant="secondary" className="gap-1 pr-1 text-xs">
-                #{t}
-                <button onClick={() => removeTag(t)} className="ml-1 rounded p-0.5 hover:bg-destructive/30">
-                  <X className="h-3 w-3" />
-                </button>
-              </Badge>
-            ))}
-          </div>
-          <div className="flex gap-2">
-            <Input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  addTag(input);
-                }
-              }}
-              placeholder="Add tag, press Enter (or comma-separate)"
-            />
-            <Button onClick={() => addTag(input)} disabled={!input.trim()}>
-              Add
-            </Button>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3 text-xs text-muted-foreground">
-          <div>
-            <div className="uppercase tracking-wider">Size</div>
-            <div className="text-foreground">{(item.size / 1024).toFixed(1)} KB</div>
-          </div>
-          <div>
-            <div className="uppercase tracking-wider">Type</div>
-            <div className="text-foreground">{item.type}</div>
-          </div>
-        </div>
-
-        <Button variant="destructive" className="w-full" onClick={onRemove}>
-          <Trash2 /> Remove from gallery
-        </Button>
-      </div>
-    </div>
-  );
-}
-
 function EmptyState({ hasItems, onImport }: { hasItems: boolean; onImport: () => void }) {
   return (
     <div className="mx-auto mt-24 max-w-md rounded-2xl border border-dashed border-border/80 bg-card/50 p-12 text-center">
@@ -405,7 +260,7 @@ function EmptyState({ hasItems, onImport }: { hasItems: boolean; onImport: () =>
       </h2>
       <p className="mt-2 text-sm text-muted-foreground">
         {hasItems
-          ? "Try clearing the search or selected tag."
+          ? "Try clearing the search or selected tags."
           : "Import a folder of images. Everything stays in your browser — no upload, no account."}
       </p>
       {!hasItems && (
