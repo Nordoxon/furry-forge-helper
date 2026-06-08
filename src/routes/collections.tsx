@@ -92,85 +92,118 @@ function CollectionsPage() {
   }
 
   return (
-    <div className="mx-auto flex max-w-[1600px] gap-6 px-6 py-8">
-      <aside className="w-72 shrink-0 space-y-3">
-        <div className="flex items-center gap-2">
-          <Input
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleCreate()}
-            placeholder="New collection name"
-          />
-          <Button size="icon" onClick={handleCreate} disabled={!newName.trim()}>
-            <Plus />
-          </Button>
+    <div className="mx-auto max-w-[1600px] px-6 py-8">
+      <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold">Коллекции</h1>
+          <p className="text-sm text-muted-foreground">Группируйте изображения по темам или проектам</p>
         </div>
+      </header>
 
-        {collections.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-border/70 p-4 text-center text-sm text-muted-foreground">
-            No collections yet. Create one above.
-          </p>
-        ) : (
-          <ul className="space-y-1">
-            {collections.map((c) => (
-              <li key={c.id}>
-                <div
-                  className={`group flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition ${
-                    activeId === c.id
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-card hover:bg-accent"
-                  }`}
-                >
-                  <button onClick={() => setActiveId(c.id)} className="flex flex-1 items-center gap-2 truncate text-left">
-                    <FolderHeart className="h-4 w-4 shrink-0" />
-                    <span className="truncate">{c.name}</span>
-                    <span className="ml-auto text-xs opacity-70">{c.fileIds.length}</span>
-                  </button>
-                  <button
-                    onClick={() => handleDelete(c.id)}
-                    className="opacity-0 transition group-hover:opacity-70 hover:opacity-100"
-                    title="Delete collection"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </aside>
-
-      <section className="min-w-0 flex-1">
-        {!active ? (
-          <div className="grid h-full place-items-center text-muted-foreground">
-            Select or create a collection.
+      {collections.length === 0 ? (
+        <div className="mx-auto mt-12 max-w-md rounded-2xl border border-dashed border-border/80 bg-card/50 p-12 text-center">
+          <div className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-primary/10 text-primary">
+            <FolderHeart className="h-7 w-7" />
           </div>
-        ) : (
-          <>
-            <div className="mb-6">
-              <h1 className="text-2xl font-semibold">{active.name}</h1>
-              <p className="text-sm text-muted-foreground">{active.fileIds.length} images</p>
+          <h2 className="text-xl font-semibold">Создайте первую коллекцию</h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Коллекции — это группы файлов для проектов, персонажей или подборок.
+          </p>
+          <div className="mt-6 flex items-center justify-center gap-2">
+            <Input
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleCreate()}
+              placeholder="Например: Портреты"
+              className="max-w-xs"
+            />
+            <Button onClick={handleCreate} disabled={!newName.trim()}>
+              <Plus /> Создать
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex gap-6">
+          <aside className="w-72 shrink-0 space-y-3">
+            <div className="flex items-center gap-2">
+              <Input
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleCreate()}
+                placeholder="Новая коллекция"
+              />
+              <Button size="icon" onClick={handleCreate} disabled={!newName.trim()} title="Создать коллекцию">
+                <Plus />
+              </Button>
             </div>
-            {activeItems.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-border/70 p-12 text-center text-sm text-muted-foreground">
-                This collection is empty. Open any image from the Library and toggle this collection.
+
+            <ul className="space-y-1">
+              {collections.map((c) => (
+                <li key={c.id}>
+                  <div
+                    className={`group flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition ${
+                      activeId === c.id
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-card hover:bg-accent"
+                    }`}
+                  >
+                    <button onClick={() => setActiveId(c.id)} className="flex flex-1 items-center gap-2 truncate text-left">
+                      <FolderHeart className="h-4 w-4 shrink-0" />
+                      <span className="truncate">{c.name}</span>
+                      <span className="ml-auto text-xs opacity-70">{c.fileIds.length}</span>
+                    </button>
+                    <button
+                      onClick={() => handleDelete(c.id)}
+                      className="opacity-0 transition group-hover:opacity-70 hover:opacity-100"
+                      title="Удалить коллекцию"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </aside>
+
+          <section className="min-w-0 flex-1">
+            {!active ? (
+              <div className="grid h-full place-items-center text-muted-foreground">
+                Выберите коллекцию слева.
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-                {activeItems.map((item) => (
-                  <Thumb
-                    key={item.id}
-                    item={item}
-                    ensureUrl={ensureUrl}
-                    tagsById={tagsById}
-                    onOpen={() => setSelectedId(item.id)}
-                  />
-                ))}
-              </div>
+              <>
+                <div className="mb-6 flex items-center justify-between">
+                  <div>
+                    <h2 className="text-xl font-semibold">{active.name}</h2>
+                    <p className="text-sm text-muted-foreground">
+                      {active.fileIds.length === 0
+                        ? "Пока пусто"
+                        : `${active.fileIds.length} файл(ов) в коллекции`}
+                    </p>
+                  </div>
+                </div>
+                {activeItems.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-border/70 p-12 text-center text-sm text-muted-foreground">
+                    Откройте файл в Библиотеке и нажмите на эту коллекцию, чтобы добавить.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+                    {activeItems.map((item) => (
+                      <Thumb
+                        key={item.id}
+                        item={item}
+                        ensureUrl={ensureUrl}
+                        tagsById={tagsById}
+                        onOpen={() => setSelectedId(item.id)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </>
             )}
-          </>
-        )}
-      </section>
+          </section>
+        </div>
+      )}
 
       <Sheet open={!!selected} onOpenChange={(o) => !o && setSelectedId(null)}>
         <SheetContent className="w-full overflow-y-auto p-0 sm:max-w-xl">
