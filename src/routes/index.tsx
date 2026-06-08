@@ -153,8 +153,12 @@ function Index() {
       <header className="border-b border-border/60 bg-background/70 backdrop-blur-xl">
         <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-3 px-6 py-4">
           <div>
-            <h1 className="text-lg font-semibold leading-none">Library</h1>
-            <p className="text-xs text-muted-foreground">{items.length} images</p>
+            <h1 className="text-lg font-semibold leading-none">Библиотека</h1>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {items.length === 0
+                ? "Все изображения в одном месте"
+                : `${items.length} ${pluralImages(items.length)}`}
+            </p>
           </div>
 
           <div className="relative ml-auto w-full max-w-md">
@@ -162,17 +166,17 @@ function Index() {
             <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search by name or tag…"
+              placeholder="Поиск по имени или тегу…"
               className="pl-9"
             />
           </div>
 
           <Button onClick={importFolder} disabled={importing}>
             {importing ? <Loader2 className="animate-spin" /> : <FolderPlus />}
-            Import folder
+            Импорт папки
           </Button>
           {items.length > 0 && (
-            <Button variant="ghost" size="icon" onClick={handleClearAll} title="Clear gallery">
+            <Button variant="ghost" size="icon" onClick={handleClearAll} title="Очистить всё">
               <Trash2 />
             </Button>
           )}
@@ -180,6 +184,7 @@ function Index() {
 
         {visibleTags.length > 0 && (
           <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-2 px-6 pb-3">
+            <span className="text-[11px] uppercase tracking-wider text-muted-foreground">Фильтр:</span>
             <button
               onClick={() => setSelectedTagIds([])}
               className={`rounded-full px-3 py-1 text-xs transition ${
@@ -188,7 +193,7 @@ function Index() {
                   : "bg-secondary text-secondary-foreground hover:bg-accent"
               }`}
             >
-              All · {items.length}
+              Все · {items.length}
             </button>
             {visibleTags.map((t) => {
               const on = selectedTagIds.includes(t.id);
@@ -211,7 +216,7 @@ function Index() {
                 onClick={() => setSelectedTagIds([])}
                 className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs text-muted-foreground hover:text-foreground"
               >
-                <X className="h-3 w-3" /> clear
+                <X className="h-3 w-3" /> сбросить
               </button>
             )}
           </div>
