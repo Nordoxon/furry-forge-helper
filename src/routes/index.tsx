@@ -1,18 +1,20 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Search, FolderPlus, Trash2, ImageIcon, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import {
-  type GalleryItem,
+  type FileItem,
+  type Tag,
   saveItem,
   saveHandle,
   getAllItems,
+  getAllTags,
   deleteItem,
   clearAll,
 } from "@/lib/gallery-store";
-import { useUrlCache, Thumb, type ItemWithUrl } from "@/components/gallery-shared";
+import { useUrlCache, Thumb } from "@/components/gallery-shared";
 import { DetailPanel } from "@/components/detail-panel";
 
 type SearchParams = { tags?: string };
@@ -35,36 +37,39 @@ const IMAGE_EXT = /\.(jpe?g|png|gif|webp|avif|bmp|svg)$/i;
 function Index() {
   const navigate = useNavigate({ from: "/" });
   const { tags: tagsParam } = Route.useSearch();
-  const selectedTags = useMemo<string[]>(
+  const selectedTagIds = useMemo<string[]>(
     () => (tagsParam ? tagsParam.split(",").filter(Boolean) : []),
     [tagsParam],
   );
 
-  const [items, setItems] = useState<ItemWithUrl[]>([]);
+  const [items, setItems] = useState<FileItem[]>([]);
+  const [tags, setTags] = useState<Tag[]>([]);
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
   const [loading, setLoading] = useState(true);
   const { ensureUrl, release } = useUrlCache();
 
-  useEffect(() => {
-    (async () => {
-      const data = await getAllItems();
-      setItems(data);
-      setLoading(false);
-    })();
+  const refresh = useCallback(async () => {
+    const [is, ts] = await Promise.all([getAllItems(), getAllTags()]);
+    setItems(is);
+    setTags(ts);
   }, []);
 
-  function setSelectedTags(next: string[]) {
+  useEffect(() => {
+    refresh().finally(() => setLoading(false));
+  }, [refresh]);
+
+  function setSelectedTagIds(next: string[]) {
     navigate({
       search: { tags: next.length ? next.join(",") : undefined },
       replace: true,
     });
   }
 
-  function toggleTag(t: string) {
-    setSelectedTags(
-      selectedTags.includes(t) ? selectedTags.filter((x) => x !== t) : [...selectedTags, t],
+  function toggleTag(id: string) {
+    setSelectedTagIds(
+      selectedTagIds.includes(id) ? selectedTagIds.filter((x) => x !== id) : [...selectedTagIds, id],
     );
   }
 
@@ -77,27 +82,27 @@ function Index() {
     try {
       // @ts-expect-error - File System Access API
       const dir: FileSystemDirectoryHandle = await window.showDirectoryPicker();
-      const collected: GalleryItem[] = [];
+      let count = 0;
       await walkDir(dir, "", async (path, handle) => {
         if (!IMAGE_EXT.test(handle.name)) return;
         const file = await handle.getFile();
         const id = `${path}/${handle.name}::${file.size}::${file.lastModified}`;
-        const item: GalleryItem = {
+        const item: FileItem = {
           id,
           name: handle.name,
           path: `${dir.name}${path}`,
-          tags: [],
-          size: file.size,
           type: file.type || "image/*",
+          size: file.size,
           addedAt: Date.now(),
+          tagIds: [],
+          collectionIds: [],
         };
         await saveHandle(id, handle);
         await saveItem(item);
-        collected.push(item);
+        count++;
       });
-      const all = await getAllItems();
-      setItems(all);
-      console.log(`Imported ${collected.length} images`);
+      await refresh();
+      console.log(`Imported ${count} images`);
     } catch (e) {
       if ((e as Error).name !== "AbortError") console.error(e);
     } finally {
@@ -105,43 +110,40 @@ function Index() {
     }
   }
 
-  const allTags = useMemo(() => {
+  const tagsById = useMemo(() => new Map(tags.map((t) => [t.id, t])), [tags]);
+
+  const tagCounts = useMemo(() => {
     const m = new Map<string, number>();
-    items.forEach((i) => i.tags.forEach((t) => m.set(t, (m.get(t) ?? 0) + 1)));
-    return Array.from(m.entries()).sort((a, b) => b[1] - a[1]);
+    items.forEach((i) => i.tagIds.forEach((id) => m.set(id, (m.get(id) ?? 0) + 1)));
+    return m;
   }, [items]);
+
+  const visibleTags = useMemo(
+    () => tags.filter((t) => (tagCounts.get(t.id) ?? 0) > 0).sort((a, b) => (tagCounts.get(b.id) ?? 0) - (tagCounts.get(a.id) ?? 0)),
+    [tags, tagCounts],
+  );
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return items.filter((i) => {
-      if (selectedTags.length && !selectedTags.every((t) => i.tags.includes(t))) return false;
+      if (selectedTagIds.length && !selectedTagIds.every((id) => i.tagIds.includes(id))) return false;
       if (!q) return true;
-      return (
-        i.name.toLowerCase().includes(q) ||
-        i.tags.some((t) => t.toLowerCase().includes(q))
-      );
+      if (i.name.toLowerCase().includes(q)) return true;
+      return i.tagIds.some((id) => tagsById.get(id)?.name.includes(q));
     });
-  }, [items, query, selectedTags]);
-
-  async function updateTags(id: string, tags: string[]) {
-    const item = items.find((i) => i.id === id);
-    if (!item) return;
-    const next = { ...item, tags };
-    await saveItem(next);
-    setItems((prev) => prev.map((i) => (i.id === id ? next : i)));
-  }
+  }, [items, query, selectedTagIds, tagsById]);
 
   async function removeItem(id: string) {
     await deleteItem(id);
     release(id);
-    setItems((prev) => prev.filter((i) => i.id !== id));
     if (selectedId === id) setSelectedId(null);
+    await refresh();
   }
 
   async function handleClearAll() {
-    if (!confirm("Remove all imported images from the gallery? Your original files stay on disk.")) return;
+    if (!confirm("Remove all imported images, tags, and collections? Your original files stay on disk.")) return;
     await clearAll();
-    setItems([]);
+    await refresh();
   }
 
   const selected = items.find((i) => i.id === selectedId) ?? null;
@@ -176,37 +178,37 @@ function Index() {
           )}
         </div>
 
-        {allTags.length > 0 && (
+        {visibleTags.length > 0 && (
           <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-2 px-6 pb-3">
             <button
-              onClick={() => setSelectedTags([])}
+              onClick={() => setSelectedTagIds([])}
               className={`rounded-full px-3 py-1 text-xs transition ${
-                selectedTags.length === 0
+                selectedTagIds.length === 0
                   ? "bg-primary text-primary-foreground"
                   : "bg-secondary text-secondary-foreground hover:bg-accent"
               }`}
             >
               All · {items.length}
             </button>
-            {allTags.map(([t, count]) => {
-              const on = selectedTags.includes(t);
+            {visibleTags.map((t) => {
+              const on = selectedTagIds.includes(t.id);
               return (
                 <button
-                  key={t}
-                  onClick={() => toggleTag(t)}
+                  key={t.id}
+                  onClick={() => toggleTag(t.id)}
                   className={`rounded-full px-3 py-1 text-xs transition ${
                     on
                       ? "bg-primary text-primary-foreground"
                       : "bg-secondary text-secondary-foreground hover:bg-accent"
                   }`}
                 >
-                  #{t} · {count}
+                  #{t.name} · {tagCounts.get(t.id) ?? 0}
                 </button>
               );
             })}
-            {selectedTags.length > 0 && (
+            {selectedTagIds.length > 0 && (
               <button
-                onClick={() => setSelectedTags([])}
+                onClick={() => setSelectedTagIds([])}
                 className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs text-muted-foreground hover:text-foreground"
               >
                 <X className="h-3 w-3" /> clear
@@ -226,7 +228,13 @@ function Index() {
         ) : (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
             {filtered.map((item) => (
-              <Thumb key={item.id} item={item} ensureUrl={ensureUrl} onOpen={() => setSelectedId(item.id)} />
+              <Thumb
+                key={item.id}
+                item={item}
+                ensureUrl={ensureUrl}
+                tagsById={tagsById}
+                onOpen={() => setSelectedId(item.id)}
+              />
             ))}
           </div>
         )}
@@ -239,7 +247,7 @@ function Index() {
               key={selected.id}
               item={selected}
               ensureUrl={ensureUrl}
-              onSave={(tags) => updateTags(selected.id, tags)}
+              onChange={refresh}
               onRemove={() => removeItem(selected.id)}
             />
           )}
