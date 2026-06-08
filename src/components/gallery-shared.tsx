@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, FolderHeart, Tag as TagIcon } from "lucide-react";
 import { type FileItem, type Tag, getHandle, verifyPermission } from "@/lib/gallery-store";
 
 export type ItemWithUrl = FileItem & { url?: string };
@@ -60,23 +60,38 @@ export function Thumb({
   return (
     <button
       onClick={onOpen}
-      className="group relative aspect-square overflow-hidden rounded-xl border border-border/60 bg-card text-left transition hover:border-primary/60 hover:shadow-lg hover:shadow-primary/10"
+      className="group flex flex-col overflow-hidden rounded-xl border border-border/60 bg-card text-left transition hover:border-primary/60 hover:shadow-lg hover:shadow-primary/10"
     >
-      {url ? (
-        <img src={url} alt={item.name} className="h-full w-full object-cover transition group-hover:scale-105" loading="lazy" />
-      ) : err ? (
-        <div className="grid h-full place-items-center px-2 text-center text-xs text-muted-foreground">
-          File unavailable
-        </div>
-      ) : (
-        <div className="grid h-full place-items-center bg-muted">
-          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-        </div>
-      )}
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-2 opacity-0 transition group-hover:opacity-100">
-        <p className="truncate text-xs font-medium text-white">{item.name}</p>
-        {tagNames.length > 0 && (
-          <p className="truncate text-[10px] text-white/70">{tagNames.map((n) => `#${n}`).join(" ")}</p>
+      <div className="relative aspect-square">
+        {url ? (
+          <img src={url} alt={item.name} className="h-full w-full object-cover transition group-hover:scale-[1.03]" loading="lazy" />
+        ) : err ? (
+          <div className="grid h-full place-items-center px-2 text-center text-xs text-muted-foreground">
+            Файл недоступен
+          </div>
+        ) : (
+          <div className="grid h-full place-items-center bg-muted">
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          </div>
+        )}
+
+        {item.collectionIds.length > 0 && (
+          <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-medium text-white backdrop-blur">
+            <FolderHeart className="h-3 w-3" />
+            {item.collectionIds.length}
+          </span>
+        )}
+      </div>
+
+      <div className="space-y-1 px-3 py-2">
+        <p className="truncate text-sm font-medium">{item.name}</p>
+        {tagNames.length > 0 ? (
+          <p className="flex items-center gap-1 truncate text-[11px] text-muted-foreground">
+            <TagIcon className="h-3 w-3 shrink-0" />
+            <span className="truncate">{tagNames.map((n) => `#${n}`).join("  ")}</span>
+          </p>
+        ) : (
+          <p className="text-[11px] text-muted-foreground/60">Без тегов</p>
         )}
       </div>
     </button>
