@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Images, FolderHeart, Tag, ImageIcon } from "lucide-react";
+import { Workflow, Archive, UserRound, ImageIcon } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -12,24 +12,9 @@ import {
 } from "@/components/ui/sidebar";
 
 const items = [
-  {
-    title: "Библиотека",
-    subtitle: "Все изображения в одном месте",
-    url: "/",
-    icon: Images,
-  },
-  {
-    title: "Коллекции",
-    subtitle: "Группы файлов по темам",
-    url: "/collections",
-    icon: FolderHeart,
-  },
-  {
-    title: "Теги",
-    subtitle: "Быстрая фильтрация контента",
-    url: "/tags",
-    icon: Tag,
-  },
+  { title: "Конвейер", subtitle: "Активный релиз", url: "/", icon: Workflow },
+  { title: "Персонажи", subtitle: "Пресеты тегов и названий", url: "/characters", icon: UserRound },
+  { title: "Архив", subtitle: "Прошлые релизы", url: "/archive", icon: Archive },
 ];
 
 export function AppSidebar() {
@@ -54,17 +39,10 @@ export function AppSidebar() {
             <SidebarMenu>
               {items.map((item) => {
                 const active =
-                  item.url === "/"
-                    ? currentPath === "/"
-                    : currentPath.startsWith(item.url);
+                  item.url === "/" ? currentPath === "/" : currentPath.startsWith(item.url);
                 return (
                   <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton
-                      asChild
-                      size="lg"
-                      isActive={active}
-                      tooltip={item.title}
-                    >
+                    <SidebarMenuButton asChild size="lg" isActive={active} tooltip={item.title}>
                       <Link to={item.url} className="flex items-center gap-3">
                         <item.icon className="h-4 w-4 shrink-0" />
                         <span className="flex min-w-0 flex-col leading-tight">
