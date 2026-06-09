@@ -35,7 +35,7 @@ export const Route = createFileRoute("/library")({
 const IMAGE_EXT = /\.(jpe?g|png|gif|webp|avif|bmp|svg)$/i;
 
 function Index() {
-  const navigate = useNavigate({ from: "/" });
+  const navigate = useNavigate({ from: "/library" });
   const { tags: tagsParam } = Route.useSearch();
   const selectedTagIds = useMemo<string[]>(
     () => (tagsParam ? tagsParam.split(",").filter(Boolean) : []),
