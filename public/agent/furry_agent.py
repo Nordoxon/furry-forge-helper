@@ -555,8 +555,8 @@ def da_publish_exclusive(token, pub, price):
     if globals().get("EXCLUSIVE_STRICT", True):
         raise RuntimeError(
             "DeviantArt не принял цену эксклюзива — публикация отменена, файл остался в Sta.sh. "
-            "Создайте на DeviantArt премиум-папку галереи с нужной ценой и укажите её имя "
-            "в EXCLUSIVE_FOLDER_NAME в начале furry_agent.py."
+            "Чаще всего это значит, что у аккаунта не подключены платные (Premium) работы: "
+            "нужен Core-статус и заполненный раздел выплат в настройках DeviantArt."
         )
     log("Публикую без цены (EXCLUSIVE_STRICT = False)")
     return da_publish_request(token, base)
