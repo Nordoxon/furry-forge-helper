@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, X, Loader2, Inbox, Undo2, FolderOpen } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { BottomNav } from "@/components/bottom-nav";
 import {
@@ -69,19 +70,27 @@ function TriagePage() {
 
   async function act(status: "approved" | "rejected") {
     if (!current) return;
-    setLast({ id: current.id });
-    await decide(current.id, status, charId, status === "approved" ? folder : null);
-    setIndex((i) => i + 1);
-    setFolder(null);
-    void qc.invalidateQueries({ queryKey: ["pipeline"] });
+    try {
+      await decide(current.id, status, charId, status === "approved" ? folder : null);
+      setLast({ id: current.id });
+      setIndex((i) => i + 1);
+      setFolder(null);
+      void qc.invalidateQueries({ queryKey: ["pipeline"] });
+    } catch (e) {
+      toast.error(`Не удалось сохранить: ${(e as Error).message}`);
+    }
   }
 
   async function undo() {
     if (!last) return;
-    await decide(last.id, "new", null, null);
-    setLast(null);
-    setIndex((i) => Math.max(0, i - 1));
-    void inbox.refetch();
+    try {
+      await decide(last.id, "new", null, null);
+      setLast(null);
+      setIndex((i) => Math.max(0, i - 1));
+      void inbox.refetch();
+    } catch (e) {
+      toast.error(`Не удалось вернуть: ${(e as Error).message}`);
+    }
   }
 
   function addFolder() {
