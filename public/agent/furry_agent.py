@@ -495,58 +495,6 @@ def da_publish(path, job):
     return url
 
 
-def da_publish_exclusive(token, pub, price):
-    """Публикация платного эксклюзива. Пробуем разные формы цены и НЕ публикуем
-    бесплатно, если DeviantArt отказался принять цену (при EXCLUSIVE_STRICT)."""
-    variants = []
-    base = {k: v for k, v in pub.items() if not k.startswith("premium_folder_data")}
-    fid = pub.get("premium_folder_data[folderid]")
-
-    def variant(extra, label):
-        d = dict(base)
-        d.update(extra)
-        variants.append((label, d))
-
-    if fid:
-        variant({"premium_folder_data[folderid]": fid,
-                 "premium_folder_data[type]": "cash",
-                 "premium_folder_data[price]": f"{price:.2f}"}, "папка эксклюзива + цена")
-        variant({"premium_folder_data[folderid]": fid}, "папка эксклюзива (цена берётся из папки)")
-    variant({"premium_folder_data[type]": "cash",
-             "premium_folder_data[price]": f"{price:.2f}"}, f"cash ${price:.2f}")
-    variant({"premium_folder_data[type]": "cash",
-             "premium_folder_data[price]": str(int(round(price)))}, f"cash ${int(round(price))}")
-    variant({"premium_folder_data[type]": "cash",
-             "premium_folder_data[price]": str(int(round(price * 100)))}, "cash в центах")
-
-    last = None
-    for label, data in variants:
-        rp = requests.post(
-            "https://www.deviantart.com/api/v1/oauth2/stash/publish",
-            headers={"Authorization": f"Bearer {token}"},
-            data=data,
-            timeout=300,
-        )
-        if rp.status_code == 200:
-            log(f"DeviantArt: цена принята ({label})")
-            return rp.json()
-        last = rp
-        try:
-            body = json.dumps(rp.json(), ensure_ascii=False)[:600]
-        except Exception:
-            body = rp.text[:600]
-        log(f"DeviantArt отклонил вариант «{label}»: HTTP {rp.status_code} {body}")
-
-    if globals().get("EXCLUSIVE_STRICT", True):
-        raise RuntimeError(
-            "DeviantArt не принял цену эксклюзива — публикация отменена, файл остался в Sta.sh. "
-            "Чаще всего это значит, что у аккаунта не подключены платные (Premium) работы: "
-            "нужен Core-статус и заполненный раздел выплат в настройках DeviantArt."
-        )
-    log("Публикую без цены (EXCLUSIVE_STRICT = False)")
-    return da_publish_request(token, base)
-
-
 
 def da_publish_request(token, pub, attempt=1):
     """stash/publish с автолечением: DeviantArt отвечает 400 и списком полей,
