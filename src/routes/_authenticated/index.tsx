@@ -12,6 +12,7 @@ import {
   signedPreview,
   type ImageRow,
 } from "@/lib/images";
+import { fetchTemplates, type TemplateRow } from "@/lib/templates";
 
 export const Route = createFileRoute("/_authenticated/")({
   head: () => ({
