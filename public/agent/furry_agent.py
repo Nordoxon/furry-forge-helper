@@ -45,7 +45,13 @@ PREVIEW_QUALITY = 72
 
 A1111_URL = "http://127.0.0.1:7860"
 UPSCALER = "R-ESRGAN 4x+"
-UPSCALE_FACTOR = 2
+
+# Режимы: "factor" — по множителю; "size" — по целевому разрешению
+UPSCALE_MODE = "size"                          # "factor" или "size"
+UPSCALE_FACTOR = 2                             # используется только при UPSCALE_MODE = "factor"
+UPSCALE_WIDTH = 3200                           # целевая ширина
+UPSCALE_HEIGHT = 4096                          # целевая высота
+
 
 DA_CLIENT_ID = ""                               # DeviantArt application client_id
 DA_CLIENT_SECRET = ""                           # DeviantArt application client_secret
@@ -150,12 +156,23 @@ def safe_name(name):
 def upscale(path, out_name=None):
     with open(path, "rb") as f:
         img_b64 = base64.b64encode(f.read()).decode()
-    payload = {
-        "resize_mode": 0,
-        "upscaling_resize": UPSCALE_FACTOR,
-        "upscaler_1": UPSCALER,
-        "image": img_b64,
-    }
+
+    if UPSCALE_MODE == "size":
+        payload = {
+            "resize_mode": 1,
+            "upscaling_resize_w": UPSCALE_WIDTH,
+            "upscaling_resize_h": UPSCALE_HEIGHT,
+            "upscaler_1": UPSCALER,
+            "image": img_b64,
+        }
+    else:
+        payload = {
+            "resize_mode": 0,
+            "upscaling_resize": UPSCALE_FACTOR,
+            "upscaler_1": UPSCALER,
+            "image": img_b64,
+        }
+
     r = requests.post(f"{A1111_URL}/sdapi/v1/extra-single-image", json=payload, timeout=1800)
     r.raise_for_status()
     out_b64 = r.json()["image"]
@@ -169,6 +186,7 @@ def upscale(path, out_name=None):
     with open(out_path, "wb") as f:
         f.write(base64.b64decode(out_b64.split(",")[-1]))
     return out_path
+
 
 
 # ──────────────────── 3. DeviantArt OAuth + upload ───────────────
