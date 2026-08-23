@@ -93,8 +93,27 @@ export const Route = createFileRoute("/api/public/agent/claim")({
             title,
             description,
             tags,
-            gallery_folder: img.gallery_folder || ch?.gallery_folder || "",
-            is_mature: ch?.is_mature ?? false,
+            gallery_folder:
+              img.gallery_folder || tpl?.gallery_folder || ch?.gallery_folder || "",
+            is_mature: tpl ? tpl.is_mature : (ch?.is_mature ?? false),
+            template: tpl
+              ? {
+                  name: tpl.name,
+                  is_mature: tpl.is_mature,
+                  mature_level: tpl.mature_level,
+                  mature_classification: tpl.mature_classification,
+                  is_ai_generated: tpl.is_ai_generated,
+                  noai: tpl.noai,
+                  allow_comments: tpl.allow_comments,
+                  allow_free_download: tpl.allow_free_download,
+                  add_watermark: tpl.add_watermark,
+                  display_resolution: tpl.display_resolution,
+                  license_cc: tpl.license_cc,
+                  license_commercial: tpl.license_commercial,
+                  license_modify: tpl.license_modify,
+                  category_path: tpl.category_path,
+                }
+              : null,
           });
         }
         return json({ jobs });
