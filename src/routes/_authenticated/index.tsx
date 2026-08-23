@@ -37,6 +37,7 @@ function TriagePage() {
   const [done, setDone] = useState<string[]>([]);
   const [charId, setCharId] = useState<string | null>(null);
   const [folder, setFolder] = useState<string | null>(null);
+  const [templateId, setTemplateId] = useState<string | null>(null);
   const [extraFolders, setExtraFolders] = useState<string[]>([]);
   const [last, setLast] = useState<{ id: string } | null>(null);
 
