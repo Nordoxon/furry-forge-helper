@@ -39,7 +39,7 @@ AGENT_TOKEN = "вставьте-ключ-со-страницы-Агент"
 WATCH_DIR = r"C:\stable-diffusion\outputs"     # родительская папка; вложенные папки с датами сканируются автоматически
 EXTENSIONS = (".png", ".jpg", ".jpeg", ".webp")
 SKIP_DIRS = {"upscaled", ".git", "__pycache__", "tmp", "temp"}  # папки, которые пропускаем
-SCAN_INTERVAL = 10                              # сек между сканами папки
+SCAN_INTERVAL = 60                              # скрипт сам проверяет папку outputs на новые изображения (минимум раз в минуту)
 POLL_INTERVAL = 8                               # сек между опросами очереди
 
 PREVIEW_MAX_SIDE = 640                          # размер превью для телефона
