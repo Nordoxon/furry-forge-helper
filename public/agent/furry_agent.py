@@ -458,10 +458,6 @@ def da_publish(path, job):
         pub["license_options[modify]"] = tpl.get("license_modify") or "no"
     if tpl.get("category_path"):
         pub["catpath"] = tpl["category_path"]
-    if tpl.get("is_ai_generated"):
-        pub["is_ai_generated"] = "1"
-    if tpl.get("noai"):
-        pub["noai"] = "1"
     if exclusive:
         # Эксклюзивный (премиум) контент с ценой в долларах США
         price = max(0.0, float(tpl.get("exclusive_price") or 0))
@@ -479,24 +475,52 @@ def da_publish(path, job):
     if stack:
         fid = da_folder_id(token, stack)
         if fid:
-            pub["galleryids"] = fid
+            pub["galleryids[0]"] = fid
         else:
             log(f"DeviantArt: папка «{stack}» не найдена — публикую без папки")
 
     if exclusive:
         log(f"DeviantArt: публикую эксклюзив «{title}» за ${pub.get('premium_folder_data[price]')}")
     else:
-        log(f"DeviantArt: публикую «{title}»" + (f" за {pub.get('download_price')} баллов" if pub.get("download_price") else ""))
+        log(f"DeviantArt: публикую «{title}»")
+    pres = da_publish_request(token, pub)
+    url = pres.get("url") or "https://www.deviantart.com/"
+    log("DeviantArt: опубликовано ->", url)
+    return url
+
+
+def da_publish_request(token, pub, attempt=1):
+    """stash/publish с автолечением: DeviantArt отвечает 400 и списком полей,
+    которые он не принял — выкидываем их и пробуем снова."""
     rp = requests.post(
         "https://www.deviantart.com/api/v1/oauth2/stash/publish",
         headers={"Authorization": f"Bearer {token}"},
         data=pub,
         timeout=300,
     )
-    pres = _da_check(rp, "stash/publish")
-    url = pres.get("url") or "https://www.deviantart.com/"
-    log("DeviantArt: опубликовано ->", url)
-    return url
+    if rp.status_code == 400 and attempt <= 3:
+        try:
+            body = rp.json()
+        except Exception:
+            body = {}
+        errors = body.get("errors") or {}
+        if errors:
+            log("DeviantArt отклонил поля:", json.dumps(errors, ensure_ascii=False))
+            cleaned = dict(pub)
+            removed = []
+            for field in errors:
+                base = str(field).split("[")[0]
+                for key in list(cleaned):
+                    if key == field or key == base or key.startswith(base + "["):
+                        if key == "itemid":
+                            continue
+                        cleaned.pop(key, None)
+                        removed.append(key)
+            if removed:
+                log("Повторяю публикацию без:", ", ".join(sorted(set(removed))))
+                return da_publish_request(token, cleaned, attempt + 1)
+    return _da_check(rp, "stash/publish")
+
 
 
 
