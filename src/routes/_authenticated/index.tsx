@@ -65,12 +65,18 @@ function TriagePage() {
 
   // выбранная папка запоминается между кадрами и сменой персонажа
 
+  const activeTemplate = useMemo(
+    () => templates.data?.find((t) => t.id === templateId) ?? null,
+    [templates.data, templateId],
+  );
+
   const folderOptions = useMemo(() => {
     const set = new Set<string>();
     for (const c of chars.data ?? []) if (c.gallery_folder) set.add(c.gallery_folder);
+    for (const t of templates.data ?? []) if (t.gallery_folder) set.add(t.gallery_folder);
     for (const f of extraFolders) set.add(f);
     return Array.from(set);
-  }, [chars.data, extraFolders]);
+  }, [chars.data, templates.data, extraFolders]);
 
   const all = inbox.data ?? [];
   const doneSet = useMemo(() => new Set(done), [done]);
