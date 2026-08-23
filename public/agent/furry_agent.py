@@ -136,7 +136,12 @@ def scan_and_upload():
 
 
 # ───────────────────────── 2. апскейл ────────────────────────────
-def upscale(path):
+def safe_name(name):
+    keep = "".join(c for c in str(name) if c.isalnum() or c in "-_ ").strip()
+    return keep or "image"
+
+
+def upscale(path, out_name=None):
     with open(path, "rb") as f:
         img_b64 = base64.b64encode(f.read()).decode()
     payload = {
@@ -149,7 +154,12 @@ def upscale(path):
     r.raise_for_status()
     out_b64 = r.json()["image"]
     os.makedirs(UPSCALED_DIR, exist_ok=True)
-    out_path = os.path.join(UPSCALED_DIR, os.path.splitext(os.path.basename(path))[0] + "_up.png")
+    base = safe_name(out_name) if out_name else os.path.splitext(os.path.basename(path))[0] + "_up"
+    out_path = os.path.join(UPSCALED_DIR, base + ".png")
+    n = 2
+    while os.path.exists(out_path):
+        out_path = os.path.join(UPSCALED_DIR, f"{base}_{n}.png")
+        n += 1
     with open(out_path, "wb") as f:
         f.write(base64.b64decode(out_b64.split(",")[-1]))
     return out_path
@@ -313,13 +323,14 @@ def process_queue():
         return
 
     for job in jobs:
-        log("обработка:", job["filename"])
+        log("обработка:", job["filename"], "->", job.get("asset_name", ""))
         try:
             src = job["local_path"]
             if not os.path.exists(src):
                 report(job["id"], "error", error="файл не найден на компьютере")
                 continue
-            big = upscale(src)
+            asset = job.get("asset_name") or os.path.splitext(job["filename"])[0]
+            big = upscale(src, asset)
             report(job["id"], "uploading")
             url = da_publish(big, job)
             report(job["id"], "published", deviation_url=url)

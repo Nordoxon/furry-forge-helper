@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { authenticateAgent, json, renderTemplate } from "@/lib/agent-auth";
+import { uniqueGirlName } from "@/lib/girl-names";
 
 export const Route = createFileRoute("/api/public/agent/claim")({
   server: {
@@ -34,11 +35,22 @@ export const Route = createFileRoute("/api/public/agent/claim")({
           .maybeSingle();
         let seq = maxRow?.seq ?? 0;
 
+        const { data: usedRows } = await supabase
+          .from("images")
+          .select("asset_name")
+          .eq("user_id", userId)
+          .not("asset_name", "is", null);
+        const used = new Set(
+          (usedRows ?? []).map((r) => String(r.asset_name).toLowerCase()),
+        );
+
         const jobs = [];
         for (const img of approved) {
           const ch = img.character_id ? charById.get(img.character_id) : undefined;
           seq += 1;
+          const assetName = img.asset_name || uniqueGirlName(used);
           const vars = {
+            name: assetName,
             character: ch?.name ?? "",
             species: ch?.species ?? "",
             n: seq,
@@ -54,7 +66,7 @@ export const Route = createFileRoute("/api/public/agent/claim")({
 
           const { error } = await supabase
             .from("images")
-            .update({ status: "upscaling", seq, title, description, tags })
+            .update({ status: "upscaling", seq, title, description, tags, asset_name: assetName })
             .eq("id", img.id)
             .eq("status", "approved");
           if (error) continue;
@@ -63,6 +75,8 @@ export const Route = createFileRoute("/api/public/agent/claim")({
             id: img.id,
             local_path: img.local_path,
             filename: img.filename,
+            asset_name: assetName,
+            output_filename: `${assetName}.png`,
             title,
             description,
             tags,

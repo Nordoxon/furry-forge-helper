@@ -1,0 +1,2 @@
+ALTER TABLE public.images ADD COLUMN IF NOT EXISTS asset_name TEXT;
+CREATE UNIQUE INDEX IF NOT EXISTS images_user_asset_name_key ON public.images (user_id, lower(asset_name)) WHERE asset_name IS NOT NULL;
