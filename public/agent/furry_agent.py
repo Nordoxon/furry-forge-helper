@@ -405,6 +405,10 @@ def da_publish(path, job):
             data["license_options[modify]"] = tpl.get("license_modify") or "no"
         if tpl.get("category_path"):
             data["catpath"] = tpl["category_path"]
+        if tpl.get("is_downloadable"):
+            data["is_downloadable"] = "1"
+            if tpl.get("download_price"):
+                data["download_price"] = str(int(tpl["download_price"]))
 
     log(
         f"DeviantArt: загружаю в Sta.sh «{title}»"
@@ -424,7 +428,63 @@ def da_publish(path, job):
     if not itemid:
         raise RuntimeError(f"stash/submit не вернул itemid: {res}")
     log("DeviantArt: в Sta.sh, itemid =", itemid, "стек:", res.get("stackid", "-"))
-    return "https://sta.sh/"
+
+    if not tpl.get("auto_publish"):
+        return "https://sta.sh/"
+
+    # Автопубликация в галерею (включена в шаблоне)
+    pub = {
+        "itemid": str(itemid),
+        "agree_submission": "1",
+        "agree_tos": "1",
+        "is_mature": "1" if (job.get("is_mature") or tpl.get("is_mature")) else "0",
+        "allow_comments": "1" if tpl.get("allow_comments", True) else "0",
+        "allow_free_download": "1" if tpl.get("allow_free_download") else "0",
+        "add_watermark": "1" if tpl.get("add_watermark") else "0",
+        "feature": "1",
+        "sharing": "allow",
+    }
+    if pub["is_mature"] == "1":
+        pub["mature_level"] = tpl.get("mature_level") or "moderate"
+        for i, c in enumerate(tpl.get("mature_classification") or []):
+            pub[f"mature_classification[{i}]"] = c
+    if tpl.get("display_resolution"):
+        pub["display_resolution"] = str(tpl["display_resolution"])
+    if tpl.get("license_cc"):
+        pub["license_options[creative_commons]"] = "1"
+        pub["license_options[commercial]"] = "1" if tpl.get("license_commercial") else "0"
+        pub["license_options[modify]"] = tpl.get("license_modify") or "no"
+    if tpl.get("category_path"):
+        pub["catpath"] = tpl["category_path"]
+    if tpl.get("is_ai_generated"):
+        pub["is_ai_generated"] = "1"
+    if tpl.get("noai"):
+        pub["noai"] = "1"
+    if tpl.get("is_downloadable"):
+        pub["is_downloadable"] = "1"
+        price = int(tpl.get("download_price") or 0)
+        if price > 0:
+            pub["download_price"] = str(price)
+            pub["allow_free_download"] = "0"
+
+    if stack:
+        fid = da_folder_id(token, stack)
+        if fid:
+            pub["galleryids"] = fid
+        else:
+            log(f"DeviantArt: папка «{stack}» не найдена — публикую без папки")
+
+    log(f"DeviantArt: публикую «{title}»" + (f" за {pub.get('download_price')} баллов" if pub.get("download_price") else ""))
+    rp = requests.post(
+        "https://www.deviantart.com/api/v1/oauth2/stash/publish",
+        headers={"Authorization": f"Bearer {token}"},
+        data=pub,
+        timeout=300,
+    )
+    pres = _da_check(rp, "stash/publish")
+    url = pres.get("url") or "https://www.deviantart.com/"
+    log("DeviantArt: опубликовано ->", url)
+    return url
 
 
 
