@@ -272,7 +272,7 @@ def upscale(path, out_name=None, heartbeat=None):
         }
 
     try:
-        r = requests.post(f"{A1111_URL}/sdapi/v1/extra-single-image", json=payload, timeout=1800)
+        r = requests.post(f"{A1111_URL}/sdapi/v1/extra-single-image", json=payload, timeout=UPSCALE_TIMEOUT)
     except requests.RequestException as e:
         if FALLBACK_TO_PIL:
             print(f"[upscale] A1111 недоступен ({e}) — апскейлю локально через Pillow")
@@ -729,11 +729,15 @@ def process_queue():
                 report(job["id"], "error", error="файл не найден на компьютере")
                 continue
             asset = job.get("asset_name") or os.path.splitext(job["filename"])[0]
-            big = upscale(src, asset)
+            big = upscale(src, asset, heartbeat=lambda: report(job["id"], "upscaling"))
             report(job["id"], "uploading")
             url = da_publish(big, job)
             report(job["id"], "published", deviation_url=url)
             log("опубликовано:", url)
+        except A1111Busy as e:
+            log("SD занят генерацией — возвращаю в очередь:", job["filename"])
+            report(job["id"], "approved")
+            break
         except Exception as e:
             log("ошибка:", e)
             report(job["id"], "error", error=str(e)[:300])
