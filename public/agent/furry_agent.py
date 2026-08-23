@@ -45,7 +45,13 @@ PREVIEW_QUALITY = 72
 
 A1111_URL = "http://127.0.0.1:7860"
 UPSCALER = "R-ESRGAN 4x+"
-UPSCALE_FACTOR = 2
+
+# Режимы: "factor" — по множителю; "size" — по целевому разрешению
+UPSCALE_MODE = "size"                          # "factor" или "size"
+UPSCALE_FACTOR = 2                             # используется только при UPSCALE_MODE = "factor"
+UPSCALE_WIDTH = 3200                           # целевая ширина
+UPSCALE_HEIGHT = 4096                          # целевая высота
+
 
 DA_CLIENT_ID = ""                               # DeviantArt application client_id
 DA_CLIENT_SECRET = ""                           # DeviantArt application client_secret
