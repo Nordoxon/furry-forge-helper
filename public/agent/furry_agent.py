@@ -88,6 +88,8 @@ GEN_RESTARTS = 10             # сколько раз перезапустить
 GEN_IDLE_SECONDS = 15         # сколько секунд простоя считать «остановилось»
 GEN_RETRY_WAIT = 30           # пауза перед повтором при ошибке
 GEN_MAX_ERRORS = 5            # после скольких ошибок подряд остановиться
+GEN_PAUSE_SECONDS = 600       # пауза после цикла (10 мин) на апскейл/загрузку отобранного
+
 
 
 STATE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "agent_state.json")
