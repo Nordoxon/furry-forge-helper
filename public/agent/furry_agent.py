@@ -153,9 +153,36 @@ def safe_name(name):
     return keep or "image"
 
 
+def _out_path(path, out_name):
+    os.makedirs(UPSCALED_DIR, exist_ok=True)
+    base = safe_name(out_name) if out_name else os.path.splitext(os.path.basename(path))[0] + "_up"
+    out_path = os.path.join(UPSCALED_DIR, base + ".png")
+    n = 2
+    while os.path.exists(out_path):
+        out_path = os.path.join(UPSCALED_DIR, f"{base}_{n}.png")
+        n += 1
+    return out_path
+
+
+def upscale_local(path, out_name=None):
+    """Запасной апскейл средствами Pillow (Lanczos), если A1111 недоступен."""
+    from PIL import Image
+
+    img = Image.open(path).convert("RGB")
+    if UPSCALE_MODE == "size":
+        target = (UPSCALE_WIDTH, UPSCALE_HEIGHT)
+    else:
+        target = (img.width * UPSCALE_FACTOR, img.height * UPSCALE_FACTOR)
+    img = img.resize(target, Image.LANCZOS)
+    out_path = _out_path(path, out_name)
+    img.save(out_path, "PNG")
+    return out_path
+
+
 def upscale(path, out_name=None):
     with open(path, "rb") as f:
         img_b64 = base64.b64encode(f.read()).decode()
+
 
     if UPSCALE_MODE == "size":
         payload = {
