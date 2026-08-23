@@ -71,13 +71,16 @@ DA_REDIRECT = "http://localhost:8721/callback"  # добавьте этот URI 
 # ── АВТОГЕНЕРАЦИЯ (обход лимита batch count = 100) ──
 # Агент сам гоняет txt2img в Automatic1111 порциями и перезапускает цикл,
 # пока не наберётся GEN_TOTAL изображений.
-GEN_ENABLED = False           # True — включить автогенерацию
-GEN_TOTAL = 500               # сколько изображений нужно всего
-GEN_CHUNK = 50                # сколько за один запрос (не больше 100)
-GEN_PAYLOAD_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "gen_payload.json")
-GEN_OUT_DIR = os.path.join(WATCH_DIR, "agent_generated")  # сюда сохраняются картинки (папка сканируется)
-GEN_RETRY_WAIT = 30           # пауза перед повтором, если A1111 отвалился
-GEN_MAX_ERRORS = 10           # после скольких подряд ошибок остановить генерацию
+# ── АВТО-РЕСТАРТ ГЕНЕРАЦИИ («нажать Generate снова») ──
+# Параметры вы задаёте сами в окне Stable Diffusion и запускаете первый прогон.
+# Агент видит, что генерация остановилась (лимит batch count = 100),
+# и запускает её заново с теми же параметрами.
+GEN_ENABLED = False           # True — включить авто-рестарт
+GEN_RESTARTS = 10             # сколько раз перезапустить (0 — бесконечно)
+GEN_IDLE_SECONDS = 15         # сколько секунд простоя считать «остановилось»
+GEN_RETRY_WAIT = 30           # пауза перед повтором при ошибке
+GEN_MAX_ERRORS = 5            # после скольких ошибок подряд остановиться
+
 
 STATE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "agent_state.json")
 UPSCALED_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "upscaled")
