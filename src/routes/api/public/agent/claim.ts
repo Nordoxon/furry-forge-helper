@@ -66,7 +66,7 @@ export const Route = createFileRoute("/api/public/agent/claim")({
             title,
             description,
             tags,
-            gallery_folder: ch?.gallery_folder ?? "",
+            gallery_folder: img.gallery_folder || ch?.gallery_folder || "",
             is_mature: ch?.is_mature ?? false,
           });
         }
