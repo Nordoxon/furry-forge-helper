@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as ApiPublicAgentStatusRouteImport } from './routes/api/public/agent/status'
 import { Route as ApiPublicAgentIngestRouteImport } from './routes/api/public/agent/ingest'
 import { Route as ApiPublicAgentClaimRouteImport } from './routes/api/public/agent/claim'
@@ -23,6 +24,11 @@ const AuthRoute = AuthRouteImport.update({
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const ApiPublicAgentStatusRoute = ApiPublicAgentStatusRouteImport.update({
   id: '/api/public/agent/status',
@@ -41,23 +47,24 @@ const ApiPublicAgentClaimRoute = ApiPublicAgentClaimRouteImport.update({
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof AuthenticatedRouteRoute
+  '/': typeof AuthenticatedIndexRoute
   '/auth': typeof AuthRoute
   '/api/public/agent/claim': typeof ApiPublicAgentClaimRoute
   '/api/public/agent/ingest': typeof ApiPublicAgentIngestRoute
   '/api/public/agent/status': typeof ApiPublicAgentStatusRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof AuthenticatedRouteRoute
   '/auth': typeof AuthRoute
+  '/': typeof AuthenticatedIndexRoute
   '/api/public/agent/claim': typeof ApiPublicAgentClaimRoute
   '/api/public/agent/ingest': typeof ApiPublicAgentIngestRoute
   '/api/public/agent/status': typeof ApiPublicAgentStatusRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/_authenticated': typeof AuthenticatedRouteRoute
+  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/_authenticated/': typeof AuthenticatedIndexRoute
   '/api/public/agent/claim': typeof ApiPublicAgentClaimRoute
   '/api/public/agent/ingest': typeof ApiPublicAgentIngestRoute
   '/api/public/agent/status': typeof ApiPublicAgentStatusRoute
@@ -72,8 +79,8 @@ export interface FileRouteTypes {
     | '/api/public/agent/status'
   fileRoutesByTo: FileRoutesByTo
   to:
-    | '/'
     | '/auth'
+    | '/'
     | '/api/public/agent/claim'
     | '/api/public/agent/ingest'
     | '/api/public/agent/status'
@@ -81,13 +88,14 @@ export interface FileRouteTypes {
     | '__root__'
     | '/_authenticated'
     | '/auth'
+    | '/_authenticated/'
     | '/api/public/agent/claim'
     | '/api/public/agent/ingest'
     | '/api/public/agent/status'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  AuthenticatedRouteRoute: typeof AuthenticatedRouteRoute
+  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   ApiPublicAgentClaimRoute: typeof ApiPublicAgentClaimRoute
   ApiPublicAgentIngestRoute: typeof ApiPublicAgentIngestRoute
@@ -109,6 +117,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof AuthenticatedRouteRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/': {
+      id: '/_authenticated/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/api/public/agent/status': {
       id: '/api/public/agent/status'
@@ -134,8 +149,19 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
+}
+
+const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedIndexRoute: AuthenticatedIndexRoute,
+}
+
+const AuthenticatedRouteRouteWithChildren =
+  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
-  AuthenticatedRouteRoute: AuthenticatedRouteRoute,
+  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   ApiPublicAgentClaimRoute: ApiPublicAgentClaimRoute,
   ApiPublicAgentIngestRoute: ApiPublicAgentIngestRoute,
