@@ -103,6 +103,7 @@ export type Database = {
           seq: number
           status: Database["public"]["Enums"]["image_status"]
           tags: string[]
+          template_id: string | null
           title: string
           updated_at: string
           user_id: string
@@ -124,6 +125,7 @@ export type Database = {
           seq?: number
           status?: Database["public"]["Enums"]["image_status"]
           tags?: string[]
+          template_id?: string | null
           title?: string
           updated_at?: string
           user_id: string
@@ -145,6 +147,7 @@ export type Database = {
           seq?: number
           status?: Database["public"]["Enums"]["image_status"]
           tags?: string[]
+          template_id?: string | null
           title?: string
           updated_at?: string
           user_id?: string
@@ -158,7 +161,89 @@ export type Database = {
             referencedRelation: "characters"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "images_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "publish_templates"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      publish_templates: {
+        Row: {
+          add_watermark: boolean
+          allow_comments: boolean
+          allow_free_download: boolean
+          category_path: string
+          created_at: string
+          description_template: string
+          display_resolution: number
+          gallery_folder: string
+          id: string
+          is_ai_generated: boolean
+          is_default: boolean
+          is_mature: boolean
+          license_cc: boolean
+          license_commercial: boolean
+          license_modify: string
+          mature_classification: string[]
+          mature_level: string
+          name: string
+          noai: boolean
+          tags: string[]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          add_watermark?: boolean
+          allow_comments?: boolean
+          allow_free_download?: boolean
+          category_path?: string
+          created_at?: string
+          description_template?: string
+          display_resolution?: number
+          gallery_folder?: string
+          id?: string
+          is_ai_generated?: boolean
+          is_default?: boolean
+          is_mature?: boolean
+          license_cc?: boolean
+          license_commercial?: boolean
+          license_modify?: string
+          mature_classification?: string[]
+          mature_level?: string
+          name: string
+          noai?: boolean
+          tags?: string[]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          add_watermark?: boolean
+          allow_comments?: boolean
+          allow_free_download?: boolean
+          category_path?: string
+          created_at?: string
+          description_template?: string
+          display_resolution?: number
+          gallery_folder?: string
+          id?: string
+          is_ai_generated?: boolean
+          is_default?: boolean
+          is_mature?: boolean
+          license_cc?: boolean
+          license_commercial?: boolean
+          license_modify?: string
+          mature_classification?: string[]
+          mature_level?: string
+          name?: string
+          noai?: boolean
+          tags?: string[]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
     }
     Views: {

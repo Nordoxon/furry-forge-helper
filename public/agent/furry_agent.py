@@ -369,6 +369,8 @@ def da_publish(path, job):
     title = job.get("asset_name") or job.get("title") or os.path.splitext(os.path.basename(path))[0]
     stack = job.get("gallery_folder") or ""
 
+    tpl = job.get("template") or {}
+
     data = {
         "title": title,
         "artist_comments": job.get("description", ""),
@@ -377,10 +379,38 @@ def da_publish(path, job):
         data["stack"] = stack  # Sta.sh создаст/использует стек с таким именем
     for i, tag in enumerate(job.get("tags", [])[:30]):
         data[f"tags[{i}]"] = tag
-    if job.get("is_mature"):
+    if job.get("is_mature") or tpl.get("is_mature"):
         data["is_dirty"] = "1"
 
-    log(f"DeviantArt: загружаю в Sta.sh «{title}»" + (f" -> стек «{stack}»" if stack else ""))
+    # Опции из шаблона сайта (как в форме публикации DeviantArt).
+    # Sta.sh принимает часть из них сразу; остальные сохраняются в метаданных
+    # черновика и подставляются при ручной публикации.
+    if tpl:
+        if tpl.get("is_ai_generated"):
+            data["is_ai_generated"] = "1"
+        if tpl.get("noai"):
+            data["noai"] = "1"
+        if tpl.get("is_mature"):
+            data["mature_level"] = tpl.get("mature_level") or "moderate"
+            for i, c in enumerate(tpl.get("mature_classification") or []):
+                data[f"mature_classification[{i}]"] = c
+        data["allow_comments"] = "1" if tpl.get("allow_comments", True) else "0"
+        data["allow_free_download"] = "1" if tpl.get("allow_free_download") else "0"
+        data["add_watermark"] = "1" if tpl.get("add_watermark") else "0"
+        if tpl.get("display_resolution"):
+            data["display_resolution"] = str(tpl["display_resolution"])
+        if tpl.get("license_cc"):
+            data["license_options[creative_commons]"] = "1"
+            data["license_options[commercial]"] = "1" if tpl.get("license_commercial") else "0"
+            data["license_options[modify]"] = tpl.get("license_modify") or "no"
+        if tpl.get("category_path"):
+            data["catpath"] = tpl["category_path"]
+
+    log(
+        f"DeviantArt: загружаю в Sta.sh «{title}»"
+        + (f" -> стек «{stack}»" if stack else "")
+        + (f" [шаблон: {tpl.get('name')}]" if tpl.get("name") else "")
+    )
     with open(path, "rb") as f:
         r = requests.post(
             "https://www.deviantart.com/api/v1/oauth2/stash/submit",

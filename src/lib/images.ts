@@ -57,10 +57,16 @@ export async function decide(
   status: ImageStatus,
   characterId: string | null,
   galleryFolder?: string | null,
+  templateId?: string | null,
 ) {
   const { error } = await supabase
     .from("images")
-    .update({ status, character_id: characterId, gallery_folder: galleryFolder ?? null })
+    .update({
+      status,
+      character_id: characterId,
+      gallery_folder: galleryFolder ?? null,
+      template_id: templateId ?? null,
+    })
     .eq("id", id);
   if (error) throw error;
 }
