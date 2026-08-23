@@ -112,7 +112,7 @@ function TriagePage() {
           <div>
             <h1 className="font-display text-lg font-semibold leading-tight">Отбор</h1>
             <p className="text-xs text-muted-foreground">
-              Осталось {Math.max(0, items.length - index)} из {items.length}
+              Осталось {items.length} из {all.length}
             </p>
           </div>
           {last && (
@@ -129,7 +129,7 @@ function TriagePage() {
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
           </div>
         ) : !current ? (
-          <EmptyInbox count={items.length} />
+          <EmptyInbox count={all.length} />
         ) : (
           <>
             <CharacterPicker
