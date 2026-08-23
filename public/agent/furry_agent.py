@@ -234,20 +234,48 @@ def upscale(path, out_name=None):
 # ──────────────────── 3. DeviantArt OAuth + upload ───────────────
 class _CallbackHandler(BaseHTTPRequestHandler):
     code = None
+    error = None
 
     def do_GET(self):
-        qs = parse_qs(urlparse(self.path).query)
+        parsed = urlparse(self.path)
+        if parsed.path not in ("/callback", "/callback/"):
+            # favicon и прочие запросы браузера игнорируем, иначе код авторизации теряется
+            self.send_response(404)
+            self.end_headers()
+            return
+        qs = parse_qs(parsed.query)
         _CallbackHandler.code = qs.get("code", [None])[0]
+        _CallbackHandler.error = qs.get("error_description", qs.get("error", [None]))[0]
         self.send_response(200)
         self.send_header("content-type", "text/html; charset=utf-8")
         self.end_headers()
-        self.wfile.write("<h2>Готово, можно закрыть вкладку.</h2>".encode())
+        msg = "Готово, можно закрыть вкладку." if _CallbackHandler.code else "Авторизация не удалась."
+        self.wfile.write(f"<h2>{msg}</h2>".encode())
 
     def log_message(self, *a):
         pass
 
 
+def _da_check(r, what):
+    """Понятная ошибка вместо голого HTTP-кода: DeviantArt пишет причину в теле ответа."""
+    if r.status_code >= 400:
+        try:
+            body = json.dumps(r.json(), ensure_ascii=False)
+        except Exception:
+            body = r.text[:300]
+        raise RuntimeError(f"DeviantArt {what}: HTTP {r.status_code} {body}")
+    try:
+        return r.json()
+    except Exception:
+        raise RuntimeError(f"DeviantArt {what}: неожиданный ответ {r.text[:300]}")
+
+
 def da_authorize():
+    if not DA_CLIENT_ID or not DA_CLIENT_SECRET:
+        raise RuntimeError("Заполните DA_CLIENT_ID и DA_CLIENT_SECRET в настройках скрипта")
+
+    _CallbackHandler.code = None
+    _CallbackHandler.error = None
     params = {
         "response_type": "code",
         "client_id": DA_CLIENT_ID,
@@ -256,16 +284,18 @@ def da_authorize():
     }
     url = "https://www.deviantart.com/oauth2/authorize?" + urlencode(params)
     server = HTTPServer(("localhost", 8721), _CallbackHandler)
-    threading.Thread(target=server.handle_request, daemon=True).start()
-    log("Откройте в браузере:", url)
+    server.timeout = 1
+    log("Откройте в браузере (если вкладка не открылась сама):", url)
     webbrowser.open(url)
-    for _ in range(300):
-        if _CallbackHandler.code:
-            break
-        time.sleep(1)
+    deadline = time.time() + 300
+    while time.time() < deadline and not _CallbackHandler.code and not _CallbackHandler.error:
+        server.handle_request()  # обрабатываем ВСЕ запросы, пока не придёт code
     server.server_close()
+    if _CallbackHandler.error:
+        raise RuntimeError(f"DeviantArt отказал в авторизации: {_CallbackHandler.error}")
     if not _CallbackHandler.code:
-        raise RuntimeError("Не получен код авторизации DeviantArt")
+        raise RuntimeError("Не получен код авторизации DeviantArt (истекло 5 минут)")
+
     r = requests.post(
         "https://www.deviantart.com/oauth2/token",
         data={
@@ -277,9 +307,12 @@ def da_authorize():
         },
         timeout=60,
     )
-    r.raise_for_status()
-    STATE["da"] = r.json()
+    tok = _da_check(r, "получение токена")
+    if not tok.get("access_token"):
+        raise RuntimeError(f"DeviantArt не выдал access_token: {tok}")
+    STATE["da"] = tok
     save_state(STATE)
+    log("DeviantArt: авторизация выполнена")
 
 
 def da_token():
@@ -297,7 +330,8 @@ def da_token():
         },
         timeout=60,
     )
-    if r.status_code != 200:
+    if r.status_code != 200 or not r.json().get("access_token"):
+        log("DeviantArt: refresh не сработал, нужна повторная авторизация")
         da_authorize()
         return STATE["da"]["access_token"]
     STATE["da"] = r.json()
@@ -308,6 +342,7 @@ def da_token():
 def da_publish(path, job):
     token = da_token()
 
+    log("DeviantArt: загружаю файл в Sta.sh…")
     with open(path, "rb") as f:
         r = requests.post(
             "https://www.deviantart.com/api/v1/oauth2/stash/submit",
@@ -316,8 +351,11 @@ def da_publish(path, job):
             files={"file": (os.path.basename(path), f, "image/png")},
             timeout=600,
         )
-    r.raise_for_status()
-    itemid = r.json()["itemid"]
+    res = _da_check(r, "stash/submit")
+    itemid = res.get("itemid")
+    if not itemid:
+        raise RuntimeError(f"stash/submit не вернул itemid: {res}")
+    log("DeviantArt: файл в Sta.sh, itemid =", itemid)
 
     data = [
         ("itemid", str(itemid)),
@@ -332,36 +370,62 @@ def da_publish(path, job):
         data.append(("mature_level", "moderate"))
     for tag in job.get("tags", [])[:30]:
         data.append(("tags[]", tag))
-    if job.get("gallery_folder"):
-        folder_id = da_folder_id(token, job["gallery_folder"])
+    folder_name = job.get("gallery_folder")
+    if folder_name:
+        folder_id = da_folder_id(token, folder_name)
         if folder_id:
             data.append(("galleryids[]", folder_id))
+            log("DeviantArt: папка галереи", folder_name, "->", folder_id)
+        else:
+            raise RuntimeError(
+                f"Папка галереи «{folder_name}» не найдена на DeviantArt — "
+                "проверьте точное имя папки в настройках персонажа/изображения"
+            )
 
-    r = requests.post(
-        "https://www.deviantart.com/api/v1/oauth2/stash/publish",
-        headers={"Authorization": f"Bearer {token}"},
-        data=data,
-        timeout=600,
+    res = _da_check(
+        requests.post(
+            "https://www.deviantart.com/api/v1/oauth2/stash/publish",
+            headers={"Authorization": f"Bearer {token}"},
+            data=data,
+            timeout=600,
+        ),
+        "stash/publish",
     )
-    r.raise_for_status()
-    return r.json().get("url")
+    if res.get("status") and res["status"] != "success":
+        raise RuntimeError(f"stash/publish вернул статус {res}")
+    url = res.get("url")
+    if not url:
+        raise RuntimeError(f"stash/publish не вернул ссылку на работу: {res}")
+    return url
+
 
 
 def da_folder_id(token, name):
+    """Ищем папку по имени во всех страницах галереи."""
+    offset = 0
+    names = []
     try:
-        r = requests.get(
-            "https://www.deviantart.com/api/v1/oauth2/gallery/folders",
-            headers={"Authorization": f"Bearer {token}"},
-            params={"limit": 50},
-            timeout=60,
-        )
-        r.raise_for_status()
-        for f in r.json().get("results", []):
-            if f.get("name", "").lower() == name.lower():
-                return f.get("folderid")
+        while True:
+            r = requests.get(
+                "https://www.deviantart.com/api/v1/oauth2/gallery/folders",
+                headers={"Authorization": f"Bearer {token}"},
+                params={"limit": 50, "offset": offset, "calculate_size": "false"},
+                timeout=60,
+            )
+            res = _da_check(r, "gallery/folders")
+            for f in res.get("results", []):
+                names.append(f.get("name", ""))
+                if f.get("name", "").strip().lower() == name.strip().lower():
+                    return f.get("folderid")
+            if not res.get("has_more"):
+                break
+            offset = res.get("next_offset") or (offset + 50)
     except Exception as e:
-        log("папка галереи не найдена:", e)
+        log("не удалось получить список папок:", e)
+        return None
+    log("папка не найдена. Доступные папки:", ", ".join(n for n in names if n))
     return None
+
 
 
 # ───────────────────── 4. цикл обработки очереди ─────────────────
