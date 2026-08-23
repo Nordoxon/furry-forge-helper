@@ -547,7 +547,7 @@ def da_publish_exclusive(token, pub, price):
             body = rp.text[:600]
         log(f"DeviantArt отклонил вариант «{label}»: HTTP {rp.status_code} {body}")
 
-    if EXCLUSIVE_STRICT:
+    if globals().get("EXCLUSIVE_STRICT", True):
         raise RuntimeError(
             "DeviantArt не принял цену эксклюзива — публикация отменена, файл остался в Sta.sh. "
             "Создайте на DeviantArt премиум-папку галереи с нужной ценой и укажите её имя "
