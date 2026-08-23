@@ -14,7 +14,146 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      agent_tokens: {
+        Row: {
+          created_at: string
+          id: string
+          label: string
+          last_seen_at: string | null
+          token: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          label?: string
+          last_seen_at?: string | null
+          token: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          label?: string
+          last_seen_at?: string | null
+          token?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      characters: {
+        Row: {
+          base_tags: string[]
+          created_at: string
+          description_template: string
+          gallery_folder: string
+          id: string
+          is_default: boolean
+          is_mature: boolean
+          name: string
+          notes: string
+          species: string
+          title_template: string
+          user_id: string
+        }
+        Insert: {
+          base_tags?: string[]
+          created_at?: string
+          description_template?: string
+          gallery_folder?: string
+          id?: string
+          is_default?: boolean
+          is_mature?: boolean
+          name: string
+          notes?: string
+          species?: string
+          title_template?: string
+          user_id: string
+        }
+        Update: {
+          base_tags?: string[]
+          created_at?: string
+          description_template?: string
+          gallery_folder?: string
+          id?: string
+          is_default?: boolean
+          is_mature?: boolean
+          name?: string
+          notes?: string
+          species?: string
+          title_template?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      images: {
+        Row: {
+          character_id: string | null
+          created_at: string
+          description: string
+          deviation_url: string | null
+          error: string | null
+          filename: string
+          height: number | null
+          id: string
+          local_path: string
+          preview_path: string | null
+          seq: number
+          status: Database["public"]["Enums"]["image_status"]
+          tags: string[]
+          title: string
+          updated_at: string
+          user_id: string
+          width: number | null
+        }
+        Insert: {
+          character_id?: string | null
+          created_at?: string
+          description?: string
+          deviation_url?: string | null
+          error?: string | null
+          filename: string
+          height?: number | null
+          id?: string
+          local_path: string
+          preview_path?: string | null
+          seq?: number
+          status?: Database["public"]["Enums"]["image_status"]
+          tags?: string[]
+          title?: string
+          updated_at?: string
+          user_id: string
+          width?: number | null
+        }
+        Update: {
+          character_id?: string | null
+          created_at?: string
+          description?: string
+          deviation_url?: string | null
+          error?: string | null
+          filename?: string
+          height?: number | null
+          id?: string
+          local_path?: string
+          preview_path?: string | null
+          seq?: number
+          status?: Database["public"]["Enums"]["image_status"]
+          tags?: string[]
+          title?: string
+          updated_at?: string
+          user_id?: string
+          width?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "images_character_id_fkey"
+            columns: ["character_id"]
+            isOneToOne: false
+            referencedRelation: "characters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +162,14 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      image_status:
+        | "new"
+        | "approved"
+        | "rejected"
+        | "upscaling"
+        | "uploading"
+        | "published"
+        | "error"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +296,16 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      image_status: [
+        "new",
+        "approved",
+        "rejected",
+        "upscaling",
+        "uploading",
+        "published",
+        "error",
+      ],
+    },
   },
 } as const
