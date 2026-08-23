@@ -52,6 +52,9 @@ UPSCALE_FACTOR = 2                             # используется тол
 UPSCALE_WIDTH = 3200                           # целевая ширина
 UPSCALE_HEIGHT = 4096                          # целевая высота
 
+# Если Automatic1111 не запущен или запущен без --api, апскейлить локально (Pillow, Lanczos)
+FALLBACK_TO_PIL = True
+
 
 DA_CLIENT_ID = ""                               # DeviantArt application client_id
 DA_CLIENT_SECRET = ""                           # DeviantArt application client_secret
