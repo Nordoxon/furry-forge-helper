@@ -292,6 +292,7 @@ def da_authorize():
     url = "https://www.deviantart.com/oauth2/authorize?" + urlencode(params)
     server = HTTPServer(("localhost", 8721), _CallbackHandler)
     server.timeout = 1
+    log("В настройках приложения DeviantArt поле OAuth2 Redirect URI Whitelist должно содержать РОВНО:", DA_REDIRECT)
     log("Откройте в браузере (если вкладка не открылась сама):", url)
     webbrowser.open(url)
     deadline = time.time() + 300
@@ -301,7 +302,10 @@ def da_authorize():
     if _CallbackHandler.error:
         raise RuntimeError(f"DeviantArt отказал в авторизации: {_CallbackHandler.error}")
     if not _CallbackHandler.code:
-        raise RuntimeError("Не получен код авторизации DeviantArt (истекло 5 минут)")
+        raise RuntimeError(
+            "Не получен код авторизации DeviantArt. Проверьте, что в приложении DeviantArt "
+            f"в Redirect URI Whitelist добавлен ровно {DA_REDIRECT} (без пробелов и слэша в конце)"
+        )
 
     r = requests.post(
         "https://www.deviantart.com/oauth2/token",
