@@ -440,7 +440,16 @@ def da_publish(path, job):
         raise RuntimeError(f"stash/submit не вернул itemid: {res}")
     log("DeviantArt: в Sta.sh, itemid =", itemid, "стек:", res.get("stackid", "-"))
 
-    if not (tpl.get("auto_publish") or exclusive):
+    if exclusive:
+        price = max(0.0, float(tpl.get("exclusive_price") or 0))
+        log(
+            f"Эксклюзив «{title}»: файл в Sta.sh, стек «{stack or '-'}». "
+            f"Откройте черновик на DeviantArt, включите «Submit as Exclusive», "
+            f"поставьте цену ${price:.2f}, прикрепите исходник и нажмите Publish."
+        )
+        return "https://sta.sh/"
+
+    if not tpl.get("auto_publish"):
         return "https://sta.sh/"
 
     # Автопубликация в галерею (включена в шаблоне)
