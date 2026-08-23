@@ -88,6 +88,8 @@ GEN_RESTARTS = 10             # сколько раз перезапустить
 GEN_IDLE_SECONDS = 15         # сколько секунд простоя считать «остановилось»
 GEN_RETRY_WAIT = 30           # пауза перед повтором при ошибке
 GEN_MAX_ERRORS = 5            # после скольких ошибок подряд остановиться
+GEN_PAUSE_SECONDS = 600       # пауза после цикла (10 мин) на апскейл/загрузку отобранного
+
 
 
 STATE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "agent_state.json")
@@ -851,10 +853,28 @@ def gen_loop():
                 time.sleep(GEN_RETRY_WAIT)
                 continue
 
+
+            # пауза перед новым циклом: даём агенту апскейлить и залить отобранное
+            if GEN_PAUSE_SECONDS > 0:
+                log(f"авто-рестарт: пауза {GEN_PAUSE_SECONDS // 60} мин на апскейл и загрузку отобранного")
+                waited = 0
+                while waited < GEN_PAUSE_SECONDS:
+                    time.sleep(15)
+                    waited += 15
+                    if gen_busy():
+                        break
+                    if waited % 120 == 0:
+                        log(f"авто-рестарт: пауза {waited}/{GEN_PAUSE_SECONDS} сек")
+                if gen_busy():
+                    log("авто-рестарт: генерация запущена вручную, отменяю рестарт")
+                    idle_since = None
+                    continue
+
             payload["batch_size"] = 1
             payload["n_iter"] = 100  # максимум batch count в интерфейсе
             restarts += 1
             log(f"авто-рестарт #{restarts}: запускаю генерацию заново")
+
             r = requests.post(f"{A1111_URL}/sdapi/v1/txt2img", json=payload, timeout=60 * 60 * 12)
             r.raise_for_status()
             log(f"авто-рестарт #{restarts}: прогон завершён")
