@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as CharactersRouteImport } from './routes/characters'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiPublicAgentIngestRouteImport } from './routes/api/public/agent/ingest'
+import { Route as ApiPublicAgentClaimRouteImport } from './routes/api/public/agent/claim'
 
 const CharactersRoute = CharactersRouteImport.update({
   id: '/characters',
@@ -28,34 +29,56 @@ const ApiPublicAgentIngestRoute = ApiPublicAgentIngestRouteImport.update({
   path: '/api/public/agent/ingest',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicAgentClaimRoute = ApiPublicAgentClaimRouteImport.update({
+  id: '/api/public/agent/claim',
+  path: '/api/public/agent/claim',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/characters': typeof CharactersRoute
+  '/api/public/agent/claim': typeof ApiPublicAgentClaimRoute
   '/api/public/agent/ingest': typeof ApiPublicAgentIngestRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/characters': typeof CharactersRoute
+  '/api/public/agent/claim': typeof ApiPublicAgentClaimRoute
   '/api/public/agent/ingest': typeof ApiPublicAgentIngestRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/characters': typeof CharactersRoute
+  '/api/public/agent/claim': typeof ApiPublicAgentClaimRoute
   '/api/public/agent/ingest': typeof ApiPublicAgentIngestRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/characters' | '/api/public/agent/ingest'
+  fullPaths:
+    | '/'
+    | '/characters'
+    | '/api/public/agent/claim'
+    | '/api/public/agent/ingest'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/characters' | '/api/public/agent/ingest'
-  id: '__root__' | '/' | '/characters' | '/api/public/agent/ingest'
+  to:
+    | '/'
+    | '/characters'
+    | '/api/public/agent/claim'
+    | '/api/public/agent/ingest'
+  id:
+    | '__root__'
+    | '/'
+    | '/characters'
+    | '/api/public/agent/claim'
+    | '/api/public/agent/ingest'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CharactersRoute: typeof CharactersRoute
+  ApiPublicAgentClaimRoute: typeof ApiPublicAgentClaimRoute
   ApiPublicAgentIngestRoute: typeof ApiPublicAgentIngestRoute
 }
 
@@ -82,12 +105,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicAgentIngestRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/agent/claim': {
+      id: '/api/public/agent/claim'
+      path: '/api/public/agent/claim'
+      fullPath: '/api/public/agent/claim'
+      preLoaderRoute: typeof ApiPublicAgentClaimRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CharactersRoute: CharactersRoute,
+  ApiPublicAgentClaimRoute: ApiPublicAgentClaimRoute,
   ApiPublicAgentIngestRoute: ApiPublicAgentIngestRoute,
 }
 export const routeTree = rootRouteImport
