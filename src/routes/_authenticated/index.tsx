@@ -42,12 +42,20 @@ function TriagePage() {
 
   const inbox = useQuery({ queryKey: ["inbox"], queryFn: fetchInbox, refetchInterval: 20000 });
   const chars = useQuery({ queryKey: ["characters"], queryFn: fetchCharacters });
+  const templates = useQuery({ queryKey: ["templates"], queryFn: fetchTemplates });
 
   useEffect(() => {
     if (charId === null && chars.data?.length) {
       setCharId((chars.data.find((c) => c.is_default) ?? chars.data[0]).id);
     }
   }, [chars.data, charId]);
+
+  useEffect(() => {
+    if (templateId === null && templates.data?.length) {
+      const def = templates.data.find((t) => t.is_default);
+      if (def) setTemplateId(def.id);
+    }
+  }, [templates.data, templateId]);
 
   const activeChar = useMemo(
     () => chars.data?.find((c) => c.id === charId) ?? null,
