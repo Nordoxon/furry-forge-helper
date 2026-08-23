@@ -34,8 +34,9 @@ from PIL import Image
 API_BASE = "https://your-app.lovable.app"      # адрес сайта
 AGENT_TOKEN = "вставьте-ключ-со-страницы-Агент"
 
-WATCH_DIR = r"C:\stable-diffusion\outputs"     # папка с генерациями
+WATCH_DIR = r"C:\stable-diffusion\outputs"     # родительская папка; вложенные папки с датами сканируются автоматически
 EXTENSIONS = (".png", ".jpg", ".jpeg", ".webp")
+SKIP_DIRS = {"upscaled", ".git", "__pycache__", "tmp", "temp"}  # папки, которые пропускаем
 SCAN_INTERVAL = 10                              # сек между сканами папки
 POLL_INTERVAL = 8                               # сек между опросами очереди
 
