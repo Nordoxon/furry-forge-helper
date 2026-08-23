@@ -362,63 +362,41 @@ def da_token():
 
 
 def da_publish(path, job):
+    """Загружаем файл в Sta.sh с нужным именем и в нужный стек (папку).
+    Публикацию в галерею не делаем — её вы выполняете вручную на DeviantArt."""
     token = da_token()
 
-    log("DeviantArt: загружаю файл в Sta.sh…")
+    title = job.get("asset_name") or job.get("title") or os.path.splitext(os.path.basename(path))[0]
+    stack = job.get("gallery_folder") or ""
+
+    data = {
+        "title": title,
+        "artist_comments": job.get("description", ""),
+    }
+    if stack:
+        data["stack"] = stack  # Sta.sh создаст/использует стек с таким именем
+    for i, tag in enumerate(job.get("tags", [])[:30]):
+        data[f"tags[{i}]"] = tag
+    if job.get("is_mature"):
+        data["is_dirty"] = "1"
+
+    log(f"DeviantArt: загружаю в Sta.sh «{title}»" + (f" -> стек «{stack}»" if stack else ""))
     with open(path, "rb") as f:
         r = requests.post(
             "https://www.deviantart.com/api/v1/oauth2/stash/submit",
             headers={"Authorization": f"Bearer {token}"},
-            data={"title": job["title"], "artist_comments": job.get("description", "")},
-            files={"file": (os.path.basename(path), f, "image/png")},
+            data=data,
+            files={"file": (title + os.path.splitext(path)[1], f, "image/png")},
             timeout=600,
         )
     res = _da_check(r, "stash/submit")
     itemid = res.get("itemid")
     if not itemid:
         raise RuntimeError(f"stash/submit не вернул itemid: {res}")
-    log("DeviantArt: файл в Sta.sh, itemid =", itemid)
+    log("DeviantArt: в Sta.sh, itemid =", itemid, "стек:", res.get("stackid", "-"))
+    return "https://sta.sh/"
 
-    data = [
-        ("itemid", str(itemid)),
-        ("is_mature", "1" if job.get("is_mature") else "0"),
-        ("agree_submission", "1"),
-        ("agree_tos", "1"),
-        ("catpath", "/digitalart"),
-        ("allow_comments", "1"),
-        ("feature", "1"),
-    ]
-    if job.get("is_mature"):
-        data.append(("mature_level", "moderate"))
-    for tag in job.get("tags", [])[:30]:
-        data.append(("tags[]", tag))
-    folder_name = job.get("gallery_folder")
-    if folder_name:
-        folder_id = da_folder_id(token, folder_name)
-        if folder_id:
-            data.append(("galleryids[]", folder_id))
-            log("DeviantArt: папка галереи", folder_name, "->", folder_id)
-        else:
-            raise RuntimeError(
-                f"Папка галереи «{folder_name}» не найдена на DeviantArt — "
-                "проверьте точное имя папки в настройках персонажа/изображения"
-            )
 
-    res = _da_check(
-        requests.post(
-            "https://www.deviantart.com/api/v1/oauth2/stash/publish",
-            headers={"Authorization": f"Bearer {token}"},
-            data=data,
-            timeout=600,
-        ),
-        "stash/publish",
-    )
-    if res.get("status") and res["status"] != "success":
-        raise RuntimeError(f"stash/publish вернул статус {res}")
-    url = res.get("url")
-    if not url:
-        raise RuntimeError(f"stash/publish не вернул ссылку на работу: {res}")
-    return url
 
 
 
