@@ -17,9 +17,11 @@ Furry Content Manager — локальный агент.
 """
 
 import base64
+import hashlib
 import io
 import json
 import os
+import secrets
 import sys
 import time
 import threading
@@ -283,11 +285,19 @@ def da_authorize():
 
     _CallbackHandler.code = None
     _CallbackHandler.error = None
+    # DeviantArt требует PKCE: одноразовый verifier остаётся локально,
+    # а в браузер отправляется только его SHA-256 challenge.
+    code_verifier = secrets.token_urlsafe(64)
+    code_challenge = base64.urlsafe_b64encode(
+        hashlib.sha256(code_verifier.encode("ascii")).digest()
+    ).rstrip(b"=").decode("ascii")
     params = {
         "response_type": "code",
         "client_id": DA_CLIENT_ID,
         "redirect_uri": DA_REDIRECT,
         "scope": "browse stash publish user",
+        "code_challenge": code_challenge,
+        "code_challenge_method": "S256",
     }
     url = "https://www.deviantart.com/oauth2/authorize?" + urlencode(params)
     server = HTTPServer(("localhost", 8721), _CallbackHandler)
@@ -315,6 +325,7 @@ def da_authorize():
             "client_secret": DA_CLIENT_SECRET,
             "redirect_uri": DA_REDIRECT,
             "code": _CallbackHandler.code,
+            "code_verifier": code_verifier,
         },
         timeout=60,
     )
