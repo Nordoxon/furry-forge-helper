@@ -213,9 +213,46 @@ def upscale_local(path, out_name=None):
     return out_path
 
 
-def upscale(path, out_name=None):
+class A1111Busy(Exception):
+    """Automatic1111 занят генерацией — задание вернём в очередь."""
+
+
+def a1111_busy():
+    """True, если A1111 сейчас генерирует. Ошибки связи считаем «не занят»."""
+    try:
+        return gen_busy()
+    except Exception:
+        return False
+
+
+def wait_for_a1111(heartbeat=None):
+    """Ждёт, пока A1111 освободится. Возвращает False, если так и занят."""
+    if not UPSCALE_WAIT_FOR_IDLE:
+        return True
+    deadline = time.time() + UPSCALE_MAX_WAIT
+    announced = False
+    while a1111_busy():
+        if not announced:
+            print("[upscale] Stable Diffusion занят генерацией — жду освобождения")
+            announced = True
+        if UPSCALE_BUSY_ACTION != "wait" and time.time() > deadline:
+            return False
+        if heartbeat:
+            heartbeat()
+        time.sleep(10)
+    return True
+
+
+def upscale(path, out_name=None, heartbeat=None):
+    if not wait_for_a1111(heartbeat):
+        if UPSCALE_BUSY_ACTION == "pil" and FALLBACK_TO_PIL:
+            print("[upscale] SD всё ещё занят — апскейлю локально через Pillow")
+            return upscale_local(path, out_name)
+        raise A1111Busy("Stable Diffusion занят генерацией")
+
     with open(path, "rb") as f:
         img_b64 = base64.b64encode(f.read()).decode()
+
 
 
     if UPSCALE_MODE == "size":
