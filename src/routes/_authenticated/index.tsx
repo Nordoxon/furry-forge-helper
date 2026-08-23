@@ -215,6 +215,61 @@ function CharacterPicker({
   );
 }
 
+function FolderPicker({
+  options,
+  value,
+  defaultFolder,
+  onChange,
+  onAdd,
+}: {
+  options: string[];
+  value: string | null;
+  defaultFolder: string | null;
+  onChange: (v: string | null) => void;
+  onAdd: () => void;
+}) {
+  return (
+    <div className="mb-3">
+      <p className="mb-1.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+        <FolderOpen className="h-3.5 w-3.5" /> Папка на DeviantArt
+      </p>
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        <button
+          onClick={() => onChange(null)}
+          className={`shrink-0 rounded-full border px-3 py-1.5 text-xs transition ${
+            value === null
+              ? "border-primary bg-primary text-primary-foreground"
+              : "border-border text-muted-foreground"
+          }`}
+        >
+          {defaultFolder ? `По умолчанию: ${defaultFolder}` : "По умолчанию"}
+        </button>
+        {options
+          .filter((o) => o !== defaultFolder)
+          .map((o) => (
+            <button
+              key={o}
+              onClick={() => onChange(o)}
+              className={`shrink-0 rounded-full border px-3 py-1.5 text-xs transition ${
+                value === o
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border text-muted-foreground"
+              }`}
+            >
+              {o}
+            </button>
+          ))}
+        <button
+          onClick={onAdd}
+          className="shrink-0 rounded-full border border-dashed border-border px-3 py-1.5 text-xs text-muted-foreground"
+        >
+          + Другая
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function Card({ item }: { item: ImageRow }) {
   const { data: url } = useQuery({
     queryKey: ["preview", item.id],
