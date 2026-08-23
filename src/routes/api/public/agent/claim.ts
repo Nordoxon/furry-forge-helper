@@ -26,6 +26,13 @@ export const Route = createFileRoute("/api/public/agent/claim")({
           .eq("user_id", userId);
         const charById = new Map((chars ?? []).map((c) => [c.id, c]));
 
+        const { data: tpls } = await supabase
+          .from("publish_templates")
+          .select("*")
+          .eq("user_id", userId);
+        const tplById = new Map((tpls ?? []).map((t) => [t.id, t]));
+        const defaultTpl = (tpls ?? []).find((t) => t.is_default) ?? null;
+
         const { data: maxRow } = await supabase
           .from("images")
           .select("seq")
