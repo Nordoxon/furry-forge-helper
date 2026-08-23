@@ -57,13 +57,10 @@ UPSCALE_HEIGHT = 4096                          # целевая высота
 # Если Automatic1111 не запущен или запущен без --api, апскейлить локально (Pillow, Lanczos)
 FALLBACK_TO_PIL = True
 
-# Эксклюзив (платный доступ). DeviantArt ставит цену на ПАПКУ эксклюзива, а не на работу.
-# Создайте на DeviantArt премиум-папку галереи с нужной ценой ($6) и впишите её имя сюда —
-# агент будет публиковать эксклюзивные работы прямо в неё.
-EXCLUSIVE_FOLDER_NAME = ""     # например: "Exclusive"
-# Если папки нет — агент попробует выставить цену прямо в запросе публикации.
-# Когда DeviantArt отклоняет цену, публикация НЕ выполняется (чтобы не выложить бесплатно).
-EXCLUSIVE_STRICT = True
+# Эксклюзив (платная работа). DeviantArt не даёт выставить цену через API —
+# «Submit as Exclusive» + цена доступны только в окне публикации на сайте.
+# Поэтому эксклюзивы агент готовит в Sta.sh (имя, теги, описание, стек),
+# а цену и исходник вы задаёте вручную в окне Edit deviation.
 
 
 
@@ -378,8 +375,8 @@ def da_publish(path, job):
     title = job.get("asset_name") or job.get("title") or os.path.splitext(os.path.basename(path))[0]
     tpl = job.get("template") or {}
     exclusive = bool(tpl.get("is_exclusive"))
-    # Для эксклюзива папка (стек) не используется — работа сразу уходит в галерею.
-    stack = "" if exclusive else (job.get("gallery_folder") or "")
+    # Эксклюзив тоже уходит в свой стек Sta.sh — цену вы ставите в окне публикации DA.
+    stack = job.get("gallery_folder") or ""
 
     data = {
         "title": title,
@@ -440,7 +437,16 @@ def da_publish(path, job):
         raise RuntimeError(f"stash/submit не вернул itemid: {res}")
     log("DeviantArt: в Sta.sh, itemid =", itemid, "стек:", res.get("stackid", "-"))
 
-    if not (tpl.get("auto_publish") or exclusive):
+    if exclusive:
+        price = max(0.0, float(tpl.get("exclusive_price") or 0))
+        log(
+            f"Эксклюзив «{title}»: файл в Sta.sh, стек «{stack or '-'}». "
+            f"Откройте черновик на DeviantArt, включите «Submit as Exclusive», "
+            f"поставьте цену ${price:.2f}, прикрепите исходник и нажмите Publish."
+        )
+        return "https://sta.sh/"
+
+    if not tpl.get("auto_publish"):
         return "https://sta.sh/"
 
     # Автопубликация в галерею (включена в шаблоне)
@@ -467,99 +473,26 @@ def da_publish(path, job):
         pub["license_options[modify]"] = tpl.get("license_modify") or "no"
     if tpl.get("category_path"):
         pub["catpath"] = tpl["category_path"]
-    price = 0.0
-    if exclusive:
-        # Эксклюзивный (премиум) контент с ценой в долларах США.
-        # DeviantArt назначает цену не работе, а папке галереи — поэтому берём
-        # ту папку, которую вы выбрали на сайте, и сами делаем её премиум.
-        price = max(0.0, float(tpl.get("exclusive_price") or 0))
-        pub["allow_free_download"] = "0"
-        pub["is_downloadable"] = "1"
-        folder_name = (job.get("gallery_folder")
-                       or tpl.get("gallery_folder")
-                       or globals().get("EXCLUSIVE_FOLDER_NAME", "")
-                       or "Exclusive")
-        folder_id = da_folder_ensure(token, folder_name)
-        if folder_id:
-            pub["premium_folder_data[folderid]"] = folder_id
-            pub["galleryids[0]"] = folder_id
-        pub["premium_folder_data[type]"] = "cash"
-        pub["premium_folder_data[price]"] = f"{price:.2f}"
-    elif tpl.get("is_downloadable"):
+    if tpl.get("is_downloadable"):
         pub["is_downloadable"] = "1"
         dprice = int(tpl.get("download_price") or 0)
         if dprice > 0:
             pub["download_price"] = str(dprice)
             pub["allow_free_download"] = "0"
 
-    if stack and not exclusive:
+    if stack:
+
         fid = da_folder_id(token, stack)
         if fid:
             pub["galleryids[0]"] = fid
         else:
             log(f"DeviantArt: папка «{stack}» не найдена — публикую без папки")
 
-    if exclusive:
-        log(f"DeviantArt: публикую эксклюзив «{title}» за ${price:.2f}")
-        pres = da_publish_exclusive(token, pub, price)
-    else:
-        log(f"DeviantArt: публикую «{title}»")
-        pres = da_publish_request(token, pub)
+    log(f"DeviantArt: публикую «{title}»")
+    pres = da_publish_request(token, pub)
     url = pres.get("url") or "https://www.deviantart.com/"
     log("DeviantArt: опубликовано ->", url)
     return url
-
-
-def da_publish_exclusive(token, pub, price):
-    """Публикация платного эксклюзива. Пробуем разные формы цены и НЕ публикуем
-    бесплатно, если DeviantArt отказался принять цену (при EXCLUSIVE_STRICT)."""
-    variants = []
-    base = {k: v for k, v in pub.items() if not k.startswith("premium_folder_data")}
-    fid = pub.get("premium_folder_data[folderid]")
-
-    def variant(extra, label):
-        d = dict(base)
-        d.update(extra)
-        variants.append((label, d))
-
-    if fid:
-        variant({"premium_folder_data[folderid]": fid,
-                 "premium_folder_data[type]": "cash",
-                 "premium_folder_data[price]": f"{price:.2f}"}, "папка эксклюзива + цена")
-        variant({"premium_folder_data[folderid]": fid}, "папка эксклюзива (цена берётся из папки)")
-    variant({"premium_folder_data[type]": "cash",
-             "premium_folder_data[price]": f"{price:.2f}"}, f"cash ${price:.2f}")
-    variant({"premium_folder_data[type]": "cash",
-             "premium_folder_data[price]": str(int(round(price)))}, f"cash ${int(round(price))}")
-    variant({"premium_folder_data[type]": "cash",
-             "premium_folder_data[price]": str(int(round(price * 100)))}, "cash в центах")
-
-    last = None
-    for label, data in variants:
-        rp = requests.post(
-            "https://www.deviantart.com/api/v1/oauth2/stash/publish",
-            headers={"Authorization": f"Bearer {token}"},
-            data=data,
-            timeout=300,
-        )
-        if rp.status_code == 200:
-            log(f"DeviantArt: цена принята ({label})")
-            return rp.json()
-        last = rp
-        try:
-            body = json.dumps(rp.json(), ensure_ascii=False)[:600]
-        except Exception:
-            body = rp.text[:600]
-        log(f"DeviantArt отклонил вариант «{label}»: HTTP {rp.status_code} {body}")
-
-    if globals().get("EXCLUSIVE_STRICT", True):
-        raise RuntimeError(
-            "DeviantArt не принял цену эксклюзива — публикация отменена, файл остался в Sta.sh. "
-            "Чаще всего это значит, что у аккаунта не подключены платные (Premium) работы: "
-            "нужен Core-статус и заполненный раздел выплат в настройках DeviantArt."
-        )
-    log("Публикую без цены (EXCLUSIVE_STRICT = False)")
-    return da_publish_request(token, base)
 
 
 
