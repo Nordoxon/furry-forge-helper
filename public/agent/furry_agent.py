@@ -831,6 +831,7 @@ def main():
     while True:
         now = time.time()
         if now - last_scan >= SCAN_INTERVAL:
+            log("сканирую папку outputs на новые изображения")
             scan_and_upload()
             last_scan = now
         process_queue()
