@@ -88,7 +88,13 @@ function TriagePage() {
     if (!current) return;
     const id = current.id;
     try {
-      await decide(id, status, charId, status === "approved" ? folder : null);
+      await decide(
+        id,
+        status,
+        charId,
+        status === "approved" ? folder : null,
+        status === "approved" ? templateId : null,
+      );
       setDone((d) => (d.includes(id) ? d : [...d, id]));
       setLast({ id });
       
