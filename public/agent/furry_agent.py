@@ -156,12 +156,23 @@ def safe_name(name):
 def upscale(path, out_name=None):
     with open(path, "rb") as f:
         img_b64 = base64.b64encode(f.read()).decode()
-    payload = {
-        "resize_mode": 0,
-        "upscaling_resize": UPSCALE_FACTOR,
-        "upscaler_1": UPSCALER,
-        "image": img_b64,
-    }
+
+    if UPSCALE_MODE == "size":
+        payload = {
+            "resize_mode": 1,
+            "upscaling_resize_w": UPSCALE_WIDTH,
+            "upscaling_resize_h": UPSCALE_HEIGHT,
+            "upscaler_1": UPSCALER,
+            "image": img_b64,
+        }
+    else:
+        payload = {
+            "resize_mode": 0,
+            "upscaling_resize": UPSCALE_FACTOR,
+            "upscaler_1": UPSCALER,
+            "image": img_b64,
+        }
+
     r = requests.post(f"{A1111_URL}/sdapi/v1/extra-single-image", json=payload, timeout=1800)
     r.raise_for_status()
     out_b64 = r.json()["image"]
@@ -175,6 +186,7 @@ def upscale(path, out_name=None):
     with open(out_path, "wb") as f:
         f.write(base64.b64decode(out_b64.split(",")[-1]))
     return out_path
+
 
 
 # ──────────────────── 3. DeviantArt OAuth + upload ───────────────
