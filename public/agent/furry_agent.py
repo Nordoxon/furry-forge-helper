@@ -367,9 +367,10 @@ def da_publish(path, job):
     token = da_token()
 
     title = job.get("asset_name") or job.get("title") or os.path.splitext(os.path.basename(path))[0]
-    stack = job.get("gallery_folder") or ""
-
     tpl = job.get("template") or {}
+    exclusive = bool(tpl.get("is_exclusive"))
+    # Для эксклюзива папка (стек) не используется — работа сразу уходит в галерею.
+    stack = "" if exclusive else (job.get("gallery_folder") or "")
 
     data = {
         "title": title,
@@ -377,6 +378,7 @@ def da_publish(path, job):
     }
     if stack:
         data["stack"] = stack  # Sta.sh создаст/использует стек с таким именем
+
     for i, tag in enumerate(job.get("tags", [])[:30]):
         data[f"tags[{i}]"] = tag
     if job.get("is_mature") or tpl.get("is_mature"):
