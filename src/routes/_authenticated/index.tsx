@@ -252,6 +252,59 @@ function CharacterPicker({
   );
 }
 
+function TemplatePicker({
+  templates,
+  value,
+  onChange,
+}: {
+  templates: TemplateRow[];
+  value: string | null;
+  onChange: (v: string | null) => void;
+}) {
+  if (templates.length === 0) {
+    return (
+      <p className="mb-3 rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">
+        Создайте шаблон с тегами и опциями DeviantArt —{" "}
+        <Link to="/templates" className="underline underline-offset-2">
+          Шаблоны
+        </Link>
+      </p>
+    );
+  }
+  return (
+    <div className="mb-3">
+      <p className="mb-1.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+        <LayoutTemplate className="h-3.5 w-3.5" /> Шаблон публикации
+      </p>
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        <button
+          onClick={() => onChange(null)}
+          className={`shrink-0 rounded-full border px-3 py-1.5 text-xs transition ${
+            value === null
+              ? "border-primary bg-primary text-primary-foreground"
+              : "border-border text-muted-foreground"
+          }`}
+        >
+          Без шаблона
+        </button>
+        {templates.map((t) => (
+          <button
+            key={t.id}
+            onClick={() => onChange(t.id)}
+            className={`shrink-0 rounded-full border px-3 py-1.5 text-xs transition ${
+              value === t.id
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-border text-muted-foreground"
+            }`}
+          >
+            {t.name}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function FolderPicker({
   options,
   value,
