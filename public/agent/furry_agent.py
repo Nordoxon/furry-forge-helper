@@ -467,32 +467,15 @@ def da_publish(path, job):
         pub["license_options[modify]"] = tpl.get("license_modify") or "no"
     if tpl.get("category_path"):
         pub["catpath"] = tpl["category_path"]
-    price = 0.0
-    if exclusive:
-        # Эксклюзивный (премиум) контент с ценой в долларах США.
-        # DeviantArt назначает цену не работе, а папке галереи — поэтому берём
-        # ту папку, которую вы выбрали на сайте, и сами делаем её премиум.
-        price = max(0.0, float(tpl.get("exclusive_price") or 0))
-        pub["allow_free_download"] = "0"
-        pub["is_downloadable"] = "1"
-        folder_name = (job.get("gallery_folder")
-                       or tpl.get("gallery_folder")
-                       or globals().get("EXCLUSIVE_FOLDER_NAME", "")
-                       or "Exclusive")
-        folder_id = da_folder_ensure(token, folder_name)
-        if folder_id:
-            pub["premium_folder_data[folderid]"] = folder_id
-            pub["galleryids[0]"] = folder_id
-        pub["premium_folder_data[type]"] = "cash"
-        pub["premium_folder_data[price]"] = f"{price:.2f}"
-    elif tpl.get("is_downloadable"):
+    if tpl.get("is_downloadable"):
         pub["is_downloadable"] = "1"
         dprice = int(tpl.get("download_price") or 0)
         if dprice > 0:
             pub["download_price"] = str(dprice)
             pub["allow_free_download"] = "0"
 
-    if stack and not exclusive:
+    if stack:
+
         fid = da_folder_id(token, stack)
         if fid:
             pub["galleryids[0]"] = fid
