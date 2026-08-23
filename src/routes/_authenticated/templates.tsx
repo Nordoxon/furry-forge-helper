@@ -143,7 +143,7 @@ function TemplatesPage() {
         is_downloadable: form.is_downloadable,
         download_price: Math.max(0, Math.round(Number(form.download_price) || 0)),
         is_exclusive: form.is_exclusive,
-        exclusive_price: Math.max(0, Math.round(Number(form.exclusive_price) || 0)),
+        exclusive_price: Math.max(0, Math.round((Number(form.exclusive_price) || 0) * 100) / 100),
         is_default: form.is_default,
       };
       const res =
