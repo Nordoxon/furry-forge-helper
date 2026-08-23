@@ -820,6 +820,16 @@ def gen_loop():
 
 
 
+def scan_loop():
+    while True:
+        try:
+            log("сканирую папку outputs на новые изображения")
+            scan_and_upload()
+        except Exception as e:
+            log("ошибка сканирования:", e)
+        time.sleep(SCAN_INTERVAL)
+
+
 def main():
     if "вставьте" in AGENT_TOKEN:
         print("Заполните AGENT_TOKEN в настройках скрипта.")
