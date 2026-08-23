@@ -9,36 +9,15 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as TagsRouteImport } from './routes/tags'
-import { Route as LibraryRouteImport } from './routes/library'
-import { Route as CollectionsRouteImport } from './routes/collections'
 import { Route as CharactersRouteImport } from './routes/characters'
-import { Route as ArchiveRouteImport } from './routes/archive'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiPublicAgentStatusRouteImport } from './routes/api/public/agent/status'
+import { Route as ApiPublicAgentIngestRouteImport } from './routes/api/public/agent/ingest'
+import { Route as ApiPublicAgentClaimRouteImport } from './routes/api/public/agent/claim'
 
-const TagsRoute = TagsRouteImport.update({
-  id: '/tags',
-  path: '/tags',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LibraryRoute = LibraryRouteImport.update({
-  id: '/library',
-  path: '/library',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CollectionsRoute = CollectionsRouteImport.update({
-  id: '/collections',
-  path: '/collections',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const CharactersRoute = CharactersRouteImport.update({
   id: '/characters',
   path: '/characters',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ArchiveRoute = ArchiveRouteImport.update({
-  id: '/archive',
-  path: '/archive',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -46,97 +25,83 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicAgentStatusRoute = ApiPublicAgentStatusRouteImport.update({
+  id: '/api/public/agent/status',
+  path: '/api/public/agent/status',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicAgentIngestRoute = ApiPublicAgentIngestRouteImport.update({
+  id: '/api/public/agent/ingest',
+  path: '/api/public/agent/ingest',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicAgentClaimRoute = ApiPublicAgentClaimRouteImport.update({
+  id: '/api/public/agent/claim',
+  path: '/api/public/agent/claim',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/archive': typeof ArchiveRoute
   '/characters': typeof CharactersRoute
-  '/collections': typeof CollectionsRoute
-  '/library': typeof LibraryRoute
-  '/tags': typeof TagsRoute
+  '/api/public/agent/claim': typeof ApiPublicAgentClaimRoute
+  '/api/public/agent/ingest': typeof ApiPublicAgentIngestRoute
+  '/api/public/agent/status': typeof ApiPublicAgentStatusRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/archive': typeof ArchiveRoute
   '/characters': typeof CharactersRoute
-  '/collections': typeof CollectionsRoute
-  '/library': typeof LibraryRoute
-  '/tags': typeof TagsRoute
+  '/api/public/agent/claim': typeof ApiPublicAgentClaimRoute
+  '/api/public/agent/ingest': typeof ApiPublicAgentIngestRoute
+  '/api/public/agent/status': typeof ApiPublicAgentStatusRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/archive': typeof ArchiveRoute
   '/characters': typeof CharactersRoute
-  '/collections': typeof CollectionsRoute
-  '/library': typeof LibraryRoute
-  '/tags': typeof TagsRoute
+  '/api/public/agent/claim': typeof ApiPublicAgentClaimRoute
+  '/api/public/agent/ingest': typeof ApiPublicAgentIngestRoute
+  '/api/public/agent/status': typeof ApiPublicAgentStatusRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/archive'
     | '/characters'
-    | '/collections'
-    | '/library'
-    | '/tags'
+    | '/api/public/agent/claim'
+    | '/api/public/agent/ingest'
+    | '/api/public/agent/status'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/archive' | '/characters' | '/collections' | '/library' | '/tags'
+  to:
+    | '/'
+    | '/characters'
+    | '/api/public/agent/claim'
+    | '/api/public/agent/ingest'
+    | '/api/public/agent/status'
   id:
     | '__root__'
     | '/'
-    | '/archive'
     | '/characters'
-    | '/collections'
-    | '/library'
-    | '/tags'
+    | '/api/public/agent/claim'
+    | '/api/public/agent/ingest'
+    | '/api/public/agent/status'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  ArchiveRoute: typeof ArchiveRoute
   CharactersRoute: typeof CharactersRoute
-  CollectionsRoute: typeof CollectionsRoute
-  LibraryRoute: typeof LibraryRoute
-  TagsRoute: typeof TagsRoute
+  ApiPublicAgentClaimRoute: typeof ApiPublicAgentClaimRoute
+  ApiPublicAgentIngestRoute: typeof ApiPublicAgentIngestRoute
+  ApiPublicAgentStatusRoute: typeof ApiPublicAgentStatusRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/tags': {
-      id: '/tags'
-      path: '/tags'
-      fullPath: '/tags'
-      preLoaderRoute: typeof TagsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/library': {
-      id: '/library'
-      path: '/library'
-      fullPath: '/library'
-      preLoaderRoute: typeof LibraryRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/collections': {
-      id: '/collections'
-      path: '/collections'
-      fullPath: '/collections'
-      preLoaderRoute: typeof CollectionsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/characters': {
       id: '/characters'
       path: '/characters'
       fullPath: '/characters'
       preLoaderRoute: typeof CharactersRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/archive': {
-      id: '/archive'
-      path: '/archive'
-      fullPath: '/archive'
-      preLoaderRoute: typeof ArchiveRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -146,16 +111,36 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/agent/status': {
+      id: '/api/public/agent/status'
+      path: '/api/public/agent/status'
+      fullPath: '/api/public/agent/status'
+      preLoaderRoute: typeof ApiPublicAgentStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/agent/ingest': {
+      id: '/api/public/agent/ingest'
+      path: '/api/public/agent/ingest'
+      fullPath: '/api/public/agent/ingest'
+      preLoaderRoute: typeof ApiPublicAgentIngestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/agent/claim': {
+      id: '/api/public/agent/claim'
+      path: '/api/public/agent/claim'
+      fullPath: '/api/public/agent/claim'
+      preLoaderRoute: typeof ApiPublicAgentClaimRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  ArchiveRoute: ArchiveRoute,
   CharactersRoute: CharactersRoute,
-  CollectionsRoute: CollectionsRoute,
-  LibraryRoute: LibraryRoute,
-  TagsRoute: TagsRoute,
+  ApiPublicAgentClaimRoute: ApiPublicAgentClaimRoute,
+  ApiPublicAgentIngestRoute: ApiPublicAgentIngestRoute,
+  ApiPublicAgentStatusRoute: ApiPublicAgentStatusRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
