@@ -57,6 +57,15 @@ UPSCALE_HEIGHT = 4096                          # целевая высота
 # Если Automatic1111 не запущен или запущен без --api, апскейлить локально (Pillow, Lanczos)
 FALLBACK_TO_PIL = True
 
+# Эксклюзив (платный доступ). DeviantArt ставит цену на ПАПКУ эксклюзива, а не на работу.
+# Создайте на DeviantArt премиум-папку галереи с нужной ценой ($6) и впишите её имя сюда —
+# агент будет публиковать эксклюзивные работы прямо в неё.
+EXCLUSIVE_FOLDER_NAME = ""     # например: "Exclusive"
+# Если папки нет — агент попробует выставить цену прямо в запросе публикации.
+# Когда DeviantArt отклоняет цену, публикация НЕ выполняется (чтобы не выложить бесплатно).
+EXCLUSIVE_STRICT = True
+
+
 
 DA_CLIENT_ID = ""                               # DeviantArt application client_id
 DA_CLIENT_SECRET = ""                           # DeviantArt application client_secret
