@@ -22,10 +22,12 @@ import io
 import json
 import os
 import secrets
+import struct
 import sys
 import time
 import threading
 import webbrowser
+import zlib
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import urlencode, urlparse, parse_qs
 
@@ -811,6 +813,54 @@ def gen_parse_params(text):
     return payload if payload["prompt"] else None
 
 
+def gen_read_png_parameters(path):
+    """Читает параметры A1111 прямо из PNG-метаданных, не декодируя пиксели.
+
+    Это позволяет повторно запускать генерацию даже по очень большим grid PNG,
+    которые Pillow блокирует защитой DecompressionBombError.
+    """
+    with open(path, "rb") as f:
+        if f.read(8) != b"\x89PNG\r\n\x1a\n":
+            return ""
+        while True:
+            raw_length = f.read(4)
+            if len(raw_length) != 4:
+                return ""
+            length = struct.unpack(">I", raw_length)[0]
+            chunk_type = f.read(4)
+            # Метаданные A1111 малы; не загружаем подозрительно огромный chunk в память.
+            if length > 64 * 1024 * 1024:
+                f.seek(length + 4, os.SEEK_CUR)
+                continue
+            data = f.read(length)
+            f.read(4)  # CRC
+
+            try:
+                if chunk_type == b"tEXt":
+                    keyword, text = data.split(b"\x00", 1)
+                    if keyword == b"parameters":
+                        return text.decode("utf-8", errors="replace")
+                elif chunk_type == b"zTXt":
+                    keyword, compressed = data.split(b"\x00", 1)
+                    if keyword == b"parameters" and len(compressed) > 1:
+                        return zlib.decompress(compressed[1:]).decode("utf-8", errors="replace")
+                elif chunk_type == b"iTXt":
+                    keyword, rest = data.split(b"\x00", 1)
+                    if keyword == b"parameters" and len(rest) >= 2:
+                        compressed = rest[0] == 1
+                        rest = rest[2:]  # compression flag + compression method
+                        _, rest = rest.split(b"\x00", 1)  # language tag
+                        _, text = rest.split(b"\x00", 1)  # translated keyword
+                        if compressed:
+                            text = zlib.decompress(text)
+                        return text.decode("utf-8", errors="replace")
+            except (ValueError, zlib.error):
+                pass
+
+            if chunk_type == b"IEND":
+                return ""
+
+
 def gen_busy():
     """True, если Automatic1111 сейчас что-то генерирует."""
     r = requests.get(f"{A1111_URL}/sdapi/v1/progress?skip_current_image=true", timeout=15)
@@ -836,8 +886,7 @@ def gen_pause_and_restart(reason=""):
         payload = None
         if src:
             try:
-                with Image.open(src) as im:
-                    payload = gen_parse_params(im.info.get("parameters", ""))
+                payload = gen_parse_params(gen_read_png_parameters(src))
             except Exception as e:
                 log("авто-рестарт: не прочитал параметры:", str(e)[:150])
         if not payload:
