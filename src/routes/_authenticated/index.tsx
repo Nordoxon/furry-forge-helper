@@ -53,10 +53,7 @@ function TriagePage() {
     [chars.data, charId],
   );
 
-  // папка по умолчанию — из персонажа; сбрасываем выбор при смене персонажа
-  useEffect(() => {
-    setFolder(null);
-  }, [charId]);
+  // выбранная папка запоминается между кадрами и сменой персонажа
 
   const folderOptions = useMemo(() => {
     const set = new Set<string>();
@@ -78,7 +75,7 @@ function TriagePage() {
       await decide(id, status, charId, status === "approved" ? folder : null);
       setDone((d) => (d.includes(id) ? d : [...d, id]));
       setLast({ id });
-      setFolder(null);
+      
       void qc.invalidateQueries({ queryKey: ["pipeline"] });
     } catch (e) {
       toast.error(`Не удалось сохранить: ${(e as Error).message}`);
