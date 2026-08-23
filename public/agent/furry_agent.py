@@ -674,6 +674,30 @@ def da_folder_id(token, name):
     return None
 
 
+def da_folder_ensure(token, name):
+    """Находит папку галереи по имени, а если её нет — создаёт автоматически."""
+    name = (name or "").strip()
+    if not name:
+        return None
+    fid = da_folder_id(token, name)
+    if fid:
+        return fid
+    try:
+        r = requests.post(
+            "https://www.deviantart.com/api/v1/oauth2/gallery/folders/create",
+            headers={"Authorization": f"Bearer {token}"},
+            data={"folder": name},
+            timeout=60,
+        )
+        res = _da_check(r, "gallery/folders/create")
+        fid = res.get("folderid")
+        log(f"DeviantArt: создал папку галереи «{name}»")
+        return fid
+    except Exception as e:
+        log("не удалось создать папку галереи:", e)
+        return None
+
+
 
 # ───────────────────── 4. цикл обработки очереди ─────────────────
 def report(image_id, status, deviation_url=None, error=None):
