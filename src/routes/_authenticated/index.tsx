@@ -124,7 +124,15 @@ function TriagePage() {
               value={charId}
               onChange={setCharId}
             />
+            <FolderPicker
+              options={folderOptions}
+              value={folder}
+              defaultFolder={activeChar?.gallery_folder || null}
+              onChange={setFolder}
+              onAdd={addFolder}
+            />
             <Card item={current} />
+
             <div className="mt-4 grid grid-cols-2 gap-3">
               <Button
                 size="lg"
