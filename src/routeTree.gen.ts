@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as CharactersRouteImport } from './routes/characters'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiPublicAgentStatusRouteImport } from './routes/api/public/agent/status'
 import { Route as ApiPublicAgentIngestRouteImport } from './routes/api/public/agent/ingest'
 import { Route as ApiPublicAgentClaimRouteImport } from './routes/api/public/agent/claim'
 
@@ -22,6 +23,11 @@ const CharactersRoute = CharactersRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicAgentStatusRoute = ApiPublicAgentStatusRouteImport.update({
+  id: '/api/public/agent/status',
+  path: '/api/public/agent/status',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicAgentIngestRoute = ApiPublicAgentIngestRouteImport.update({
@@ -40,12 +46,14 @@ export interface FileRoutesByFullPath {
   '/characters': typeof CharactersRoute
   '/api/public/agent/claim': typeof ApiPublicAgentClaimRoute
   '/api/public/agent/ingest': typeof ApiPublicAgentIngestRoute
+  '/api/public/agent/status': typeof ApiPublicAgentStatusRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/characters': typeof CharactersRoute
   '/api/public/agent/claim': typeof ApiPublicAgentClaimRoute
   '/api/public/agent/ingest': typeof ApiPublicAgentIngestRoute
+  '/api/public/agent/status': typeof ApiPublicAgentStatusRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -53,6 +61,7 @@ export interface FileRoutesById {
   '/characters': typeof CharactersRoute
   '/api/public/agent/claim': typeof ApiPublicAgentClaimRoute
   '/api/public/agent/ingest': typeof ApiPublicAgentIngestRoute
+  '/api/public/agent/status': typeof ApiPublicAgentStatusRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -61,18 +70,21 @@ export interface FileRouteTypes {
     | '/characters'
     | '/api/public/agent/claim'
     | '/api/public/agent/ingest'
+    | '/api/public/agent/status'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/characters'
     | '/api/public/agent/claim'
     | '/api/public/agent/ingest'
+    | '/api/public/agent/status'
   id:
     | '__root__'
     | '/'
     | '/characters'
     | '/api/public/agent/claim'
     | '/api/public/agent/ingest'
+    | '/api/public/agent/status'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -80,6 +92,7 @@ export interface RootRouteChildren {
   CharactersRoute: typeof CharactersRoute
   ApiPublicAgentClaimRoute: typeof ApiPublicAgentClaimRoute
   ApiPublicAgentIngestRoute: typeof ApiPublicAgentIngestRoute
+  ApiPublicAgentStatusRoute: typeof ApiPublicAgentStatusRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -96,6 +109,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/agent/status': {
+      id: '/api/public/agent/status'
+      path: '/api/public/agent/status'
+      fullPath: '/api/public/agent/status'
+      preLoaderRoute: typeof ApiPublicAgentStatusRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/agent/ingest': {
@@ -120,6 +140,7 @@ const rootRouteChildren: RootRouteChildren = {
   CharactersRoute: CharactersRoute,
   ApiPublicAgentClaimRoute: ApiPublicAgentClaimRoute,
   ApiPublicAgentIngestRoute: ApiPublicAgentIngestRoute,
+  ApiPublicAgentStatusRoute: ApiPublicAgentStatusRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
