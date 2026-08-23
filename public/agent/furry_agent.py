@@ -401,20 +401,31 @@ def da_publish(path, job):
 
 
 def da_folder_id(token, name):
+    """Ищем папку по имени во всех страницах галереи."""
+    offset = 0
+    names = []
     try:
-        r = requests.get(
-            "https://www.deviantart.com/api/v1/oauth2/gallery/folders",
-            headers={"Authorization": f"Bearer {token}"},
-            params={"limit": 50},
-            timeout=60,
-        )
-        r.raise_for_status()
-        for f in r.json().get("results", []):
-            if f.get("name", "").lower() == name.lower():
-                return f.get("folderid")
+        while True:
+            r = requests.get(
+                "https://www.deviantart.com/api/v1/oauth2/gallery/folders",
+                headers={"Authorization": f"Bearer {token}"},
+                params={"limit": 50, "offset": offset, "calculate_size": "false"},
+                timeout=60,
+            )
+            res = _da_check(r, "gallery/folders")
+            for f in res.get("results", []):
+                names.append(f.get("name", ""))
+                if f.get("name", "").strip().lower() == name.strip().lower():
+                    return f.get("folderid")
+            if not res.get("has_more"):
+                break
+            offset = res.get("next_offset") or (offset + 50)
     except Exception as e:
-        log("папка галереи не найдена:", e)
+        log("не удалось получить список папок:", e)
+        return None
+    log("папка не найдена. Доступные папки:", ", ".join(n for n in names if n))
     return None
+
 
 
 # ───────────────────── 4. цикл обработки очереди ─────────────────
