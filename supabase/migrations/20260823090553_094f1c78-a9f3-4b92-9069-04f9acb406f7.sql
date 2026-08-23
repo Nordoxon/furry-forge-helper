@@ -1,0 +1,1 @@
+CREATE POLICY "previews update own" ON storage.objects FOR UPDATE TO authenticated USING (bucket_id = 'previews' AND (storage.foldername(name))[1] = (auth.uid())::text) WITH CHECK (bucket_id = 'previews' AND (storage.foldername(name))[1] = (auth.uid())::text);
