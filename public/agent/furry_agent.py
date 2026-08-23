@@ -399,8 +399,6 @@ def da_publish(path, job):
                 data[f"mature_classification[{i}]"] = c
         data["allow_comments"] = "1" if tpl.get("allow_comments", True) else "0"
         data["allow_free_download"] = "1" if tpl.get("allow_free_download") else "0"
-        data["add_watermark"] = "1" if tpl.get("add_watermark") else "0"
-        data["display_resolution"] = str(int(tpl.get("display_resolution") or 0))
         if tpl.get("license_cc"):
             data["license_options[creative_commons]"] = "1"
             data["license_options[commercial]"] = "1" if tpl.get("license_commercial") else "0"
@@ -431,35 +429,12 @@ def da_publish(path, job):
         raise RuntimeError(f"stash/submit не вернул itemid: {res}")
     log("DeviantArt: в Sta.sh, itemid =", itemid, "стек:", res.get("stackid", "-"))
 
-    # Sta.sh хранит не все опции формы публикации: NoAI, водяной знак и
-    # ограничение размера показа применяются только на шаге публикации.
-    # Досылаем их через stash/metadata, чтобы черновик открылся с ними.
-    try:
-        meta = {
-            "itemid": str(itemid),
-            "noai": data.get("noai", "0"),
-            "is_ai_generated": data.get("is_ai_generated", "0"),
-            "add_watermark": data.get("add_watermark", "0"),
-            "display_resolution": data.get("display_resolution", "0"),
-            "allow_comments": data.get("allow_comments", "1"),
-            "allow_free_download": data.get("allow_free_download", "0"),
-        }
-        rm = requests.post(
-            "https://www.deviantart.com/api/v1/oauth2/stash/metadata",
-            headers={"Authorization": f"Bearer {token}"},
-            data=meta,
-            timeout=60,
-        )
-        if rm.status_code != 200:
-            log("DeviantArt: stash/metadata не принял опции —", rm.status_code, rm.text[:300])
-            log(
-                "Подсказка: NoAI, водяной знак и размер показа задаются в окне "
-                "публикации DeviantArt; проверьте их там перед Submit."
-            )
-    except Exception as e:  # noqa: BLE001
-        log("DeviantArt: stash/metadata ошибка:", e)
-
     if not tpl.get("auto_publish"):
+        if tpl.get("add_watermark") or tpl.get("display_resolution"):
+            log(
+                "DeviantArt: размер показа и водяной знак применяются API только "
+                "при публикации; в черновике Sta.sh их нужно выбрать вручную."
+            )
         return "https://sta.sh/"
 
 
@@ -472,6 +447,8 @@ def da_publish(path, job):
         "allow_comments": "1" if tpl.get("allow_comments", True) else "0",
         "allow_free_download": "1" if tpl.get("allow_free_download") else "0",
         "add_watermark": "1" if tpl.get("add_watermark") else "0",
+        "is_ai_generated": "1" if tpl.get("is_ai_generated") else "0",
+        "noai": "1" if tpl.get("noai") else "0",
         "feature": "1",
         "sharing": "allow",
     }
@@ -479,8 +456,22 @@ def da_publish(path, job):
         pub["mature_level"] = tpl.get("mature_level") or "moderate"
         for i, c in enumerate(tpl.get("mature_classification") or []):
             pub[f"mature_classification[{i}]"] = c
-    if tpl.get("display_resolution"):
-        pub["display_resolution"] = str(tpl["display_resolution"])
+    # API принимает не число пикселей, а enum 0..8. Интерфейс хранит понятное
+    # пользователю значение в пикселях, поэтому преобразуем его перед запросом.
+    resolution_codes = {
+        0: 0,
+        400: 1,
+        600: 2,
+        800: 3,
+        900: 4,
+        1024: 5,
+        1280: 6,
+        1600: 7,
+        1920: 8,
+    }
+    selected_resolution = int(tpl.get("display_resolution") or 0)
+    if selected_resolution:
+        pub["display_resolution"] = str(resolution_codes.get(selected_resolution, selected_resolution))
     if tpl.get("license_cc"):
         pub["license_options[creative_commons]"] = "1"
         pub["license_options[commercial]"] = "1" if tpl.get("license_commercial") else "0"
