@@ -60,8 +60,6 @@ const BLANK = {
   auto_publish: false,
   is_downloadable: false,
   download_price: 0,
-  is_exclusive: false,
-  exclusive_price: 0,
   is_default: false,
 };
 
@@ -105,8 +103,6 @@ function TemplatesPage() {
       auto_publish: t.auto_publish,
       is_downloadable: t.is_downloadable,
       download_price: t.download_price,
-      is_exclusive: t.is_exclusive,
-      exclusive_price: t.exclusive_price,
       is_default: t.is_default,
     });
     setEditing(t.id);
@@ -142,8 +138,6 @@ function TemplatesPage() {
         auto_publish: form.auto_publish,
         is_downloadable: form.is_downloadable,
         download_price: Math.max(0, Math.round(Number(form.download_price) || 0)),
-        is_exclusive: form.is_exclusive,
-        exclusive_price: Math.max(0, Math.round((Number(form.exclusive_price) || 0) * 100) / 100),
         is_default: form.is_default,
       };
       const res =
@@ -397,28 +391,7 @@ function TemplatesPage() {
               checked={form.auto_publish}
               onChange={(v) => set("auto_publish", v)}
             />
-            <Toggle
-              label="Публиковать как эксклюзив (платный доступ)"
-              checked={form.is_exclusive}
-              onChange={(v) => set("is_exclusive", v)}
-            />
-            {form.is_exclusive && (
-              <>
-                <Field label="Цена эксклюзива, $ (доллары США)" hint="Например 4.99">
-                  <Input
-                    type="number"
-                    min={0}
-                    step={0.01}
-                    value={form.exclusive_price}
-                    onChange={(e) => set("exclusive_price", Number(e.target.value))}
-                  />
-                </Field>
-                <p className="text-xs text-muted-foreground">
-                  Каждое изображение публикуется отдельно как эксклюзив с этой ценой, минуя папку
-                  Sta.sh — папка не используется.
-                </p>
-              </>
-            )}
+
 
             <Toggle
               label="Шаблон по умолчанию"
