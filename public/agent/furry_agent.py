@@ -473,7 +473,8 @@ def da_publish(path, job):
         price = max(0.0, float(tpl.get("exclusive_price") or 0))
         pub["allow_free_download"] = "0"
         pub["is_downloadable"] = "1"
-        folder_id = da_folder_id(token, EXCLUSIVE_FOLDER_NAME) if EXCLUSIVE_FOLDER_NAME else None
+        folder_name = globals().get("EXCLUSIVE_FOLDER_NAME", "")
+        folder_id = da_folder_id(token, folder_name) if folder_name else None
         if folder_id:
             pub["premium_folder_data[folderid]"] = folder_id
             pub["galleryids[0]"] = folder_id
@@ -546,7 +547,7 @@ def da_publish_exclusive(token, pub, price):
             body = rp.text[:600]
         log(f"DeviantArt отклонил вариант «{label}»: HTTP {rp.status_code} {body}")
 
-    if EXCLUSIVE_STRICT:
+    if globals().get("EXCLUSIVE_STRICT", True):
         raise RuntimeError(
             "DeviantArt не принял цену эксклюзива — публикация отменена, файл остался в Sta.sh. "
             "Создайте на DeviantArt премиум-папку галереи с нужной ценой и укажите её имя "
