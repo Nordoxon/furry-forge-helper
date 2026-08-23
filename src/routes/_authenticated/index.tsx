@@ -33,7 +33,7 @@ export const Route = createFileRoute("/_authenticated/")({
 
 function TriagePage() {
   const qc = useQueryClient();
-  const [index, setIndex] = useState(0);
+  const [done, setDone] = useState<string[]>([]);
   const [charId, setCharId] = useState<string | null>(null);
   const [folder, setFolder] = useState<string | null>(null);
   const [extraFolders, setExtraFolders] = useState<string[]>([]);
@@ -65,15 +65,19 @@ function TriagePage() {
     return Array.from(set);
   }, [chars.data, extraFolders]);
 
-  const items = inbox.data ?? [];
-  const current = items[index];
+  const all = inbox.data ?? [];
+  const doneSet = useMemo(() => new Set(done), [done]);
+  // очередь стабильна: текущий кадр определяется по ID, а не по позиции в списке
+  const items = useMemo(() => all.filter((i) => !doneSet.has(i.id)), [all, doneSet]);
+  const current = items[0];
 
   async function act(status: "approved" | "rejected") {
     if (!current) return;
+    const id = current.id;
     try {
-      await decide(current.id, status, charId, status === "approved" ? folder : null);
-      setLast({ id: current.id });
-      setIndex((i) => i + 1);
+      await decide(id, status, charId, status === "approved" ? folder : null);
+      setDone((d) => (d.includes(id) ? d : [...d, id]));
+      setLast({ id });
       setFolder(null);
       void qc.invalidateQueries({ queryKey: ["pipeline"] });
     } catch (e) {
@@ -85,8 +89,8 @@ function TriagePage() {
     if (!last) return;
     try {
       await decide(last.id, "new", null, null);
+      setDone((d) => d.filter((x) => x !== last.id));
       setLast(null);
-      setIndex((i) => Math.max(0, i - 1));
       void inbox.refetch();
     } catch (e) {
       toast.error(`Не удалось вернуть: ${(e as Error).message}`);
@@ -108,7 +112,7 @@ function TriagePage() {
           <div>
             <h1 className="font-display text-lg font-semibold leading-tight">Отбор</h1>
             <p className="text-xs text-muted-foreground">
-              Осталось {Math.max(0, items.length - index)} из {items.length}
+              Осталось {items.length} из {all.length}
             </p>
           </div>
           {last && (
@@ -125,7 +129,7 @@ function TriagePage() {
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
           </div>
         ) : !current ? (
-          <EmptyInbox count={items.length} />
+          <EmptyInbox count={all.length} />
         ) : (
           <>
             <CharacterPicker
