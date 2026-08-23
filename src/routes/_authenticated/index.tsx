@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, X, Loader2, Inbox, Undo2 } from "lucide-react";
+import { Check, X, Loader2, Inbox, Undo2, FolderOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BottomNav } from "@/components/bottom-nav";
 import {
@@ -34,6 +34,8 @@ function TriagePage() {
   const qc = useQueryClient();
   const [index, setIndex] = useState(0);
   const [charId, setCharId] = useState<string | null>(null);
+  const [folder, setFolder] = useState<string | null>(null);
+  const [extraFolders, setExtraFolders] = useState<string[]>([]);
   const [last, setLast] = useState<{ id: string } | null>(null);
 
   const inbox = useQuery({ queryKey: ["inbox"], queryFn: fetchInbox, refetchInterval: 20000 });
@@ -45,24 +47,50 @@ function TriagePage() {
     }
   }, [chars.data, charId]);
 
+  const activeChar = useMemo(
+    () => chars.data?.find((c) => c.id === charId) ?? null,
+    [chars.data, charId],
+  );
+
+  // папка по умолчанию — из персонажа; сбрасываем выбор при смене персонажа
+  useEffect(() => {
+    setFolder(null);
+  }, [charId]);
+
+  const folderOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const c of chars.data ?? []) if (c.gallery_folder) set.add(c.gallery_folder);
+    for (const f of extraFolders) set.add(f);
+    return Array.from(set);
+  }, [chars.data, extraFolders]);
+
   const items = inbox.data ?? [];
   const current = items[index];
 
   async function act(status: "approved" | "rejected") {
     if (!current) return;
     setLast({ id: current.id });
-    await decide(current.id, status, charId);
+    await decide(current.id, status, charId, status === "approved" ? folder : null);
     setIndex((i) => i + 1);
+    setFolder(null);
     void qc.invalidateQueries({ queryKey: ["pipeline"] });
   }
 
   async function undo() {
     if (!last) return;
-    await decide(last.id, "new", null);
+    await decide(last.id, "new", null, null);
     setLast(null);
     setIndex((i) => Math.max(0, i - 1));
     void inbox.refetch();
   }
+
+  function addFolder() {
+    const name = window.prompt("Название папки галереи на DeviantArt")?.trim();
+    if (!name) return;
+    setExtraFolders((f) => (f.includes(name) ? f : [...f, name]));
+    setFolder(name);
+  }
+
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -96,7 +124,15 @@ function TriagePage() {
               value={charId}
               onChange={setCharId}
             />
+            <FolderPicker
+              options={folderOptions}
+              value={folder}
+              defaultFolder={activeChar?.gallery_folder || null}
+              onChange={setFolder}
+              onAdd={addFolder}
+            />
             <Card item={current} />
+
             <div className="mt-4 grid grid-cols-2 gap-3">
               <Button
                 size="lg"
@@ -175,6 +211,61 @@ function CharacterPicker({
           {c.name}
         </button>
       ))}
+    </div>
+  );
+}
+
+function FolderPicker({
+  options,
+  value,
+  defaultFolder,
+  onChange,
+  onAdd,
+}: {
+  options: string[];
+  value: string | null;
+  defaultFolder: string | null;
+  onChange: (v: string | null) => void;
+  onAdd: () => void;
+}) {
+  return (
+    <div className="mb-3">
+      <p className="mb-1.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+        <FolderOpen className="h-3.5 w-3.5" /> Папка на DeviantArt
+      </p>
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        <button
+          onClick={() => onChange(null)}
+          className={`shrink-0 rounded-full border px-3 py-1.5 text-xs transition ${
+            value === null
+              ? "border-primary bg-primary text-primary-foreground"
+              : "border-border text-muted-foreground"
+          }`}
+        >
+          {defaultFolder ? `По умолчанию: ${defaultFolder}` : "По умолчанию"}
+        </button>
+        {options
+          .filter((o) => o !== defaultFolder)
+          .map((o) => (
+            <button
+              key={o}
+              onClick={() => onChange(o)}
+              className={`shrink-0 rounded-full border px-3 py-1.5 text-xs transition ${
+                value === o
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border text-muted-foreground"
+              }`}
+            >
+              {o}
+            </button>
+          ))}
+        <button
+          onClick={onAdd}
+          className="shrink-0 rounded-full border border-dashed border-border px-3 py-1.5 text-xs text-muted-foreground"
+        >
+          + Другая
+        </button>
+      </div>
     </div>
   );
 }

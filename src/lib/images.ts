@@ -52,10 +52,15 @@ export async function fetchPipeline() {
   return data;
 }
 
-export async function decide(id: string, status: ImageStatus, characterId: string | null) {
+export async function decide(
+  id: string,
+  status: ImageStatus,
+  characterId: string | null,
+  galleryFolder?: string | null,
+) {
   const { error } = await supabase
     .from("images")
-    .update({ status, character_id: characterId })
+    .update({ status, character_id: characterId, gallery_folder: galleryFolder ?? null })
     .eq("id", id);
   if (error) throw error;
 }
