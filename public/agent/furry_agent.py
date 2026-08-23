@@ -238,19 +238,26 @@ class _CallbackHandler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         parsed = urlparse(self.path)
-        if parsed.path not in ("/callback", "/callback/"):
-            # favicon и прочие запросы браузера игнорируем, иначе код авторизации теряется
+        qs = parse_qs(parsed.query)
+        # DeviantArt может вернуться на любой зарегистрированный путь ("/", "/callback", ...),
+        # поэтому ориентируемся не на путь, а на наличие параметров code/error.
+        if "code" not in qs and "error" not in qs and "error_description" not in qs:
             self.send_response(404)
             self.end_headers()
             return
-        qs = parse_qs(parsed.query)
         _CallbackHandler.code = qs.get("code", [None])[0]
         _CallbackHandler.error = qs.get("error_description", qs.get("error", [None]))[0]
+        log("DeviantArt callback:", parsed.path, "code" if _CallbackHandler.code else _CallbackHandler.error)
         self.send_response(200)
         self.send_header("content-type", "text/html; charset=utf-8")
         self.end_headers()
-        msg = "Готово, можно закрыть вкладку." if _CallbackHandler.code else "Авторизация не удалась."
+        msg = (
+            "Готово, можно закрыть вкладку."
+            if _CallbackHandler.code
+            else f"Авторизация не удалась: {_CallbackHandler.error or 'DeviantArt не вернул код'}"
+        )
         self.wfile.write(f"<h2>{msg}</h2>".encode())
+
 
     def log_message(self, *a):
         pass
@@ -285,6 +292,7 @@ def da_authorize():
     url = "https://www.deviantart.com/oauth2/authorize?" + urlencode(params)
     server = HTTPServer(("localhost", 8721), _CallbackHandler)
     server.timeout = 1
+    log("В настройках приложения DeviantArt поле OAuth2 Redirect URI Whitelist должно содержать РОВНО:", DA_REDIRECT)
     log("Откройте в браузере (если вкладка не открылась сама):", url)
     webbrowser.open(url)
     deadline = time.time() + 300
@@ -294,7 +302,10 @@ def da_authorize():
     if _CallbackHandler.error:
         raise RuntimeError(f"DeviantArt отказал в авторизации: {_CallbackHandler.error}")
     if not _CallbackHandler.code:
-        raise RuntimeError("Не получен код авторизации DeviantArt (истекло 5 минут)")
+        raise RuntimeError(
+            "Не получен код авторизации DeviantArt. Проверьте, что в приложении DeviantArt "
+            f"в Redirect URI Whitelist добавлен ровно {DA_REDIRECT} (без пробелов и слэша в конце)"
+        )
 
     r = requests.post(
         "https://www.deviantart.com/oauth2/token",
