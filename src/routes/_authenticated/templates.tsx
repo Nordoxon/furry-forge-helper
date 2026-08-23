@@ -143,7 +143,7 @@ function TemplatesPage() {
         is_downloadable: form.is_downloadable,
         download_price: Math.max(0, Math.round(Number(form.download_price) || 0)),
         is_exclusive: form.is_exclusive,
-        exclusive_price: Math.max(0, Math.round(Number(form.exclusive_price) || 0)),
+        exclusive_price: Math.max(0, Math.round((Number(form.exclusive_price) || 0) * 100) / 100),
         is_default: form.is_default,
       };
       const res =
@@ -404,16 +404,18 @@ function TemplatesPage() {
             />
             {form.is_exclusive && (
               <>
-                <Field label="Цена эксклюзива, баллов (Points)">
+                <Field label="Цена эксклюзива, $ (доллары США)" hint="Например 4.99">
                   <Input
                     type="number"
                     min={0}
+                    step={0.01}
                     value={form.exclusive_price}
                     onChange={(e) => set("exclusive_price", Number(e.target.value))}
                   />
                 </Field>
                 <p className="text-xs text-muted-foreground">
-                  Эксклюзив публикуется сразу в галерею, минуя папку Sta.sh — папка не используется.
+                  Каждое изображение публикуется отдельно как эксклюзив с этой ценой, минуя папку
+                  Sta.sh — папка не используется.
                 </p>
               </>
             )}

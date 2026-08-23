@@ -463,10 +463,10 @@ def da_publish(path, job):
     if tpl.get("noai"):
         pub["noai"] = "1"
     if exclusive:
-        # Эксклюзивный (премиум) контент с ценой в баллах
-        price = int(tpl.get("exclusive_price") or 0)
-        pub["premium_folder_data[type]"] = "points"
-        pub["premium_folder_data[price]"] = str(max(0, price))
+        # Эксклюзивный (премиум) контент с ценой в долларах США
+        price = max(0.0, float(tpl.get("exclusive_price") or 0))
+        pub["premium_folder_data[type]"] = "cash"
+        pub["premium_folder_data[price]"] = f"{price:.2f}"
         pub["allow_free_download"] = "0"
         pub["is_downloadable"] = "1"
     elif tpl.get("is_downloadable"):
@@ -484,7 +484,7 @@ def da_publish(path, job):
             log(f"DeviantArt: папка «{stack}» не найдена — публикую без папки")
 
     if exclusive:
-        log(f"DeviantArt: публикую эксклюзив «{title}» за {pub.get('premium_folder_data[price]')} баллов")
+        log(f"DeviantArt: публикую эксклюзив «{title}» за ${pub.get('premium_folder_data[price]')}")
     else:
         log(f"DeviantArt: публикую «{title}»" + (f" за {pub.get('download_price')} баллов" if pub.get("download_price") else ""))
     rp = requests.post(
