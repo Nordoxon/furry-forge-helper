@@ -397,28 +397,7 @@ function TemplatesPage() {
               checked={form.auto_publish}
               onChange={(v) => set("auto_publish", v)}
             />
-            <Toggle
-              label="Публиковать как эксклюзив (платный доступ)"
-              checked={form.is_exclusive}
-              onChange={(v) => set("is_exclusive", v)}
-            />
-            {form.is_exclusive && (
-              <>
-                <Field label="Цена эксклюзива, $ (доллары США)" hint="Например 4.99">
-                  <Input
-                    type="number"
-                    min={0}
-                    step={0.01}
-                    value={form.exclusive_price}
-                    onChange={(e) => set("exclusive_price", Number(e.target.value))}
-                  />
-                </Field>
-                <p className="text-xs text-muted-foreground">
-                  Каждое изображение публикуется отдельно как эксклюзив с этой ценой, минуя папку
-                  Sta.sh — папка не используется.
-                </p>
-              </>
-            )}
+
 
             <Toggle
               label="Шаблон по умолчанию"
