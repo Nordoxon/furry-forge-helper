@@ -88,6 +88,7 @@ export type Database = {
       }
       images: {
         Row: {
+          asset_name: string | null
           character_id: string | null
           created_at: string
           description: string
@@ -108,6 +109,7 @@ export type Database = {
           width: number | null
         }
         Insert: {
+          asset_name?: string | null
           character_id?: string | null
           created_at?: string
           description?: string
@@ -128,6 +130,7 @@ export type Database = {
           width?: number | null
         }
         Update: {
+          asset_name?: string | null
           character_id?: string | null
           created_at?: string
           description?: string
