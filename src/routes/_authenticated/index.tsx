@@ -156,10 +156,15 @@ function TriagePage() {
               value={charId}
               onChange={setCharId}
             />
+            <TemplatePicker
+              templates={templates.data ?? []}
+              value={templateId}
+              onChange={setTemplateId}
+            />
             <FolderPicker
               options={folderOptions}
               value={folder}
-              defaultFolder={activeChar?.gallery_folder || null}
+              defaultFolder={activeTemplate?.gallery_folder || activeChar?.gallery_folder || null}
               onChange={setFolder}
               onAdd={addFolder}
             />
