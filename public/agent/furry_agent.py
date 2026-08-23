@@ -463,10 +463,10 @@ def da_publish(path, job):
     if tpl.get("noai"):
         pub["noai"] = "1"
     if exclusive:
-        # Эксклюзивный (премиум) контент с ценой в баллах
-        price = int(tpl.get("exclusive_price") or 0)
-        pub["premium_folder_data[type]"] = "points"
-        pub["premium_folder_data[price]"] = str(max(0, price))
+        # Эксклюзивный (премиум) контент с ценой в долларах США
+        price = max(0.0, float(tpl.get("exclusive_price") or 0))
+        pub["premium_folder_data[type]"] = "cash"
+        pub["premium_folder_data[price]"] = f"{price:.2f}"
         pub["allow_free_download"] = "0"
         pub["is_downloadable"] = "1"
     elif tpl.get("is_downloadable"):
