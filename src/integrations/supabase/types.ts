@@ -175,14 +175,17 @@ export type Database = {
           add_watermark: boolean
           allow_comments: boolean
           allow_free_download: boolean
+          auto_publish: boolean
           category_path: string
           created_at: string
           description_template: string
           display_resolution: number
+          download_price: number
           gallery_folder: string
           id: string
           is_ai_generated: boolean
           is_default: boolean
+          is_downloadable: boolean
           is_mature: boolean
           license_cc: boolean
           license_commercial: boolean
@@ -199,14 +202,17 @@ export type Database = {
           add_watermark?: boolean
           allow_comments?: boolean
           allow_free_download?: boolean
+          auto_publish?: boolean
           category_path?: string
           created_at?: string
           description_template?: string
           display_resolution?: number
+          download_price?: number
           gallery_folder?: string
           id?: string
           is_ai_generated?: boolean
           is_default?: boolean
+          is_downloadable?: boolean
           is_mature?: boolean
           license_cc?: boolean
           license_commercial?: boolean
@@ -223,14 +229,17 @@ export type Database = {
           add_watermark?: boolean
           allow_comments?: boolean
           allow_free_download?: boolean
+          auto_publish?: boolean
           category_path?: string
           created_at?: string
           description_template?: string
           display_resolution?: number
+          download_price?: number
           gallery_folder?: string
           id?: string
           is_ai_generated?: boolean
           is_default?: boolean
+          is_downloadable?: boolean
           is_mature?: boolean
           license_cc?: boolean
           license_commercial?: boolean
