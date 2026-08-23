@@ -53,10 +53,7 @@ function TriagePage() {
     [chars.data, charId],
   );
 
-  // папка по умолчанию — из персонажа; сбрасываем выбор при смене персонажа
-  useEffect(() => {
-    setFolder(null);
-  }, [charId]);
+  // выбранная папка запоминается между кадрами и сменой персонажа
 
   const folderOptions = useMemo(() => {
     const set = new Set<string>();
