@@ -469,12 +469,17 @@ def da_publish(path, job):
         pub["catpath"] = tpl["category_path"]
     price = 0.0
     if exclusive:
-        # Эксклюзивный (премиум) контент с ценой в долларах США
+        # Эксклюзивный (премиум) контент с ценой в долларах США.
+        # DeviantArt назначает цену не работе, а папке галереи — поэтому берём
+        # ту папку, которую вы выбрали на сайте, и сами делаем её премиум.
         price = max(0.0, float(tpl.get("exclusive_price") or 0))
         pub["allow_free_download"] = "0"
         pub["is_downloadable"] = "1"
-        folder_name = globals().get("EXCLUSIVE_FOLDER_NAME", "")
-        folder_id = da_folder_id(token, folder_name) if folder_name else None
+        folder_name = (job.get("gallery_folder")
+                       or tpl.get("gallery_folder")
+                       or globals().get("EXCLUSIVE_FOLDER_NAME", "")
+                       or "Exclusive")
+        folder_id = da_folder_ensure(token, folder_name)
         if folder_id:
             pub["premium_folder_data[folderid]"] = folder_id
             pub["galleryids[0]"] = folder_id
@@ -550,8 +555,8 @@ def da_publish_exclusive(token, pub, price):
     if globals().get("EXCLUSIVE_STRICT", True):
         raise RuntimeError(
             "DeviantArt не принял цену эксклюзива — публикация отменена, файл остался в Sta.sh. "
-            "Создайте на DeviantArt премиум-папку галереи с нужной ценой и укажите её имя "
-            "в EXCLUSIVE_FOLDER_NAME в начале furry_agent.py."
+            "Чаще всего это значит, что у аккаунта не подключены платные (Premium) работы: "
+            "нужен Core-статус и заполненный раздел выплат в настройках DeviantArt."
         )
     log("Публикую без цены (EXCLUSIVE_STRICT = False)")
     return da_publish_request(token, base)
@@ -667,6 +672,30 @@ def da_folder_id(token, name):
         return None
     log("папка не найдена. Доступные папки:", ", ".join(n for n in names if n))
     return None
+
+
+def da_folder_ensure(token, name):
+    """Находит папку галереи по имени, а если её нет — создаёт автоматически."""
+    name = (name or "").strip()
+    if not name:
+        return None
+    fid = da_folder_id(token, name)
+    if fid:
+        return fid
+    try:
+        r = requests.post(
+            "https://www.deviantart.com/api/v1/oauth2/gallery/folders/create",
+            headers={"Authorization": f"Bearer {token}"},
+            data={"folder": name},
+            timeout=60,
+        )
+        res = _da_check(r, "gallery/folders/create")
+        fid = res.get("folderid")
+        log(f"DeviantArt: создал папку галереи «{name}»")
+        return fid
+    except Exception as e:
+        log("не удалось создать папку галереи:", e)
+        return None
 
 
 
