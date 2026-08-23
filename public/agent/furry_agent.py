@@ -200,16 +200,28 @@ def upscale(path, out_name=None):
             "image": img_b64,
         }
 
-    r = requests.post(f"{A1111_URL}/sdapi/v1/extra-single-image", json=payload, timeout=1800)
+    try:
+        r = requests.post(f"{A1111_URL}/sdapi/v1/extra-single-image", json=payload, timeout=1800)
+    except requests.RequestException as e:
+        if FALLBACK_TO_PIL:
+            print(f"[upscale] A1111 недоступен ({e}) — апскейлю локально через Pillow")
+            return upscale_local(path, out_name)
+        raise RuntimeError(f"Automatic1111 недоступен по адресу {A1111_URL}: {e}")
+
+    if r.status_code == 404:
+        msg = (
+            f"Automatic1111 по адресу {A1111_URL} отвечает, но API выключен (404 на "
+            "/sdapi/v1/extra-single-image). Запустите WebUI с ключом --api "
+            "(в webui-user.bat: set COMMANDLINE_ARGS=--api) и перезапустите его."
+        )
+        if FALLBACK_TO_PIL:
+            print(f"[upscale] {msg}\n[upscale] Пока апскейлю локально через Pillow")
+            return upscale_local(path, out_name)
+        raise RuntimeError(msg)
+
     r.raise_for_status()
     out_b64 = r.json()["image"]
-    os.makedirs(UPSCALED_DIR, exist_ok=True)
-    base = safe_name(out_name) if out_name else os.path.splitext(os.path.basename(path))[0] + "_up"
-    out_path = os.path.join(UPSCALED_DIR, base + ".png")
-    n = 2
-    while os.path.exists(out_path):
-        out_path = os.path.join(UPSCALED_DIR, f"{base}_{n}.png")
-        n += 1
+    out_path = _out_path(path, out_name)
     with open(out_path, "wb") as f:
         f.write(base64.b64decode(out_b64.split(",")[-1]))
     return out_path
