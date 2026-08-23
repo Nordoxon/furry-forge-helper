@@ -57,6 +57,14 @@ UPSCALE_HEIGHT = 4096                          # целевая высота
 # Если Automatic1111 не запущен или запущен без --api, апскейлить локально (Pillow, Lanczos)
 FALLBACK_TO_PIL = True
 
+# ── ПОВЕДЕНИЕ, КОГДА STABLE DIFFUSION ЗАНЯТ ГЕНЕРАЦИЕЙ ──
+# A1111 выполняет запросы по очереди: пока идёт txt2img, апскейл просто висит.
+UPSCALE_WAIT_FOR_IDLE = True   # ждать, пока генерация закончится, прежде чем апскейлить
+UPSCALE_MAX_WAIT = 1800        # сколько максимум ждать освобождения (сек)
+UPSCALE_BUSY_ACTION = "pil"    # что делать, если так и занят: "pil" | "defer" | "wait"
+UPSCALE_TIMEOUT = 900          # таймаут самого запроса апскейла (сек)
+
+
 # Эксклюзив (платная работа). DeviantArt не даёт выставить цену через API —
 # «Submit as Exclusive» + цена доступны только в окне публикации на сайте.
 # Поэтому эксклюзивы агент готовит в Sta.sh (имя, теги, описание, стек),
@@ -205,9 +213,46 @@ def upscale_local(path, out_name=None):
     return out_path
 
 
-def upscale(path, out_name=None):
+class A1111Busy(Exception):
+    """Automatic1111 занят генерацией — задание вернём в очередь."""
+
+
+def a1111_busy():
+    """True, если A1111 сейчас генерирует. Ошибки связи считаем «не занят»."""
+    try:
+        return gen_busy()
+    except Exception:
+        return False
+
+
+def wait_for_a1111(heartbeat=None):
+    """Ждёт, пока A1111 освободится. Возвращает False, если так и занят."""
+    if not UPSCALE_WAIT_FOR_IDLE:
+        return True
+    deadline = time.time() + UPSCALE_MAX_WAIT
+    announced = False
+    while a1111_busy():
+        if not announced:
+            print("[upscale] Stable Diffusion занят генерацией — жду освобождения")
+            announced = True
+        if UPSCALE_BUSY_ACTION != "wait" and time.time() > deadline:
+            return False
+        if heartbeat:
+            heartbeat()
+        time.sleep(10)
+    return True
+
+
+def upscale(path, out_name=None, heartbeat=None):
+    if not wait_for_a1111(heartbeat):
+        if UPSCALE_BUSY_ACTION == "pil" and FALLBACK_TO_PIL:
+            print("[upscale] SD всё ещё занят — апскейлю локально через Pillow")
+            return upscale_local(path, out_name)
+        raise A1111Busy("Stable Diffusion занят генерацией")
+
     with open(path, "rb") as f:
         img_b64 = base64.b64encode(f.read()).decode()
+
 
 
     if UPSCALE_MODE == "size":
@@ -227,7 +272,7 @@ def upscale(path, out_name=None):
         }
 
     try:
-        r = requests.post(f"{A1111_URL}/sdapi/v1/extra-single-image", json=payload, timeout=1800)
+        r = requests.post(f"{A1111_URL}/sdapi/v1/extra-single-image", json=payload, timeout=UPSCALE_TIMEOUT)
     except requests.RequestException as e:
         if FALLBACK_TO_PIL:
             print(f"[upscale] A1111 недоступен ({e}) — апскейлю локально через Pillow")
@@ -684,11 +729,15 @@ def process_queue():
                 report(job["id"], "error", error="файл не найден на компьютере")
                 continue
             asset = job.get("asset_name") or os.path.splitext(job["filename"])[0]
-            big = upscale(src, asset)
+            big = upscale(src, asset, heartbeat=lambda: report(job["id"], "upscaling"))
             report(job["id"], "uploading")
             url = da_publish(big, job)
             report(job["id"], "published", deviation_url=url)
             log("опубликовано:", url)
+        except A1111Busy as e:
+            log("SD занят генерацией — возвращаю в очередь:", job["filename"])
+            report(job["id"], "approved")
+            break
         except Exception as e:
             log("ошибка:", e)
             report(job["id"], "error", error=str(e)[:300])
