@@ -112,6 +112,9 @@ export const Route = createFileRoute("/api/public/agent/claim")({
                   license_commercial: tpl.license_commercial,
                   license_modify: tpl.license_modify,
                   category_path: tpl.category_path,
+                  auto_publish: tpl.auto_publish,
+                  is_downloadable: tpl.is_downloadable,
+                  download_price: tpl.download_price,
                 }
               : null,
           });

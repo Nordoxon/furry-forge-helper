@@ -57,6 +57,9 @@ const BLANK = {
   license_commercial: false,
   license_modify: "no",
   category_path: "",
+  auto_publish: false,
+  is_downloadable: false,
+  download_price: 0,
   is_default: false,
 };
 
@@ -97,6 +100,9 @@ function TemplatesPage() {
       license_commercial: t.license_commercial,
       license_modify: t.license_modify,
       category_path: t.category_path,
+      auto_publish: t.auto_publish,
+      is_downloadable: t.is_downloadable,
+      download_price: t.download_price,
       is_default: t.is_default,
     });
     setEditing(t.id);
@@ -129,6 +135,9 @@ function TemplatesPage() {
         license_commercial: form.license_commercial,
         license_modify: form.license_modify,
         category_path: form.category_path.trim(),
+        auto_publish: form.auto_publish,
+        is_downloadable: form.is_downloadable,
+        download_price: Math.max(0, Math.round(Number(form.download_price) || 0)),
         is_default: form.is_default,
       };
       const res =
@@ -375,6 +384,27 @@ function TemplatesPage() {
                   </div>
                 </Field>
               </>
+            )}
+
+            <Toggle
+              label="Публиковать в галерею автоматически"
+              checked={form.auto_publish}
+              onChange={(v) => set("auto_publish", v)}
+            />
+            <Toggle
+              label="Платное скачивание (Points)"
+              checked={form.is_downloadable}
+              onChange={(v) => set("is_downloadable", v)}
+            />
+            {form.is_downloadable && (
+              <Field label="Цена скачивания, баллов (Points)">
+                <Input
+                  type="number"
+                  min={0}
+                  value={form.download_price}
+                  onChange={(e) => set("download_price", Number(e.target.value))}
+                />
+              </Field>
             )}
 
             <Toggle
