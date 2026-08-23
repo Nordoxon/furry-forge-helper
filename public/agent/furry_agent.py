@@ -499,12 +499,8 @@ def da_publish(path, job):
         else:
             log(f"DeviantArt: папка «{stack}» не найдена — публикую без папки")
 
-    if exclusive:
-        log(f"DeviantArt: публикую эксклюзив «{title}» за ${price:.2f}")
-        pres = da_publish_exclusive(token, pub, price)
-    else:
-        log(f"DeviantArt: публикую «{title}»")
-        pres = da_publish_request(token, pub)
+    log(f"DeviantArt: публикую «{title}»")
+    pres = da_publish_request(token, pub)
     url = pres.get("url") or "https://www.deviantart.com/"
     log("DeviantArt: опубликовано ->", url)
     return url
