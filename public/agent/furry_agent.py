@@ -484,7 +484,7 @@ def da_publish(path, job):
             log(f"DeviantArt: папка «{stack}» не найдена — публикую без папки")
 
     if exclusive:
-        log(f"DeviantArt: публикую эксклюзив «{title}» за {pub.get('premium_folder_data[price]')} баллов")
+        log(f"DeviantArt: публикую эксклюзив «{title}» за ${pub.get('premium_folder_data[price]')}")
     else:
         log(f"DeviantArt: публикую «{title}»" + (f" за {pub.get('download_price')} баллов" if pub.get("download_price") else ""))
     rp = requests.post(
