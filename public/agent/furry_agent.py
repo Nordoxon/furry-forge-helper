@@ -691,11 +691,79 @@ def process_queue():
             report(job["id"], "error", error=str(e)[:300])
 
 
+def gen_load_payload():
+    if not os.path.exists(GEN_PAYLOAD_FILE):
+        raise RuntimeError(f"нет файла параметров генерации: {GEN_PAYLOAD_FILE}")
+    with open(GEN_PAYLOAD_FILE, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def gen_save_images(images, index):
+    os.makedirs(GEN_OUT_DIR, exist_ok=True)
+    saved = 0
+    stamp = time.strftime("%Y%m%d-%H%M%S")
+    for i, b64 in enumerate(images):
+        try:
+            raw = base64.b64decode(b64.split(",", 1)[-1])
+            img = Image.open(io.BytesIO(raw))
+            if img.mode not in ("RGB", "RGBA"):
+                img = img.convert("RGB")
+            path = os.path.join(GEN_OUT_DIR, f"{stamp}-{index + i:05d}.png")
+            img.save(path)
+            saved += 1
+        except Exception as e:
+            log("генерация: не удалось сохранить кадр:", e)
+    return saved
+
+
+def gen_loop():
+    """Гоняет txt2img порциями и перезапускает цикл, пока не наберётся GEN_TOTAL."""
+    try:
+        payload = gen_load_payload()
+    except Exception as e:
+        log("автогенерация выключена:", e)
+        return
+
+    done = 0
+    errors = 0
+    log(f"автогенерация: цель {GEN_TOTAL}, порциями по {min(GEN_CHUNK, 100)}")
+    while done < GEN_TOTAL and errors < GEN_MAX_ERRORS:
+        chunk = min(GEN_CHUNK, 100, GEN_TOTAL - done)
+        body = dict(payload)
+        per_batch = int(body.get("batch_size") or 1)
+        body["batch_size"] = per_batch
+        body["n_iter"] = max(1, -(-chunk // per_batch))  # batch count
+        if body.get("seed") in (None, -1):
+            body["seed"] = -1
+        try:
+            r = requests.post(f"{A1111_URL}/sdapi/v1/txt2img", json=body, timeout=60 * 60 * 6)
+            r.raise_for_status()
+            images = r.json().get("images") or []
+            saved = gen_save_images(images, done)
+            done += saved
+            errors = 0
+            log(f"автогенерация: {done}/{GEN_TOTAL}")
+            if saved == 0:
+                errors += 1
+                time.sleep(GEN_RETRY_WAIT)
+        except Exception as e:
+            errors += 1
+            log(f"автогенерация: ошибка ({errors}/{GEN_MAX_ERRORS}):", str(e)[:200])
+            time.sleep(GEN_RETRY_WAIT)
+
+    if done >= GEN_TOTAL:
+        log("автогенерация завершена:", done)
+    else:
+        log("автогенерация остановлена, сделано:", done)
+
+
 def main():
     if "вставьте" in AGENT_TOKEN:
         print("Заполните AGENT_TOKEN в настройках скрипта.")
         sys.exit(1)
     log("агент запущен, папка:", WATCH_DIR)
+    if GEN_ENABLED:
+        threading.Thread(target=gen_loop, daemon=True).start()
     last_scan = 0.0
     while True:
         now = time.time()
@@ -704,6 +772,7 @@ def main():
             last_scan = now
         process_queue()
         time.sleep(POLL_INTERVAL)
+
 
 
 if __name__ == "__main__":
