@@ -238,19 +238,26 @@ class _CallbackHandler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         parsed = urlparse(self.path)
-        if parsed.path not in ("/callback", "/callback/"):
-            # favicon и прочие запросы браузера игнорируем, иначе код авторизации теряется
+        qs = parse_qs(parsed.query)
+        # DeviantArt может вернуться на любой зарегистрированный путь ("/", "/callback", ...),
+        # поэтому ориентируемся не на путь, а на наличие параметров code/error.
+        if "code" not in qs and "error" not in qs and "error_description" not in qs:
             self.send_response(404)
             self.end_headers()
             return
-        qs = parse_qs(parsed.query)
         _CallbackHandler.code = qs.get("code", [None])[0]
         _CallbackHandler.error = qs.get("error_description", qs.get("error", [None]))[0]
+        log("DeviantArt callback:", parsed.path, "code" if _CallbackHandler.code else _CallbackHandler.error)
         self.send_response(200)
         self.send_header("content-type", "text/html; charset=utf-8")
         self.end_headers()
-        msg = "Готово, можно закрыть вкладку." if _CallbackHandler.code else "Авторизация не удалась."
+        msg = (
+            "Готово, можно закрыть вкладку."
+            if _CallbackHandler.code
+            else f"Авторизация не удалась: {_CallbackHandler.error or 'DeviantArt не вернул код'}"
+        )
         self.wfile.write(f"<h2>{msg}</h2>".encode())
+
 
     def log_message(self, *a):
         pass
