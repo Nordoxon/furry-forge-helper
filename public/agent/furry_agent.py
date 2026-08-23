@@ -68,9 +68,21 @@ DA_CLIENT_ID = ""                               # DeviantArt application client_
 DA_CLIENT_SECRET = ""                           # DeviantArt application client_secret
 DA_REDIRECT = "http://localhost:8721/callback"  # добавьте этот URI в настройках приложения
 
+# ── АВТОГЕНЕРАЦИЯ (обход лимита batch count = 100) ──
+# Агент сам гоняет txt2img в Automatic1111 порциями и перезапускает цикл,
+# пока не наберётся GEN_TOTAL изображений.
+GEN_ENABLED = False           # True — включить автогенерацию
+GEN_TOTAL = 500               # сколько изображений нужно всего
+GEN_CHUNK = 50                # сколько за один запрос (не больше 100)
+GEN_PAYLOAD_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "gen_payload.json")
+GEN_OUT_DIR = os.path.join(WATCH_DIR, "agent_generated")  # сюда сохраняются картинки (папка сканируется)
+GEN_RETRY_WAIT = 30           # пауза перед повтором, если A1111 отвалился
+GEN_MAX_ERRORS = 10           # после скольких подряд ошибок остановить генерацию
+
 STATE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "agent_state.json")
 UPSCALED_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "upscaled")
 # ─────────────────────────────────────────────────────────────────
+
 
 HEADERS = {"x-agent-token": AGENT_TOKEN, "content-type": "application/json"}
 
