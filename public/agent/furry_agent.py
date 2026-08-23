@@ -405,6 +405,10 @@ def da_publish(path, job):
             data["license_options[modify]"] = tpl.get("license_modify") or "no"
         if tpl.get("category_path"):
             data["catpath"] = tpl["category_path"]
+        if tpl.get("is_downloadable"):
+            data["is_downloadable"] = "1"
+            if tpl.get("download_price"):
+                data["download_price"] = str(int(tpl["download_price"]))
 
     log(
         f"DeviantArt: загружаю в Sta.sh «{title}»"
