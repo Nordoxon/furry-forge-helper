@@ -52,6 +52,9 @@ UPSCALE_FACTOR = 2                             # используется тол
 UPSCALE_WIDTH = 3200                           # целевая ширина
 UPSCALE_HEIGHT = 4096                          # целевая высота
 
+# Если Automatic1111 не запущен или запущен без --api, апскейлить локально (Pillow, Lanczos)
+FALLBACK_TO_PIL = True
+
 
 DA_CLIENT_ID = ""                               # DeviantArt application client_id
 DA_CLIENT_SECRET = ""                           # DeviantArt application client_secret
@@ -153,9 +156,36 @@ def safe_name(name):
     return keep or "image"
 
 
+def _out_path(path, out_name):
+    os.makedirs(UPSCALED_DIR, exist_ok=True)
+    base = safe_name(out_name) if out_name else os.path.splitext(os.path.basename(path))[0] + "_up"
+    out_path = os.path.join(UPSCALED_DIR, base + ".png")
+    n = 2
+    while os.path.exists(out_path):
+        out_path = os.path.join(UPSCALED_DIR, f"{base}_{n}.png")
+        n += 1
+    return out_path
+
+
+def upscale_local(path, out_name=None):
+    """Запасной апскейл средствами Pillow (Lanczos), если A1111 недоступен."""
+    from PIL import Image
+
+    img = Image.open(path).convert("RGB")
+    if UPSCALE_MODE == "size":
+        target = (UPSCALE_WIDTH, UPSCALE_HEIGHT)
+    else:
+        target = (img.width * UPSCALE_FACTOR, img.height * UPSCALE_FACTOR)
+    img = img.resize(target, Image.LANCZOS)
+    out_path = _out_path(path, out_name)
+    img.save(out_path, "PNG")
+    return out_path
+
+
 def upscale(path, out_name=None):
     with open(path, "rb") as f:
         img_b64 = base64.b64encode(f.read()).decode()
+
 
     if UPSCALE_MODE == "size":
         payload = {
@@ -173,16 +203,28 @@ def upscale(path, out_name=None):
             "image": img_b64,
         }
 
-    r = requests.post(f"{A1111_URL}/sdapi/v1/extra-single-image", json=payload, timeout=1800)
+    try:
+        r = requests.post(f"{A1111_URL}/sdapi/v1/extra-single-image", json=payload, timeout=1800)
+    except requests.RequestException as e:
+        if FALLBACK_TO_PIL:
+            print(f"[upscale] A1111 недоступен ({e}) — апскейлю локально через Pillow")
+            return upscale_local(path, out_name)
+        raise RuntimeError(f"Automatic1111 недоступен по адресу {A1111_URL}: {e}")
+
+    if r.status_code == 404:
+        msg = (
+            f"Automatic1111 по адресу {A1111_URL} отвечает, но API выключен (404 на "
+            "/sdapi/v1/extra-single-image). Запустите WebUI с ключом --api "
+            "(в webui-user.bat: set COMMANDLINE_ARGS=--api) и перезапустите его."
+        )
+        if FALLBACK_TO_PIL:
+            print(f"[upscale] {msg}\n[upscale] Пока апскейлю локально через Pillow")
+            return upscale_local(path, out_name)
+        raise RuntimeError(msg)
+
     r.raise_for_status()
     out_b64 = r.json()["image"]
-    os.makedirs(UPSCALED_DIR, exist_ok=True)
-    base = safe_name(out_name) if out_name else os.path.splitext(os.path.basename(path))[0] + "_up"
-    out_path = os.path.join(UPSCALED_DIR, base + ".png")
-    n = 2
-    while os.path.exists(out_path):
-        out_path = os.path.join(UPSCALED_DIR, f"{base}_{n}.png")
-        n += 1
+    out_path = _out_path(path, out_name)
     with open(out_path, "wb") as f:
         f.write(base64.b64decode(out_b64.split(",")[-1]))
     return out_path
