@@ -404,16 +404,18 @@ function TemplatesPage() {
             />
             {form.is_exclusive && (
               <>
-                <Field label="Цена эксклюзива, баллов (Points)">
+                <Field label="Цена эксклюзива, $ (доллары США)" hint="Например 4.99">
                   <Input
                     type="number"
                     min={0}
+                    step={0.01}
                     value={form.exclusive_price}
                     onChange={(e) => set("exclusive_price", Number(e.target.value))}
                   />
                 </Field>
                 <p className="text-xs text-muted-foreground">
-                  Эксклюзив публикуется сразу в галерею, минуя папку Sta.sh — папка не используется.
+                  Каждое изображение публикуется отдельно как эксклюзив с этой ценой, минуя папку
+                  Sta.sh — папка не используется.
                 </p>
               </>
             )}
