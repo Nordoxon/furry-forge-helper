@@ -34,8 +34,9 @@ from PIL import Image
 API_BASE = "https://your-app.lovable.app"      # адрес сайта
 AGENT_TOKEN = "вставьте-ключ-со-страницы-Агент"
 
-WATCH_DIR = r"C:\stable-diffusion\outputs"     # папка с генерациями
+WATCH_DIR = r"C:\stable-diffusion\outputs"     # родительская папка; вложенные папки с датами сканируются автоматически
 EXTENSIONS = (".png", ".jpg", ".jpeg", ".webp")
+SKIP_DIRS = {"upscaled", ".git", "__pycache__", "tmp", "temp"}  # папки, которые пропускаем
 SCAN_INTERVAL = 10                              # сек между сканами папки
 POLL_INTERVAL = 8                               # сек между опросами очереди
 
@@ -94,7 +95,12 @@ def make_preview(path):
 def scan_and_upload():
     sent = set(STATE["sent"])
     batch = []
-    for root, _dirs, files in os.walk(WATCH_DIR):
+    # обходим WATCH_DIR рекурсивно: подойдёт любая родительская папка,
+    # вложенные папки (например, по датам) подхватятся сами
+    for root, dirs, files in os.walk(WATCH_DIR):
+        dirs[:] = [d for d in dirs if d.lower() not in SKIP_DIRS and not d.startswith(".")]
+        if os.path.abspath(root).startswith(os.path.abspath(UPSCALED_DIR)):
+            continue
         for name in sorted(files):
             if not name.lower().endswith(EXTENSIONS):
                 continue
