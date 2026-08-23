@@ -94,6 +94,7 @@ export type Database = {
           deviation_url: string | null
           error: string | null
           filename: string
+          gallery_folder: string | null
           height: number | null
           id: string
           local_path: string
@@ -113,6 +114,7 @@ export type Database = {
           deviation_url?: string | null
           error?: string | null
           filename: string
+          gallery_folder?: string | null
           height?: number | null
           id?: string
           local_path: string
@@ -132,6 +134,7 @@ export type Database = {
           deviation_url?: string | null
           error?: string | null
           filename?: string
+          gallery_folder?: string | null
           height?: number | null
           id?: string
           local_path?: string
