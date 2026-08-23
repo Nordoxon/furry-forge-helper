@@ -827,14 +827,13 @@ def main():
     log("агент запущен, папка:", WATCH_DIR)
     if GEN_ENABLED:
         threading.Thread(target=gen_loop, daemon=True).start()
-    last_scan = 0.0
+    # сканирование папки идёт своим потоком, чтобы долгий апскейл/загрузка его не тормозили
+    threading.Thread(target=scan_loop, daemon=True).start()
     while True:
-        now = time.time()
-        if now - last_scan >= SCAN_INTERVAL:
-            log("сканирую папку outputs на новые изображения")
-            scan_and_upload()
-            last_scan = now
-        process_queue()
+        try:
+            process_queue()
+        except Exception as e:
+            log("ошибка обработки очереди:", e)
         time.sleep(POLL_INTERVAL)
 
 
