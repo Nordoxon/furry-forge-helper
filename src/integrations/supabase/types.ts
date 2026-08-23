@@ -181,11 +181,13 @@ export type Database = {
           description_template: string
           display_resolution: number
           download_price: number
+          exclusive_price: number
           gallery_folder: string
           id: string
           is_ai_generated: boolean
           is_default: boolean
           is_downloadable: boolean
+          is_exclusive: boolean
           is_mature: boolean
           license_cc: boolean
           license_commercial: boolean
@@ -208,11 +210,13 @@ export type Database = {
           description_template?: string
           display_resolution?: number
           download_price?: number
+          exclusive_price?: number
           gallery_folder?: string
           id?: string
           is_ai_generated?: boolean
           is_default?: boolean
           is_downloadable?: boolean
+          is_exclusive?: boolean
           is_mature?: boolean
           license_cc?: boolean
           license_commercial?: boolean
@@ -235,11 +239,13 @@ export type Database = {
           description_template?: string
           display_resolution?: number
           download_price?: number
+          exclusive_price?: number
           gallery_folder?: string
           id?: string
           is_ai_generated?: boolean
           is_default?: boolean
           is_downloadable?: boolean
+          is_exclusive?: boolean
           is_mature?: boolean
           license_cc?: boolean
           license_commercial?: boolean

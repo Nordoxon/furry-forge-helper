@@ -367,9 +367,10 @@ def da_publish(path, job):
     token = da_token()
 
     title = job.get("asset_name") or job.get("title") or os.path.splitext(os.path.basename(path))[0]
-    stack = job.get("gallery_folder") or ""
-
     tpl = job.get("template") or {}
+    exclusive = bool(tpl.get("is_exclusive"))
+    # Для эксклюзива папка (стек) не используется — работа сразу уходит в галерею.
+    stack = "" if exclusive else (job.get("gallery_folder") or "")
 
     data = {
         "title": title,
@@ -377,6 +378,7 @@ def da_publish(path, job):
     }
     if stack:
         data["stack"] = stack  # Sta.sh создаст/использует стек с таким именем
+
     for i, tag in enumerate(job.get("tags", [])[:30]):
         data[f"tags[{i}]"] = tag
     if job.get("is_mature") or tpl.get("is_mature"):
@@ -429,7 +431,7 @@ def da_publish(path, job):
         raise RuntimeError(f"stash/submit не вернул itemid: {res}")
     log("DeviantArt: в Sta.sh, itemid =", itemid, "стек:", res.get("stackid", "-"))
 
-    if not tpl.get("auto_publish"):
+    if not (tpl.get("auto_publish") or exclusive):
         return "https://sta.sh/"
 
     # Автопубликация в галерею (включена в шаблоне)
@@ -460,7 +462,14 @@ def da_publish(path, job):
         pub["is_ai_generated"] = "1"
     if tpl.get("noai"):
         pub["noai"] = "1"
-    if tpl.get("is_downloadable"):
+    if exclusive:
+        # Эксклюзивный (премиум) контент с ценой в баллах
+        price = int(tpl.get("exclusive_price") or 0)
+        pub["premium_folder_data[type]"] = "points"
+        pub["premium_folder_data[price]"] = str(max(0, price))
+        pub["allow_free_download"] = "0"
+        pub["is_downloadable"] = "1"
+    elif tpl.get("is_downloadable"):
         pub["is_downloadable"] = "1"
         price = int(tpl.get("download_price") or 0)
         if price > 0:
@@ -474,7 +483,10 @@ def da_publish(path, job):
         else:
             log(f"DeviantArt: папка «{stack}» не найдена — публикую без папки")
 
-    log(f"DeviantArt: публикую «{title}»" + (f" за {pub.get('download_price')} баллов" if pub.get("download_price") else ""))
+    if exclusive:
+        log(f"DeviantArt: публикую эксклюзив «{title}» за {pub.get('premium_folder_data[price]')} баллов")
+    else:
+        log(f"DeviantArt: публикую «{title}»" + (f" за {pub.get('download_price')} баллов" if pub.get("download_price") else ""))
     rp = requests.post(
         "https://www.deviantart.com/api/v1/oauth2/stash/publish",
         headers={"Authorization": f"Bearer {token}"},
