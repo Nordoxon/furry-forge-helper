@@ -498,17 +498,21 @@ def da_publish_request(token, pub, attempt=1):
         data=pub,
         timeout=300,
     )
-    if rp.status_code == 400 and attempt <= 3:
+    if rp.status_code == 400 and attempt <= 6:
         try:
             body = rp.json()
         except Exception:
             body = {}
-        errors = body.get("errors") or {}
+        # DeviantArt возвращает подробности в error_details (иногда в errors)
+        errors = body.get("error_details") or body.get("errors") or {}
+        if isinstance(errors, list):
+            errors = {str(f): "" for f in errors}
+        log("DeviantArt 400:", json.dumps(body, ensure_ascii=False)[:800])
+        cleaned = dict(pub)
+        price_key = "premium_folder_data[price]"
+
         if errors:
-            log("DeviantArt отклонил поля:", json.dumps(errors, ensure_ascii=False))
-            cleaned = dict(pub)
-            # Цена премиума: сначала пробуем целое число долларов, потом уже снимаем платность
-            price_key = "premium_folder_data[price]"
+            # 1) Цена премиума: пробуем целое число долларов
             if any(str(f).startswith("premium_folder_data") for f in errors) and price_key in cleaned:
                 whole = str(int(round(float(cleaned[price_key]) or 0)))
                 if whole != cleaned[price_key]:
@@ -520,7 +524,7 @@ def da_publish_request(token, pub, attempt=1):
                 base = str(field).split("[")[0]
                 for key in list(cleaned):
                     if key == field or key == base or key.startswith(base + "["):
-                        if key == "itemid":
+                        if key in ("itemid", "agree_submission", "agree_tos"):
                             continue
                         cleaned.pop(key, None)
                         removed.append(key)
@@ -528,7 +532,41 @@ def da_publish_request(token, pub, attempt=1):
                 log("Повторяю публикацию без:", ", ".join(sorted(set(removed))))
                 return da_publish_request(token, cleaned, attempt + 1)
 
+        # Подробностей нет (или они не помогли) — снимаем поля по очереди
+        fallbacks = [
+            [k for k in cleaned if k.startswith("premium_folder_data")],
+            [k for k in cleaned if k.startswith("license_options")],
+            [k for k in cleaned if k.startswith("mature_classification")],
+            ["catpath"],
+            ["display_resolution", "add_watermark", "feature", "sharing", "is_downloadable",
+             "download_price", "allow_free_download"],
+        ]
+        for group in fallbacks:
+            present = [k for k in group if k in cleaned]
+            if present:
+                for k in present:
+                    cleaned.pop(k, None)
+                log("Повторяю публикацию без:", ", ".join(present))
+                return da_publish_request(token, cleaned, attempt + 1)
+
+        # Последняя попытка — минимальный набор полей
+        minimal = {
+            "itemid": cleaned.get("itemid"),
+            "agree_submission": "1",
+            "agree_tos": "1",
+            "is_mature": cleaned.get("is_mature", "0"),
+        }
+        if minimal["is_mature"] == "1":
+            minimal["mature_level"] = pub.get("mature_level") or "moderate"
+        for k, v in pub.items():
+            if k.startswith("galleryids"):
+                minimal[k] = v
+        if minimal != cleaned:
+            log("Повторяю публикацию с минимальным набором полей")
+            return da_publish_request(token, minimal, attempt + 1)
+
     return _da_check(rp, "stash/publish")
+
 
 
 
