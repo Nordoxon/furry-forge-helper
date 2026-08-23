@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
+import { Route as AuthenticatedSetupRouteImport } from './routes/_authenticated/setup'
 import { Route as AuthenticatedQueueRouteImport } from './routes/_authenticated/queue'
 import { Route as AuthenticatedCharactersRouteImport } from './routes/_authenticated/characters'
 import { Route as ApiPublicAgentStatusRouteImport } from './routes/api/public/agent/status'
@@ -30,6 +31,11 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
 const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedSetupRoute = AuthenticatedSetupRouteImport.update({
+  id: '/setup',
+  path: '/setup',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedQueueRoute = AuthenticatedQueueRouteImport.update({
@@ -63,6 +69,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/characters': typeof AuthenticatedCharactersRoute
   '/queue': typeof AuthenticatedQueueRoute
+  '/setup': typeof AuthenticatedSetupRoute
   '/api/public/agent/claim': typeof ApiPublicAgentClaimRoute
   '/api/public/agent/ingest': typeof ApiPublicAgentIngestRoute
   '/api/public/agent/status': typeof ApiPublicAgentStatusRoute
@@ -71,6 +78,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/characters': typeof AuthenticatedCharactersRoute
   '/queue': typeof AuthenticatedQueueRoute
+  '/setup': typeof AuthenticatedSetupRoute
   '/': typeof AuthenticatedIndexRoute
   '/api/public/agent/claim': typeof ApiPublicAgentClaimRoute
   '/api/public/agent/ingest': typeof ApiPublicAgentIngestRoute
@@ -82,6 +90,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/_authenticated/characters': typeof AuthenticatedCharactersRoute
   '/_authenticated/queue': typeof AuthenticatedQueueRoute
+  '/_authenticated/setup': typeof AuthenticatedSetupRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/api/public/agent/claim': typeof ApiPublicAgentClaimRoute
   '/api/public/agent/ingest': typeof ApiPublicAgentIngestRoute
@@ -94,6 +103,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/characters'
     | '/queue'
+    | '/setup'
     | '/api/public/agent/claim'
     | '/api/public/agent/ingest'
     | '/api/public/agent/status'
@@ -102,6 +112,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/characters'
     | '/queue'
+    | '/setup'
     | '/'
     | '/api/public/agent/claim'
     | '/api/public/agent/ingest'
@@ -112,6 +123,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/_authenticated/characters'
     | '/_authenticated/queue'
+    | '/_authenticated/setup'
     | '/_authenticated/'
     | '/api/public/agent/claim'
     | '/api/public/agent/ingest'
@@ -147,6 +159,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/setup': {
+      id: '/_authenticated/setup'
+      path: '/setup'
+      fullPath: '/setup'
+      preLoaderRoute: typeof AuthenticatedSetupRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/queue': {
@@ -190,12 +209,14 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedCharactersRoute: typeof AuthenticatedCharactersRoute
   AuthenticatedQueueRoute: typeof AuthenticatedQueueRoute
+  AuthenticatedSetupRoute: typeof AuthenticatedSetupRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCharactersRoute: AuthenticatedCharactersRoute,
   AuthenticatedQueueRoute: AuthenticatedQueueRoute,
+  AuthenticatedSetupRoute: AuthenticatedSetupRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
 }
 
