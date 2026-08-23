@@ -10,6 +10,15 @@ export const Route = createFileRoute("/api/public/agent/claim")({
         if (!auth) return json({ error: "invalid token" }, 401);
         const { supabase, userId } = auth;
 
+        // Возвращаем в очередь задания, зависшие в обработке (агент упал/перезапустился)
+        const staleBefore = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+        await supabase
+          .from("images")
+          .update({ status: "approved" })
+          .eq("user_id", userId)
+          .in("status", ["upscaling", "uploading"])
+          .lt("updated_at", staleBefore);
+
         const { data: approved } = await supabase
           .from("images")
           .select("*")
