@@ -507,6 +507,14 @@ def da_publish_request(token, pub, attempt=1):
         if errors:
             log("DeviantArt отклонил поля:", json.dumps(errors, ensure_ascii=False))
             cleaned = dict(pub)
+            # Цена премиума: сначала пробуем целое число долларов, потом уже снимаем платность
+            price_key = "premium_folder_data[price]"
+            if any(str(f).startswith("premium_folder_data") for f in errors) and price_key in cleaned:
+                whole = str(int(round(float(cleaned[price_key]) or 0)))
+                if whole != cleaned[price_key]:
+                    cleaned[price_key] = whole
+                    log("Повторяю публикацию с целой ценой $", whole)
+                    return da_publish_request(token, cleaned, attempt + 1)
             removed = []
             for field in errors:
                 base = str(field).split("[")[0]
@@ -519,6 +527,7 @@ def da_publish_request(token, pub, attempt=1):
             if removed:
                 log("Повторяю публикацию без:", ", ".join(sorted(set(removed))))
                 return da_publish_request(token, cleaned, attempt + 1)
+
     return _da_check(rp, "stash/publish")
 
 
