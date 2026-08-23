@@ -694,70 +694,130 @@ def process_queue():
             report(job["id"], "error", error=str(e)[:300])
 
 
-def gen_load_payload():
-    if not os.path.exists(GEN_PAYLOAD_FILE):
-        raise RuntimeError(f"нет файла параметров генерации: {GEN_PAYLOAD_FILE}")
-    with open(GEN_PAYLOAD_FILE, "r", encoding="utf-8") as f:
-        return json.load(f)
+def gen_newest_png():
+    """Самый свежий PNG в папке генераций — из него берём параметры прогона."""
+    newest, newest_mtime = None, 0.0
+    for root, dirs, files in os.walk(WATCH_DIR):
+        dirs[:] = [d for d in dirs if d.lower() not in SKIP_DIRS]
+        for name in files:
+            if not name.lower().endswith(".png"):
+                continue
+            p = os.path.join(root, name)
+            try:
+                m = os.path.getmtime(p)
+            except OSError:
+                continue
+            if m > newest_mtime:
+                newest, newest_mtime = p, m
+    return newest
 
 
-def gen_save_images(images, index):
-    os.makedirs(GEN_OUT_DIR, exist_ok=True)
-    saved = 0
-    stamp = time.strftime("%Y%m%d-%H%M%S")
-    for i, b64 in enumerate(images):
+def gen_parse_params(text):
+    """Разбирает строку параметров Automatic1111 из метаданных PNG."""
+    lines = [l for l in text.splitlines() if l.strip() != ""]
+    if not lines:
+        return None
+    negative, tail = "", ""
+    prompt_lines = []
+    for l in lines:
+        if l.startswith("Negative prompt:"):
+            negative = l.split(":", 1)[1].strip()
+        elif l.startswith("Steps:"):
+            tail = l
+        elif not negative and not tail:
+            prompt_lines.append(l)
+    payload = {
+        "prompt": "\n".join(prompt_lines).strip(),
+        "negative_prompt": negative,
+        "save_images": True,
+    }
+    parts = {}
+    for chunk in tail.split(","):
+        if ":" in chunk:
+            k, v = chunk.split(":", 1)
+            parts[k.strip().lower()] = v.strip()
+    def num(key, cast=int):
         try:
-            raw = base64.b64decode(b64.split(",", 1)[-1])
-            img = Image.open(io.BytesIO(raw))
-            if img.mode not in ("RGB", "RGBA"):
-                img = img.convert("RGB")
-            path = os.path.join(GEN_OUT_DIR, f"{stamp}-{index + i:05d}.png")
-            img.save(path)
-            saved += 1
-        except Exception as e:
-            log("генерация: не удалось сохранить кадр:", e)
-    return saved
+            return cast(parts[key])
+        except Exception:
+            return None
+    if (v := num("steps")) is not None:
+        payload["steps"] = v
+    if (v := num("cfg scale", float)) is not None:
+        payload["cfg_scale"] = v
+    if parts.get("sampler"):
+        payload["sampler_name"] = parts["sampler"]
+    if parts.get("schedule type"):
+        payload["scheduler"] = parts["schedule type"]
+    size = parts.get("size", "")
+    if "x" in size:
+        try:
+            w, h = size.split("x")
+            payload["width"], payload["height"] = int(w), int(h)
+        except Exception:
+            pass
+    payload["seed"] = -1  # каждый перезапуск — новые сиды
+    return payload if payload["prompt"] else None
+
+
+def gen_busy():
+    """True, если Automatic1111 сейчас что-то генерирует."""
+    r = requests.get(f"{A1111_URL}/sdapi/v1/progress?skip_current_image=true", timeout=15)
+    r.raise_for_status()
+    data = r.json()
+    state = data.get("state") or {}
+    return bool(state.get("job_count", 0) > 0 or (data.get("progress") or 0) > 0.001)
 
 
 def gen_loop():
-    """Гоняет txt2img порциями и перезапускает цикл, пока не наберётся GEN_TOTAL."""
-    try:
-        payload = gen_load_payload()
-    except Exception as e:
-        log("автогенерация выключена:", e)
-        return
-
-    done = 0
-    errors = 0
-    log(f"автогенерация: цель {GEN_TOTAL}, порциями по {min(GEN_CHUNK, 100)}")
-    while done < GEN_TOTAL and errors < GEN_MAX_ERRORS:
-        chunk = min(GEN_CHUNK, 100, GEN_TOTAL - done)
-        body = dict(payload)
-        per_batch = int(body.get("batch_size") or 1)
-        body["batch_size"] = per_batch
-        body["n_iter"] = max(1, -(-chunk // per_batch))  # batch count
-        if body.get("seed") in (None, -1):
-            body["seed"] = -1
+    """Ждёт остановки генерации и «нажимает Generate» снова с теми же параметрами."""
+    log("авто-рестарт генерации включён")
+    restarts, errors, idle_since = 0, 0, None
+    while errors < GEN_MAX_ERRORS and (GEN_RESTARTS == 0 or restarts < GEN_RESTARTS):
         try:
-            r = requests.post(f"{A1111_URL}/sdapi/v1/txt2img", json=body, timeout=60 * 60 * 6)
-            r.raise_for_status()
-            images = r.json().get("images") or []
-            saved = gen_save_images(images, done)
-            done += saved
-            errors = 0
-            log(f"автогенерация: {done}/{GEN_TOTAL}")
-            if saved == 0:
-                errors += 1
+            if gen_busy():
+                idle_since = None
+                errors = 0
+                time.sleep(5)
+                continue
+            if idle_since is None:
+                idle_since = time.time()
+                time.sleep(5)
+                continue
+            if time.time() - idle_since < GEN_IDLE_SECONDS:
+                time.sleep(5)
+                continue
+
+            src = gen_newest_png()
+            payload = None
+            if src:
+                try:
+                    with Image.open(src) as im:
+                        payload = gen_parse_params(im.info.get("parameters", ""))
+                except Exception as e:
+                    log("авто-рестарт: не прочитал параметры:", str(e)[:150])
+            if not payload:
+                log("авто-рестарт: не нашёл параметры последней генерации, жду")
+                idle_since = None
                 time.sleep(GEN_RETRY_WAIT)
+                continue
+
+            payload["batch_size"] = 1
+            payload["n_iter"] = 100  # максимум batch count в интерфейсе
+            restarts += 1
+            log(f"авто-рестарт #{restarts}: запускаю генерацию заново")
+            r = requests.post(f"{A1111_URL}/sdapi/v1/txt2img", json=payload, timeout=60 * 60 * 12)
+            r.raise_for_status()
+            log(f"авто-рестарт #{restarts}: прогон завершён")
+            idle_since = None
+            errors = 0
         except Exception as e:
             errors += 1
-            log(f"автогенерация: ошибка ({errors}/{GEN_MAX_ERRORS}):", str(e)[:200])
+            log(f"авто-рестарт: ошибка ({errors}/{GEN_MAX_ERRORS}):", str(e)[:200])
             time.sleep(GEN_RETRY_WAIT)
 
-    if done >= GEN_TOTAL:
-        log("автогенерация завершена:", done)
-    else:
-        log("автогенерация остановлена, сделано:", done)
+    log("авто-рестарт остановлен, перезапусков:", restarts)
+
 
 
 def main():
