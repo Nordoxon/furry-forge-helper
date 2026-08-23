@@ -368,14 +368,11 @@ def da_token():
 
 
 def da_publish(path, job):
-    """Загружаем файл в Sta.sh с нужным именем и в нужный стек (папку).
-    Публикацию в галерею не делаем — её вы выполняете вручную на DeviantArt."""
+    """Загружаем файл в Sta.sh с нужным именем и в нужный стек (папку)."""
     token = da_token()
 
     title = job.get("asset_name") or job.get("title") or os.path.splitext(os.path.basename(path))[0]
     tpl = job.get("template") or {}
-    exclusive = bool(tpl.get("is_exclusive"))
-    # Эксклюзив тоже уходит в свой стек Sta.sh — цену вы ставите в окне публикации DA.
     stack = job.get("gallery_folder") or ""
 
     data = {
@@ -391,13 +388,11 @@ def da_publish(path, job):
         data["is_dirty"] = "1"
 
     # Опции из шаблона сайта (как в форме публикации DeviantArt).
-    # Sta.sh принимает часть из них сразу; остальные сохраняются в метаданных
-    # черновика и подставляются при ручной публикации.
+    # Важно передавать и выключенные значения явно ("0"), иначе DeviantArt
+    # подставляет свои настройки по умолчанию (например включённый NoAI).
     if tpl:
-        if tpl.get("is_ai_generated"):
-            data["is_ai_generated"] = "1"
-        if tpl.get("noai"):
-            data["noai"] = "1"
+        data["is_ai_generated"] = "1" if tpl.get("is_ai_generated") else "0"
+        data["noai"] = "1" if tpl.get("noai") else "0"
         if tpl.get("is_mature"):
             data["mature_level"] = tpl.get("mature_level") or "moderate"
             for i, c in enumerate(tpl.get("mature_classification") or []):
@@ -405,8 +400,7 @@ def da_publish(path, job):
         data["allow_comments"] = "1" if tpl.get("allow_comments", True) else "0"
         data["allow_free_download"] = "1" if tpl.get("allow_free_download") else "0"
         data["add_watermark"] = "1" if tpl.get("add_watermark") else "0"
-        if tpl.get("display_resolution"):
-            data["display_resolution"] = str(tpl["display_resolution"])
+        data["display_resolution"] = str(int(tpl.get("display_resolution") or 0))
         if tpl.get("license_cc"):
             data["license_options[creative_commons]"] = "1"
             data["license_options[commercial]"] = "1" if tpl.get("license_commercial") else "0"
@@ -437,17 +431,37 @@ def da_publish(path, job):
         raise RuntimeError(f"stash/submit не вернул itemid: {res}")
     log("DeviantArt: в Sta.sh, itemid =", itemid, "стек:", res.get("stackid", "-"))
 
-    if exclusive:
-        price = max(0.0, float(tpl.get("exclusive_price") or 0))
-        log(
-            f"Эксклюзив «{title}»: файл в Sta.sh, стек «{stack or '-'}». "
-            f"Откройте черновик на DeviantArt, включите «Submit as Exclusive», "
-            f"поставьте цену ${price:.2f}, прикрепите исходник и нажмите Publish."
+    # Sta.sh хранит не все опции формы публикации: NoAI, водяной знак и
+    # ограничение размера показа применяются только на шаге публикации.
+    # Досылаем их через stash/metadata, чтобы черновик открылся с ними.
+    try:
+        meta = {
+            "itemid": str(itemid),
+            "noai": data.get("noai", "0"),
+            "is_ai_generated": data.get("is_ai_generated", "0"),
+            "add_watermark": data.get("add_watermark", "0"),
+            "display_resolution": data.get("display_resolution", "0"),
+            "allow_comments": data.get("allow_comments", "1"),
+            "allow_free_download": data.get("allow_free_download", "0"),
+        }
+        rm = requests.post(
+            "https://www.deviantart.com/api/v1/oauth2/stash/metadata",
+            headers={"Authorization": f"Bearer {token}"},
+            data=meta,
+            timeout=60,
         )
-        return "https://sta.sh/"
+        if rm.status_code != 200:
+            log("DeviantArt: stash/metadata не принял опции —", rm.status_code, rm.text[:300])
+            log(
+                "Подсказка: NoAI, водяной знак и размер показа задаются в окне "
+                "публикации DeviantArt; проверьте их там перед Submit."
+            )
+    except Exception as e:  # noqa: BLE001
+        log("DeviantArt: stash/metadata ошибка:", e)
 
     if not tpl.get("auto_publish"):
         return "https://sta.sh/"
+
 
     # Автопубликация в галерею (включена в шаблоне)
     pub = {
