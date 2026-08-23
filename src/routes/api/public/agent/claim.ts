@@ -93,9 +93,7 @@ export const Route = createFileRoute("/api/public/agent/claim")({
             title,
             description,
             tags,
-            gallery_folder: tpl?.is_exclusive
-              ? ""
-              : img.gallery_folder || tpl?.gallery_folder || ch?.gallery_folder || "",
+            gallery_folder: img.gallery_folder || tpl?.gallery_folder || ch?.gallery_folder || "",
             is_mature: tpl ? tpl.is_mature : (ch?.is_mature ?? false),
             template: tpl
               ? {
@@ -116,8 +114,6 @@ export const Route = createFileRoute("/api/public/agent/claim")({
                   auto_publish: tpl.auto_publish,
                   is_downloadable: tpl.is_downloadable,
                   download_price: tpl.download_price,
-                  is_exclusive: tpl.is_exclusive,
-                  exclusive_price: tpl.exclusive_price,
                 }
               : null,
           });

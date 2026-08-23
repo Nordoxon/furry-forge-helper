@@ -60,8 +60,6 @@ const BLANK = {
   auto_publish: false,
   is_downloadable: false,
   download_price: 0,
-  is_exclusive: false,
-  exclusive_price: 0,
   is_default: false,
 };
 
@@ -105,8 +103,6 @@ function TemplatesPage() {
       auto_publish: t.auto_publish,
       is_downloadable: t.is_downloadable,
       download_price: t.download_price,
-      is_exclusive: t.is_exclusive,
-      exclusive_price: t.exclusive_price,
       is_default: t.is_default,
     });
     setEditing(t.id);
@@ -142,8 +138,6 @@ function TemplatesPage() {
         auto_publish: form.auto_publish,
         is_downloadable: form.is_downloadable,
         download_price: Math.max(0, Math.round(Number(form.download_price) || 0)),
-        is_exclusive: form.is_exclusive,
-        exclusive_price: Math.max(0, Math.round((Number(form.exclusive_price) || 0) * 100) / 100),
         is_default: form.is_default,
       };
       const res =
