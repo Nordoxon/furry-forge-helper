@@ -859,16 +859,21 @@ def gen_loop():
                 log(f"авто-рестарт: пауза {GEN_PAUSE_SECONDS // 60} мин на апскейл и загрузку отобранного")
                 waited = 0
                 while waited < GEN_PAUSE_SECONDS:
-                    time.sleep(15)
-                    waited += 15
-                    if gen_busy():
-                        break
+                    step = min(15, GEN_PAUSE_SECONDS - waited)
+                    time.sleep(step)
+                    waited += step
                     if waited % 120 == 0:
                         log(f"авто-рестарт: пауза {waited}/{GEN_PAUSE_SECONDS} сек")
-                if gen_busy():
-                    log("авто-рестарт: генерация запущена вручную, отменяю рестарт")
-                    idle_since = None
-                    continue
+
+            # Во время паузы очередь может запустить апскейл через тот же A1111 API.
+            # Это не новый цикл генерации: не сбрасываем таймер и не отменяем рестарт,
+            # а просто ждём, пока SD освободится.
+            busy_logged = False
+            while gen_busy():
+                if not busy_logged:
+                    log("авто-рестарт: пауза закончилась, жду завершения апскейла/задачи SD")
+                    busy_logged = True
+                time.sleep(5)
 
             payload["batch_size"] = 1
             payload["n_iter"] = 100  # максимум batch count в интерфейсе
