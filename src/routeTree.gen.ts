@@ -9,11 +9,17 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as ApiPublicAgentStatusRouteImport } from './routes/api/public/agent/status'
 import { Route as ApiPublicAgentIngestRouteImport } from './routes/api/public/agent/ingest'
 import { Route as ApiPublicAgentClaimRouteImport } from './routes/api/public/agent/claim'
 
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
@@ -36,12 +42,14 @@ const ApiPublicAgentClaimRoute = ApiPublicAgentClaimRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedRouteRoute
+  '/auth': typeof AuthRoute
   '/api/public/agent/claim': typeof ApiPublicAgentClaimRoute
   '/api/public/agent/ingest': typeof ApiPublicAgentIngestRoute
   '/api/public/agent/status': typeof ApiPublicAgentStatusRoute
 }
 export interface FileRoutesByTo {
   '/': typeof AuthenticatedRouteRoute
+  '/auth': typeof AuthRoute
   '/api/public/agent/claim': typeof ApiPublicAgentClaimRoute
   '/api/public/agent/ingest': typeof ApiPublicAgentIngestRoute
   '/api/public/agent/status': typeof ApiPublicAgentStatusRoute
@@ -49,6 +57,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteRoute
+  '/auth': typeof AuthRoute
   '/api/public/agent/claim': typeof ApiPublicAgentClaimRoute
   '/api/public/agent/ingest': typeof ApiPublicAgentIngestRoute
   '/api/public/agent/status': typeof ApiPublicAgentStatusRoute
@@ -57,18 +66,21 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/auth'
     | '/api/public/agent/claim'
     | '/api/public/agent/ingest'
     | '/api/public/agent/status'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/auth'
     | '/api/public/agent/claim'
     | '/api/public/agent/ingest'
     | '/api/public/agent/status'
   id:
     | '__root__'
     | '/_authenticated'
+    | '/auth'
     | '/api/public/agent/claim'
     | '/api/public/agent/ingest'
     | '/api/public/agent/status'
@@ -76,6 +88,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRoute
+  AuthRoute: typeof AuthRoute
   ApiPublicAgentClaimRoute: typeof ApiPublicAgentClaimRoute
   ApiPublicAgentIngestRoute: typeof ApiPublicAgentIngestRoute
   ApiPublicAgentStatusRoute: typeof ApiPublicAgentStatusRoute
@@ -83,6 +96,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated': {
       id: '/_authenticated'
       path: ''
@@ -116,6 +136,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRoute,
+  AuthRoute: AuthRoute,
   ApiPublicAgentClaimRoute: ApiPublicAgentClaimRoute,
   ApiPublicAgentIngestRoute: ApiPublicAgentIngestRoute,
   ApiPublicAgentStatusRoute: ApiPublicAgentStatusRoute,
