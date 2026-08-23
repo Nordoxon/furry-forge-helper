@@ -378,8 +378,8 @@ def da_publish(path, job):
     title = job.get("asset_name") or job.get("title") or os.path.splitext(os.path.basename(path))[0]
     tpl = job.get("template") or {}
     exclusive = bool(tpl.get("is_exclusive"))
-    # Для эксклюзива папка (стек) не используется — работа сразу уходит в галерею.
-    stack = "" if exclusive else (job.get("gallery_folder") or "")
+    # Эксклюзив тоже уходит в свой стек Sta.sh — цену вы ставите в окне публикации DA.
+    stack = job.get("gallery_folder") or ""
 
     data = {
         "title": title,
