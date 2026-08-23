@@ -67,10 +67,15 @@ export const Route = createFileRoute("/api/public/agent/claim")({
           const title =
             img.title || renderTemplate(ch?.title_template ?? "{filename}", vars) || img.filename;
           const description =
-            img.description || renderTemplate(ch?.description_template ?? "", vars);
+            img.description ||
+            renderTemplate(tpl?.description_template || ch?.description_template || "", vars);
           const tags = Array.from(
-            new Set([...(ch?.base_tags ?? []), ...(img.tags ?? [])].map((t) => t.trim()).filter(Boolean)),
-          );
+            new Set(
+              [...(ch?.base_tags ?? []), ...(tpl?.tags ?? []), ...(img.tags ?? [])]
+                .map((t) => t.trim())
+                .filter(Boolean),
+            ),
+          ).slice(0, 30);
 
           const { error } = await supabase
             .from("images")
