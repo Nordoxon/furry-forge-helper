@@ -68,9 +68,21 @@ DA_CLIENT_ID = ""                               # DeviantArt application client_
 DA_CLIENT_SECRET = ""                           # DeviantArt application client_secret
 DA_REDIRECT = "http://localhost:8721/callback"  # добавьте этот URI в настройках приложения
 
+# ── АВТОГЕНЕРАЦИЯ (обход лимита batch count = 100) ──
+# Агент сам гоняет txt2img в Automatic1111 порциями и перезапускает цикл,
+# пока не наберётся GEN_TOTAL изображений.
+GEN_ENABLED = False           # True — включить автогенерацию
+GEN_TOTAL = 500               # сколько изображений нужно всего
+GEN_CHUNK = 50                # сколько за один запрос (не больше 100)
+GEN_PAYLOAD_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "gen_payload.json")
+GEN_OUT_DIR = os.path.join(WATCH_DIR, "agent_generated")  # сюда сохраняются картинки (папка сканируется)
+GEN_RETRY_WAIT = 30           # пауза перед повтором, если A1111 отвалился
+GEN_MAX_ERRORS = 10           # после скольких подряд ошибок остановить генерацию
+
 STATE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "agent_state.json")
 UPSCALED_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "upscaled")
 # ─────────────────────────────────────────────────────────────────
+
 
 HEADERS = {"x-agent-token": AGENT_TOKEN, "content-type": "application/json"}
 
@@ -679,11 +691,79 @@ def process_queue():
             report(job["id"], "error", error=str(e)[:300])
 
 
+def gen_load_payload():
+    if not os.path.exists(GEN_PAYLOAD_FILE):
+        raise RuntimeError(f"нет файла параметров генерации: {GEN_PAYLOAD_FILE}")
+    with open(GEN_PAYLOAD_FILE, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def gen_save_images(images, index):
+    os.makedirs(GEN_OUT_DIR, exist_ok=True)
+    saved = 0
+    stamp = time.strftime("%Y%m%d-%H%M%S")
+    for i, b64 in enumerate(images):
+        try:
+            raw = base64.b64decode(b64.split(",", 1)[-1])
+            img = Image.open(io.BytesIO(raw))
+            if img.mode not in ("RGB", "RGBA"):
+                img = img.convert("RGB")
+            path = os.path.join(GEN_OUT_DIR, f"{stamp}-{index + i:05d}.png")
+            img.save(path)
+            saved += 1
+        except Exception as e:
+            log("генерация: не удалось сохранить кадр:", e)
+    return saved
+
+
+def gen_loop():
+    """Гоняет txt2img порциями и перезапускает цикл, пока не наберётся GEN_TOTAL."""
+    try:
+        payload = gen_load_payload()
+    except Exception as e:
+        log("автогенерация выключена:", e)
+        return
+
+    done = 0
+    errors = 0
+    log(f"автогенерация: цель {GEN_TOTAL}, порциями по {min(GEN_CHUNK, 100)}")
+    while done < GEN_TOTAL and errors < GEN_MAX_ERRORS:
+        chunk = min(GEN_CHUNK, 100, GEN_TOTAL - done)
+        body = dict(payload)
+        per_batch = int(body.get("batch_size") or 1)
+        body["batch_size"] = per_batch
+        body["n_iter"] = max(1, -(-chunk // per_batch))  # batch count
+        if body.get("seed") in (None, -1):
+            body["seed"] = -1
+        try:
+            r = requests.post(f"{A1111_URL}/sdapi/v1/txt2img", json=body, timeout=60 * 60 * 6)
+            r.raise_for_status()
+            images = r.json().get("images") or []
+            saved = gen_save_images(images, done)
+            done += saved
+            errors = 0
+            log(f"автогенерация: {done}/{GEN_TOTAL}")
+            if saved == 0:
+                errors += 1
+                time.sleep(GEN_RETRY_WAIT)
+        except Exception as e:
+            errors += 1
+            log(f"автогенерация: ошибка ({errors}/{GEN_MAX_ERRORS}):", str(e)[:200])
+            time.sleep(GEN_RETRY_WAIT)
+
+    if done >= GEN_TOTAL:
+        log("автогенерация завершена:", done)
+    else:
+        log("автогенерация остановлена, сделано:", done)
+
+
 def main():
     if "вставьте" in AGENT_TOKEN:
         print("Заполните AGENT_TOKEN в настройках скрипта.")
         sys.exit(1)
     log("агент запущен, папка:", WATCH_DIR)
+    if GEN_ENABLED:
+        threading.Thread(target=gen_loop, daemon=True).start()
     last_scan = 0.0
     while True:
         now = time.time()
@@ -692,6 +772,7 @@ def main():
             last_scan = now
         process_queue()
         time.sleep(POLL_INTERVAL)
+
 
 
 if __name__ == "__main__":
