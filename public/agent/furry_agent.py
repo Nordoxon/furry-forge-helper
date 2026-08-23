@@ -820,15 +820,77 @@ def gen_busy():
     return bool(state.get("job_count", 0) > 0 or (data.get("progress") or 0) > 0.001)
 
 
+_gen_lock = threading.Lock()
+_gen_restarts = 0
+
+
+def gen_pause_and_restart(reason=""):
+    """Пауза на апскейл/загрузку, ожидание свободного SD и повторный «Generate»."""
+    global _gen_restarts
+    if not _gen_lock.acquire(blocking=False):
+        return False  # цикл уже запускается другим потоком
+    try:
+        if GEN_RESTARTS and _gen_restarts >= GEN_RESTARTS:
+            return False
+        src = gen_newest_png()
+        payload = None
+        if src:
+            try:
+                with Image.open(src) as im:
+                    payload = gen_parse_params(im.info.get("parameters", ""))
+            except Exception as e:
+                log("авто-рестарт: не прочитал параметры:", str(e)[:150])
+        if not payload:
+            log("авто-рестарт: не нашёл параметры последней генерации, жду")
+            return False
+
+        if reason:
+            log("авто-рестарт:", reason)
+
+        # пауза перед новым циклом: даём агенту апскейлить и залить отобранное
+        if GEN_PAUSE_SECONDS > 0:
+            log(f"авто-рестарт: пауза {GEN_PAUSE_SECONDS // 60} мин на апскейл и загрузку отобранного")
+            waited = 0
+            while waited < GEN_PAUSE_SECONDS:
+                step = min(15, GEN_PAUSE_SECONDS - waited)
+                time.sleep(step)
+                waited += step
+                if waited % 120 == 0:
+                    log(f"авто-рестарт: пауза {waited}/{GEN_PAUSE_SECONDS} сек")
+
+        # Во время паузы очередь может запустить апскейл через тот же A1111 API.
+        # Это не новый цикл генерации: просто ждём, пока SD освободится.
+        busy_logged = False
+        while gen_busy():
+            if not busy_logged:
+                log("авто-рестарт: пауза закончилась, жду завершения апскейла/задачи SD")
+                busy_logged = True
+            time.sleep(5)
+
+        payload["batch_size"] = 1
+        payload["n_iter"] = 100  # максимум batch count в интерфейсе
+        _gen_restarts += 1
+        log(f"авто-рестарт #{_gen_restarts}: запускаю генерацию заново")
+        r = requests.post(f"{A1111_URL}/sdapi/v1/txt2img", json=payload, timeout=60 * 60 * 12)
+        r.raise_for_status()
+        log(f"авто-рестарт #{_gen_restarts}: прогон завершён")
+        return True
+    except Exception as e:
+        log("авто-рестарт: ошибка:", str(e)[:200])
+        time.sleep(GEN_RETRY_WAIT)
+        return False
+    finally:
+        _gen_lock.release()
+
+
 def gen_loop():
     """Ждёт остановки генерации и «нажимает Generate» снова с теми же параметрами."""
     log("авто-рестарт генерации включён")
-    restarts, errors, idle_since = 0, 0, None
-    while errors < GEN_MAX_ERRORS and (GEN_RESTARTS == 0 or restarts < GEN_RESTARTS):
+    idle_since = None
+    while GEN_RESTARTS == 0 or _gen_restarts < GEN_RESTARTS:
         try:
             if gen_busy():
                 idle_since = None
-                errors = 0
                 time.sleep(5)
                 continue
             if idle_since is None:
@@ -838,60 +900,13 @@ def gen_loop():
             if time.time() - idle_since < GEN_IDLE_SECONDS:
                 time.sleep(5)
                 continue
-
-            src = gen_newest_png()
-            payload = None
-            if src:
-                try:
-                    with Image.open(src) as im:
-                        payload = gen_parse_params(im.info.get("parameters", ""))
-                except Exception as e:
-                    log("авто-рестарт: не прочитал параметры:", str(e)[:150])
-            if not payload:
-                log("авто-рестарт: не нашёл параметры последней генерации, жду")
-                idle_since = None
-                time.sleep(GEN_RETRY_WAIT)
-                continue
-
-
-            # пауза перед новым циклом: даём агенту апскейлить и залить отобранное
-            if GEN_PAUSE_SECONDS > 0:
-                log(f"авто-рестарт: пауза {GEN_PAUSE_SECONDS // 60} мин на апскейл и загрузку отобранного")
-                waited = 0
-                while waited < GEN_PAUSE_SECONDS:
-                    step = min(15, GEN_PAUSE_SECONDS - waited)
-                    time.sleep(step)
-                    waited += step
-                    if waited % 120 == 0:
-                        log(f"авто-рестарт: пауза {waited}/{GEN_PAUSE_SECONDS} сек")
-
-            # Во время паузы очередь может запустить апскейл через тот же A1111 API.
-            # Это не новый цикл генерации: не сбрасываем таймер и не отменяем рестарт,
-            # а просто ждём, пока SD освободится.
-            busy_logged = False
-            while gen_busy():
-                if not busy_logged:
-                    log("авто-рестарт: пауза закончилась, жду завершения апскейла/задачи SD")
-                    busy_logged = True
-                time.sleep(5)
-
-            payload["batch_size"] = 1
-            payload["n_iter"] = 100  # максимум batch count в интерфейсе
-            restarts += 1
-            log(f"авто-рестарт #{restarts}: запускаю генерацию заново")
-
-            r = requests.post(f"{A1111_URL}/sdapi/v1/txt2img", json=payload, timeout=60 * 60 * 12)
-            r.raise_for_status()
-            log(f"авто-рестарт #{restarts}: прогон завершён")
+            gen_pause_and_restart()
             idle_since = None
-            errors = 0
         except Exception as e:
-            errors += 1
-            log(f"авто-рестарт: ошибка ({errors}/{GEN_MAX_ERRORS}):", str(e)[:200])
+            log("авто-рестарт: ошибка:", str(e)[:200])
             time.sleep(GEN_RETRY_WAIT)
 
-    log("авто-рестарт остановлен, перезапусков:", restarts)
-
+    log("авто-рестарт остановлен, перезапусков:", _gen_restarts)
 
 
 def scan_loop():
@@ -899,9 +914,23 @@ def scan_loop():
         try:
             log("сканирую папку outputs на новые изображения")
             scan_and_upload()
+            if GEN_ENABLED:
+                try:
+                    if gen_busy():
+                        log("проверка генерации: идёт, всё ок")
+                    elif not _gen_lock.locked():
+                        log("проверка генерации: остановлена — беру паузу и перезапущу")
+                        threading.Thread(
+                            target=gen_pause_and_restart,
+                            args=("генерация не идёт (проверка при сканировании)",),
+                            daemon=True,
+                        ).start()
+                except Exception as e:
+                    log("проверка генерации: ошибка:", str(e)[:150])
         except Exception as e:
             log("ошибка сканирования:", e)
         time.sleep(SCAN_INTERVAL)
+
 
 
 def main():
