@@ -34,6 +34,8 @@ function TriagePage() {
   const qc = useQueryClient();
   const [index, setIndex] = useState(0);
   const [charId, setCharId] = useState<string | null>(null);
+  const [folder, setFolder] = useState<string | null>(null);
+  const [extraFolders, setExtraFolders] = useState<string[]>([]);
   const [last, setLast] = useState<{ id: string } | null>(null);
 
   const inbox = useQuery({ queryKey: ["inbox"], queryFn: fetchInbox, refetchInterval: 20000 });
@@ -45,24 +47,50 @@ function TriagePage() {
     }
   }, [chars.data, charId]);
 
+  const activeChar = useMemo(
+    () => chars.data?.find((c) => c.id === charId) ?? null,
+    [chars.data, charId],
+  );
+
+  // папка по умолчанию — из персонажа; сбрасываем выбор при смене персонажа
+  useEffect(() => {
+    setFolder(null);
+  }, [charId]);
+
+  const folderOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const c of chars.data ?? []) if (c.gallery_folder) set.add(c.gallery_folder);
+    for (const f of extraFolders) set.add(f);
+    return Array.from(set);
+  }, [chars.data, extraFolders]);
+
   const items = inbox.data ?? [];
   const current = items[index];
 
   async function act(status: "approved" | "rejected") {
     if (!current) return;
     setLast({ id: current.id });
-    await decide(current.id, status, charId);
+    await decide(current.id, status, charId, status === "approved" ? folder : null);
     setIndex((i) => i + 1);
+    setFolder(null);
     void qc.invalidateQueries({ queryKey: ["pipeline"] });
   }
 
   async function undo() {
     if (!last) return;
-    await decide(last.id, "new", null);
+    await decide(last.id, "new", null, null);
     setLast(null);
     setIndex((i) => Math.max(0, i - 1));
     void inbox.refetch();
   }
+
+  function addFolder() {
+    const name = window.prompt("Название папки галереи на DeviantArt")?.trim();
+    if (!name) return;
+    setExtraFolders((f) => (f.includes(name) ? f : [...f, name]));
+    setFolder(name);
+  }
+
 
   return (
     <div className="flex min-h-screen flex-col">
