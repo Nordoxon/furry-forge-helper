@@ -95,7 +95,12 @@ def make_preview(path):
 def scan_and_upload():
     sent = set(STATE["sent"])
     batch = []
-    for root, _dirs, files in os.walk(WATCH_DIR):
+    # обходим WATCH_DIR рекурсивно: подойдёт любая родительская папка,
+    # вложенные папки (например, по датам) подхватятся сами
+    for root, dirs, files in os.walk(WATCH_DIR):
+        dirs[:] = [d for d in dirs if d.lower() not in SKIP_DIRS and not d.startswith(".")]
+        if os.path.abspath(root).startswith(os.path.abspath(UPSCALED_DIR)):
+            continue
         for name in sorted(files):
             if not name.lower().endswith(EXTENSIONS):
                 continue
