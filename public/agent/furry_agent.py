@@ -907,13 +907,44 @@ def gen_ui_page():
     return page
 
 
+_gen_ui_requests = queue.Queue()
+_gen_ui_thread = None
+
+
+def _gen_ui_worker():
+    """Единственный поток, владеющий браузером (Playwright не потокобезопасен)."""
+    while True:
+        result_box = _gen_ui_requests.get()
+        try:
+            page = gen_ui_page()
+            try:
+                page.bring_to_front()
+            except Exception:
+                pass
+            btn = page.locator("#txt2img_generate")
+            btn.wait_for(state="visible", timeout=60000)
+            btn.click()
+            result_box["ok"] = True
+        except Exception as e:
+            result_box["error"] = str(e)[:300]
+        finally:
+            result_box["done"].set()
+
+
 def gen_ui_click_generate():
     """Нажимает кнопку Generate прямо в интерфейсе — со всеми настройками и dynamic prompts."""
-    page = gen_ui_page()
-    page.bring_to_front()
-    btn = page.locator("#txt2img_generate")
-    btn.wait_for(state="visible", timeout=60000)
-    btn.click()
+    global _gen_ui_thread
+    if _gen_ui_thread is None or not _gen_ui_thread.is_alive():
+        _gen_ui_thread = threading.Thread(target=_gen_ui_worker, daemon=True)
+        _gen_ui_thread.start()
+
+    box = {"done": threading.Event()}
+    _gen_ui_requests.put(box)
+    if not box["done"].wait(timeout=300):
+        raise RuntimeError("браузер не ответил на нажатие Generate")
+    if box.get("error"):
+        raise RuntimeError(box["error"])
+
     # ждём, пока интерфейс реально начнёт генерацию
     for _ in range(30):
         time.sleep(2)
