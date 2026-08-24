@@ -21,6 +21,7 @@ import hashlib
 import io
 import json
 import os
+import queue
 import secrets
 import struct
 import sys
@@ -86,6 +87,11 @@ DA_REDIRECT = "http://localhost:8721/callback"  # добавьте этот URI 
 # Агент видит, что генерация остановилась (лимит batch count = 100),
 # и запускает её заново с теми же параметрами.
 GEN_ENABLED = False           # True — включить авто-рестарт
+GEN_MODE = "ui"               # "ui" — нажимать кнопку Generate в браузере (видно в интерфейсе,
+                              #        работают dynamic prompts и все настройки из UI)
+                              # "api" — старый режим: запуск через txt2img API
+GEN_BROWSER_HEADLESS = False  # False — окно браузера видно (рекомендуется)
+GEN_UI_URL = ""               # пусто = A1111_URL
 GEN_RESTARTS = 10             # сколько раз перезапустить (0 — бесконечно)
 GEN_IDLE_SECONDS = 15         # сколько секунд простоя считать «остановилось»
 GEN_RETRY_WAIT = 30           # пауза перед повтором при ошибке
@@ -872,6 +878,83 @@ def gen_busy():
 
 _gen_lock = threading.Lock()
 _gen_restarts = 0
+_gen_browser = {"pw": None, "browser": None, "page": None}
+
+
+def gen_ui_page():
+    """Открывает (один раз) окно браузера с интерфейсом Automatic1111 и возвращает страницу."""
+    page = _gen_browser.get("page")
+    if page is not None:
+        try:
+            page.title()
+            return page
+        except Exception:
+            _gen_browser.update({"pw": None, "browser": None, "page": None})
+
+    try:
+        from playwright.sync_api import sync_playwright
+    except ImportError:
+        raise RuntimeError(
+            "не установлен playwright. Выполните: pip install playwright && python -m playwright install chromium"
+        )
+
+    pw = sync_playwright().start()
+    browser = pw.chromium.launch(headless=GEN_BROWSER_HEADLESS)
+    page = browser.new_page(viewport={"width": 1600, "height": 1000})
+    page.goto(GEN_UI_URL or A1111_URL, wait_until="domcontentloaded", timeout=120000)
+    page.wait_for_selector("#txt2img_generate", timeout=120000)
+    _gen_browser.update({"pw": pw, "browser": browser, "page": page})
+    log("авто-рестарт: открыт интерфейс Automatic1111 в браузере")
+    return page
+
+
+_gen_ui_requests = queue.Queue()
+_gen_ui_thread = None
+
+
+def _gen_ui_worker():
+    """Единственный поток, владеющий браузером (Playwright не потокобезопасен)."""
+    while True:
+        result_box = _gen_ui_requests.get()
+        try:
+            page = gen_ui_page()
+            try:
+                page.bring_to_front()
+            except Exception:
+                pass
+            btn = page.locator("#txt2img_generate")
+            btn.wait_for(state="visible", timeout=60000)
+            btn.click()
+            result_box["ok"] = True
+        except Exception as e:
+            result_box["error"] = str(e)[:300]
+        finally:
+            result_box["done"].set()
+
+
+def gen_ui_click_generate():
+    """Нажимает кнопку Generate прямо в интерфейсе — со всеми настройками и dynamic prompts."""
+    global _gen_ui_thread
+    if _gen_ui_thread is None or not _gen_ui_thread.is_alive():
+        _gen_ui_thread = threading.Thread(target=_gen_ui_worker, daemon=True)
+        _gen_ui_thread.start()
+
+    box = {"done": threading.Event()}
+    _gen_ui_requests.put(box)
+    if not box["done"].wait(timeout=300):
+        raise RuntimeError("браузер не ответил на нажатие Generate")
+    if box.get("error"):
+        raise RuntimeError(box["error"])
+
+    # ждём, пока интерфейс реально начнёт генерацию
+    for _ in range(30):
+        time.sleep(2)
+        try:
+            if gen_busy():
+                return True
+        except Exception:
+            pass
+    return True
 
 
 def gen_pause_and_restart(reason=""):
@@ -882,16 +965,18 @@ def gen_pause_and_restart(reason=""):
     try:
         if GEN_RESTARTS and _gen_restarts >= GEN_RESTARTS:
             return False
-        src = gen_newest_png()
+
         payload = None
-        if src:
-            try:
-                payload = gen_parse_params(gen_read_png_parameters(src))
-            except Exception as e:
-                log("авто-рестарт: не прочитал параметры:", str(e)[:150])
-        if not payload:
-            log("авто-рестарт: не нашёл параметры последней генерации, жду")
-            return False
+        if GEN_MODE != "ui":
+            src = gen_newest_png()
+            if src:
+                try:
+                    payload = gen_parse_params(gen_read_png_parameters(src))
+                except Exception as e:
+                    log("авто-рестарт: не прочитал параметры:", str(e)[:150])
+            if not payload:
+                log("авто-рестарт: не нашёл параметры последней генерации, жду")
+                return False
 
         if reason:
             log("авто-рестарт:", reason)
@@ -916,9 +1001,15 @@ def gen_pause_and_restart(reason=""):
                 busy_logged = True
             time.sleep(5)
 
+        _gen_restarts += 1
+        if GEN_MODE == "ui":
+            log(f"авто-рестарт #{_gen_restarts}: нажимаю Generate в интерфейсе")
+            gen_ui_click_generate()
+            log(f"авто-рестарт #{_gen_restarts}: генерация запущена из интерфейса")
+            return True
+
         payload["batch_size"] = 1
         payload["n_iter"] = 100  # максимум batch count в интерфейсе
-        _gen_restarts += 1
         log(f"авто-рестарт #{_gen_restarts}: запускаю генерацию заново")
         r = requests.post(f"{A1111_URL}/sdapi/v1/txt2img", json=payload, timeout=60 * 60 * 12)
         r.raise_for_status()
