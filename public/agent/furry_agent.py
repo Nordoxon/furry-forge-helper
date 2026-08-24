@@ -87,10 +87,18 @@ DA_REDIRECT = "http://localhost:8721/callback"  # добавьте этот URI 
 # Агент видит, что генерация остановилась (лимит batch count = 100),
 # и запускает её заново с теми же параметрами.
 GEN_ENABLED = False           # True — включить авто-рестарт
-GEN_MODE = "ui"               # "ui" — нажимать кнопку Generate в браузере (видно в интерфейсе,
-                              #        работают dynamic prompts и все настройки из UI)
-                              # "api" — старый режим: запуск через txt2img API
-GEN_BROWSER_HEADLESS = False  # False — окно браузера видно (рекомендуется)
+GEN_MODE = "attach"           # "attach" — работать по УЖЕ ОТКРЫТОЙ вкладке Automatic1111
+                              #            (все ваши настройки и dynamic prompts сохраняются).
+                              #            Браузер нужно запустить с отладочным портом, например:
+                              #            chrome.exe --remote-debugging-port=9222
+                              # "hotkey" — не трогает вкладки: активирует окно браузера и жмёт
+                              #            Ctrl+Enter (горячая клавиша Generate в A1111).
+                              #            Нужен pip install pyautogui pygetwindow
+                              # "ui"     — агент сам открывает своё окно с интерфейсом
+                              # "api"    — старый режим: запуск через txt2img API
+GEN_CDP_URL = "http://127.0.0.1:9222"  # отладочный порт браузера для режима "attach"
+GEN_WINDOW_TITLE = "Stable Diffusion"  # часть заголовка окна браузера для режима "hotkey"
+GEN_BROWSER_HEADLESS = False  # для режима "ui": False — окно браузера видно
 GEN_UI_URL = ""               # пусто = A1111_URL
 GEN_RESTARTS = 10             # сколько раз перезапустить (0 — бесконечно)
 GEN_IDLE_SECONDS = 15         # сколько секунд простоя считать «остановилось»
