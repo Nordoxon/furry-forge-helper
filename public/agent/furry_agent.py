@@ -87,10 +87,18 @@ DA_REDIRECT = "http://localhost:8721/callback"  # добавьте этот URI 
 # Агент видит, что генерация остановилась (лимит batch count = 100),
 # и запускает её заново с теми же параметрами.
 GEN_ENABLED = False           # True — включить авто-рестарт
-GEN_MODE = "ui"               # "ui" — нажимать кнопку Generate в браузере (видно в интерфейсе,
-                              #        работают dynamic prompts и все настройки из UI)
-                              # "api" — старый режим: запуск через txt2img API
-GEN_BROWSER_HEADLESS = False  # False — окно браузера видно (рекомендуется)
+GEN_MODE = "attach"           # "attach" — работать по УЖЕ ОТКРЫТОЙ вкладке Automatic1111
+                              #            (все ваши настройки и dynamic prompts сохраняются).
+                              #            Браузер нужно запустить с отладочным портом, например:
+                              #            chrome.exe --remote-debugging-port=9222
+                              # "hotkey" — не трогает вкладки: активирует окно браузера и жмёт
+                              #            Ctrl+Enter (горячая клавиша Generate в A1111).
+                              #            Нужен pip install pyautogui pygetwindow
+                              # "ui"     — агент сам открывает своё окно с интерфейсом
+                              # "api"    — старый режим: запуск через txt2img API
+GEN_CDP_URL = "http://127.0.0.1:9222"  # отладочный порт браузера для режима "attach"
+GEN_WINDOW_TITLE = "Stable Diffusion"  # часть заголовка окна браузера для режима "hotkey"
+GEN_BROWSER_HEADLESS = False  # для режима "ui": False — окно браузера видно
 GEN_UI_URL = ""               # пусто = A1111_URL
 GEN_RESTARTS = 10             # сколько раз перезапустить (0 — бесконечно)
 GEN_IDLE_SECONDS = 15         # сколько секунд простоя считать «остановилось»
@@ -881,29 +889,69 @@ _gen_restarts = 0
 _gen_browser = {"pw": None, "browser": None, "page": None}
 
 
-def gen_ui_page():
-    """Открывает (один раз) окно браузера с интерфейсом Automatic1111 и возвращает страницу."""
-    page = _gen_browser.get("page")
-    if page is not None:
-        try:
-            page.title()
-            return page
-        except Exception:
-            _gen_browser.update({"pw": None, "browser": None, "page": None})
-
+def _gen_pw():
     try:
         from playwright.sync_api import sync_playwright
     except ImportError:
         raise RuntimeError(
             "не установлен playwright. Выполните: pip install playwright && python -m playwright install chromium"
         )
+    pw = _gen_browser.get("pw")
+    if pw is None:
+        pw = sync_playwright().start()
+        _gen_browser["pw"] = pw
+    return pw
 
-    pw = sync_playwright().start()
+
+def gen_attach_page():
+    """Находит УЖЕ ОТКРЫТУЮ вкладку с интерфейсом Automatic1111 через отладочный порт."""
+    pw = _gen_pw()
+    try:
+        browser = pw.chromium.connect_over_cdp(GEN_CDP_URL, timeout=15000)
+    except Exception as e:
+        raise RuntimeError(
+            "не подключился к открытому браузеру ("
+            + str(e)[:120]
+            + "). Запустите браузер с отладочным портом, например: "
+            'chrome.exe --remote-debugging-port=9222 --user-data-dir="%TEMP%\\sd-profile"'
+        )
+    target = (GEN_UI_URL or A1111_URL).rstrip("/")
+    host = urlparse(target).netloc
+    for ctx in browser.contexts:
+        for page in ctx.pages:
+            try:
+                url = page.url or ""
+            except Exception:
+                continue
+            if host and host in url and page.locator("#txt2img_generate").count() > 0:
+                _gen_browser.update({"browser": browser, "page": page})
+                return page
+    raise RuntimeError(
+        f"в открытом браузере нет вкладки с интерфейсом Automatic1111 ({target}) — откройте её"
+    )
+
+
+def gen_ui_page():
+    """Возвращает страницу с интерфейсом A1111: уже открытую (attach) или своё окно (ui)."""
+    page = _gen_browser.get("page")
+    if page is not None:
+        try:
+            page.title()
+            return page
+        except Exception:
+            _gen_browser.update({"browser": None, "page": None})
+
+    if GEN_MODE == "attach":
+        page = gen_attach_page()
+        log("авто-рестарт: подключился к открытой вкладке Automatic1111")
+        return page
+
+    pw = _gen_pw()
     browser = pw.chromium.launch(headless=GEN_BROWSER_HEADLESS)
     page = browser.new_page(viewport={"width": 1600, "height": 1000})
     page.goto(GEN_UI_URL or A1111_URL, wait_until="domcontentloaded", timeout=120000)
     page.wait_for_selector("#txt2img_generate", timeout=120000)
-    _gen_browser.update({"pw": pw, "browser": browser, "page": page})
+    _gen_browser.update({"browser": browser, "page": page})
     log("авто-рестарт: открыт интерфейс Automatic1111 в браузере")
     return page
 
@@ -932,9 +980,40 @@ def _gen_ui_worker():
             result_box["done"].set()
 
 
+def gen_hotkey_click_generate():
+    """Активирует окно браузера и жмёт Ctrl+Enter — горячую клавишу Generate в A1111."""
+    try:
+        import pyautogui
+    except ImportError:
+        raise RuntimeError("не установлен pyautogui. Выполните: pip install pyautogui pygetwindow")
+    try:
+        import pygetwindow as gw
+
+        wins = [w for w in gw.getAllWindows() if GEN_WINDOW_TITLE.lower() in (w.title or "").lower()]
+        if not wins:
+            raise RuntimeError(
+                f"не нашёл окно браузера с заголовком «{GEN_WINDOW_TITLE}» — откройте вкладку A1111"
+            )
+        win = wins[0]
+        try:
+            if win.isMinimized:
+                win.restore()
+            win.activate()
+        except Exception:
+            pass
+        time.sleep(1.5)
+    except ImportError:
+        log("авто-рестарт: pygetwindow не установлен — жму по активному окну")
+    pyautogui.hotkey("ctrl", "enter")
+    return True
+
+
 def gen_ui_click_generate():
-    """Нажимает кнопку Generate прямо в интерфейсе — со всеми настройками и dynamic prompts."""
+    """Нажимает Generate в уже открытом интерфейсе — со всеми настройками и dynamic prompts."""
     global _gen_ui_thread
+    if GEN_MODE == "hotkey":
+        return gen_hotkey_click_generate()
+
     if _gen_ui_thread is None or not _gen_ui_thread.is_alive():
         _gen_ui_thread = threading.Thread(target=_gen_ui_worker, daemon=True)
         _gen_ui_thread.start()
@@ -967,7 +1046,7 @@ def gen_pause_and_restart(reason=""):
             return False
 
         payload = None
-        if GEN_MODE != "ui":
+        if GEN_MODE == "api":
             src = gen_newest_png()
             if src:
                 try:
@@ -1002,10 +1081,23 @@ def gen_pause_and_restart(reason=""):
             time.sleep(5)
 
         _gen_restarts += 1
-        if GEN_MODE == "ui":
+        if GEN_MODE != "api":
             log(f"авто-рестарт #{_gen_restarts}: нажимаю Generate в интерфейсе")
             gen_ui_click_generate()
-            log(f"авто-рестарт #{_gen_restarts}: генерация запущена из интерфейса")
+            # ждём, пока интерфейс реально начнёт генерацию
+            started = False
+            for _ in range(30):
+                time.sleep(2)
+                try:
+                    if gen_busy():
+                        started = True
+                        break
+                except Exception:
+                    pass
+            log(
+                f"авто-рестарт #{_gen_restarts}: "
+                + ("генерация запущена из интерфейса" if started else "нажал Generate, генерация пока не видна")
+            )
             return True
 
         payload["batch_size"] = 1
