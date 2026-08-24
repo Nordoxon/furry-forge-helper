@@ -1046,7 +1046,7 @@ def gen_pause_and_restart(reason=""):
             return False
 
         payload = None
-        if GEN_MODE != "ui":
+        if GEN_MODE == "api":
             src = gen_newest_png()
             if src:
                 try:
