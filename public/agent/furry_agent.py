@@ -1081,10 +1081,23 @@ def gen_pause_and_restart(reason=""):
             time.sleep(5)
 
         _gen_restarts += 1
-        if GEN_MODE == "ui":
+        if GEN_MODE != "api":
             log(f"авто-рестарт #{_gen_restarts}: нажимаю Generate в интерфейсе")
             gen_ui_click_generate()
-            log(f"авто-рестарт #{_gen_restarts}: генерация запущена из интерфейса")
+            # ждём, пока интерфейс реально начнёт генерацию
+            started = False
+            for _ in range(30):
+                time.sleep(2)
+                try:
+                    if gen_busy():
+                        started = True
+                        break
+                except Exception:
+                    pass
+            log(
+                f"авто-рестарт #{_gen_restarts}: "
+                + ("генерация запущена из интерфейса" if started else "нажал Generate, генерация пока не видна")
+            )
             return True
 
         payload["batch_size"] = 1
