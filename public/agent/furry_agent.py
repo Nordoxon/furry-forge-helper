@@ -86,6 +86,11 @@ DA_REDIRECT = "http://localhost:8721/callback"  # добавьте этот URI 
 # Агент видит, что генерация остановилась (лимит batch count = 100),
 # и запускает её заново с теми же параметрами.
 GEN_ENABLED = False           # True — включить авто-рестарт
+GEN_MODE = "ui"               # "ui" — нажимать кнопку Generate в браузере (видно в интерфейсе,
+                              #        работают dynamic prompts и все настройки из UI)
+                              # "api" — старый режим: запуск через txt2img API
+GEN_BROWSER_HEADLESS = False  # False — окно браузера видно (рекомендуется)
+GEN_UI_URL = ""               # пусто = A1111_URL
 GEN_RESTARTS = 10             # сколько раз перезапустить (0 — бесконечно)
 GEN_IDLE_SECONDS = 15         # сколько секунд простоя считать «остановилось»
 GEN_RETRY_WAIT = 30           # пауза перед повтором при ошибке
