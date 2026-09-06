@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, X, Loader2, Inbox, Undo2, FolderOpen, LayoutTemplate } from "lucide-react";
+import { Check, X, Loader2, Inbox, Undo2, FolderOpen, LayoutTemplate, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { BottomNav } from "@/components/bottom-nav";
@@ -13,6 +13,7 @@ import {
   type ImageRow,
 } from "@/lib/images";
 import { fetchTemplates, type TemplateRow } from "@/lib/templates";
+import { clearInbox } from "@/lib/packs";
 
 export const Route = createFileRoute("/_authenticated/")({
   head: () => ({
@@ -138,11 +139,34 @@ function TriagePage() {
               Осталось {items.length} из {all.length}
             </p>
           </div>
-          {last && (
-            <Button variant="ghost" size="sm" onClick={undo}>
-              <Undo2 className="mr-1 h-4 w-4" /> Вернуть
-            </Button>
-          )}
+          <div className="flex items-center gap-1">
+            {last && (
+              <Button variant="ghost" size="sm" onClick={undo}>
+                <Undo2 className="mr-1 h-4 w-4" /> Вернуть
+              </Button>
+            )}
+            {all.length > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-destructive"
+                onClick={async () => {
+                  if (!window.confirm(`Удалить все ${all.length} изображений из отбора?`)) return;
+                  try {
+                    const n = await clearInbox();
+                    setDone([]);
+                    setLast(null);
+                    toast.success(`Удалено: ${n}`);
+                    void inbox.refetch();
+                  } catch (e) {
+                    toast.error((e as Error).message);
+                  }
+                }}
+              >
+                <Trash2 className="mr-1 h-4 w-4" /> Очистить
+              </Button>
+            )}
+          </div>
         </div>
       </header>
 
