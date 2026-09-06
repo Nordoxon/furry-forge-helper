@@ -254,13 +254,14 @@ function PacksPage() {
 
         <section>
           <h2 className="mb-2 text-sm font-medium">Собранные паки</h2>
-          {(packs.data ?? []).length === 0 ? (
+          {charPacks.length === 0 ? (
             <p className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
               Здесь появятся собранные паки. Отбирайте кадры, отмечайте 3–4 из них как превью и жмите «Собрать пак».
             </p>
           ) : (
             <ul className="space-y-2">
-              {(packs.data ?? []).map((p) => (
+              {charPacks.map((p) => (
+
                 <li key={p.id} className="rounded-xl border border-border/60 bg-card p-3">
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
