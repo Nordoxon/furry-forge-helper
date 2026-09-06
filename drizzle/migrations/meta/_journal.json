@@ -8,6 +8,13 @@
       "when": 1788712885972,
       "tag": "0000_add_packs",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1788712914052,
+      "tag": "0001_image_status_ready",
+      "breakpoints": true
     }
   ]
 }
