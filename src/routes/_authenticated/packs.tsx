@@ -101,33 +101,87 @@ function PacksPage() {
     }
   }
 
+  if (!charId) {
+    const list = chars.data ?? [];
+    return (
+      <div className="flex min-h-screen flex-col">
+        <header className="sticky top-0 z-30 border-b border-border/60 bg-background/80 px-4 py-3 backdrop-blur-xl">
+          <div className="mx-auto max-w-2xl">
+            <h1 className="font-display text-lg font-semibold leading-tight">Паки</h1>
+            <p className="text-xs text-muted-foreground">Сначала выберите персонажа</p>
+          </div>
+        </header>
+
+        <main className="mx-auto w-full max-w-2xl flex-1 space-y-3 px-4 py-4">
+          {chars.isLoading ? (
+            <div className="grid h-40 place-items-center">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : list.length === 0 ? (
+            <div className="mt-8 rounded-2xl border border-dashed border-border p-8 text-center">
+              <h2 className="font-display text-lg font-semibold">Ни одного персонажа</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Паки нумеруются по персонажу — создайте его, чтобы собрать первый пак.
+              </p>
+              <Button className="mt-5" asChild>
+                <Link to="/characters">
+                  <Plus className="mr-1 h-4 w-4" /> Создать персонажа
+                </Link>
+              </Button>
+            </div>
+          ) : (
+            <>
+              {list.map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => selectChar(c.id)}
+                  className="flex w-full items-center justify-between gap-3 rounded-xl border border-border/60 bg-card px-4 py-3 text-left"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">{c.name}</p>
+                    <p className="truncate text-[11px] text-muted-foreground">
+                      {c.species || "Собрать пак этого персонажа"}
+                    </p>
+                  </div>
+                  <Package className="h-4 w-4 shrink-0 text-muted-foreground" />
+                </button>
+              ))}
+              <Button variant="outline" className="w-full" asChild>
+                <Link to="/characters">
+                  <Plus className="mr-1 h-4 w-4" /> Новый персонаж
+                </Link>
+              </Button>
+            </>
+          )}
+        </main>
+
+        <BottomNav />
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-30 border-b border-border/60 bg-background/80 px-4 py-3 backdrop-blur-xl">
-        <div className="mx-auto max-w-2xl">
-          <h1 className="font-display text-lg font-semibold leading-tight">Паки</h1>
-          <p className="text-xs text-muted-foreground">Текущий отбор: {caption}</p>
+        <div className="mx-auto flex max-w-2xl items-center gap-2">
+          <button
+            onClick={() => selectChar(null)}
+            aria-label="Выбрать другого персонажа"
+            className="rounded-full p-1 text-muted-foreground"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+          <div className="min-w-0">
+            <h1 className="truncate font-display text-lg font-semibold leading-tight">
+              {activeChar?.name ?? "Паки"}
+            </h1>
+            <p className="text-xs text-muted-foreground">Текущий отбор: {caption}</p>
+          </div>
         </div>
       </header>
 
       <main className="mx-auto w-full max-w-2xl flex-1 space-y-6 px-4 py-4">
-        {(chars.data ?? []).length > 0 && (
-          <div className="flex gap-2 overflow-x-auto pb-1">
-            {(chars.data ?? []).map((c) => (
-              <button
-                key={c.id}
-                onClick={() => setCharId(c.id)}
-                className={`shrink-0 rounded-full border px-3 py-1.5 text-xs transition ${
-                  charId === c.id
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-border text-muted-foreground"
-                }`}
-              >
-                {c.name}
-              </button>
-            ))}
-          </div>
-        )}
+
 
         <section className="rounded-2xl border border-border/60 bg-card p-4">
           <div className="flex items-center gap-3">
