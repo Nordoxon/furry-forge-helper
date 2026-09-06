@@ -28,6 +28,7 @@ import sys
 import time
 import threading
 import webbrowser
+import zipfile
 import zlib
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import urlencode, urlparse, parse_qs
@@ -748,10 +749,16 @@ def process_queue():
                 continue
             asset = job.get("asset_name") or os.path.splitext(job["filename"])[0]
             big = upscale(src, asset, heartbeat=lambda: report(job["id"], "upscaling"))
+            if not job.get("upload_to_da"):
+                # обычное изображение пака: только апскейл, дальше пойдёт в zip
+                report(job["id"], "ready")
+                log("готово (в архив):", os.path.basename(big))
+                continue
             report(job["id"], "uploading")
             url = da_publish(big, job)
             report(job["id"], "published", deviation_url=url)
             log("опубликовано:", url)
+
         except A1111Busy as e:
             log("SD занят генерацией — возвращаю в очередь:", job["filename"])
             report(job["id"], "approved")
@@ -1165,6 +1172,50 @@ def scan_loop():
 
 
 
+PACKS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "packs")
+
+
+def _safe_name(text):
+    keep = "-_() "
+    out = "".join(c for c in str(text) if c.isalnum() or c in keep).strip()
+    return out or "pack"
+
+
+def process_packs():
+    """Собирает zip-архив для паков, у которых все изображения уже отапскейлены."""
+    try:
+        r = requests.post(f"{API_BASE}/api/public/agent/packs", headers=HEADERS, data="{}", timeout=120)
+        r.raise_for_status()
+        packs = r.json().get("packs", [])
+    except Exception as e:
+        log("паки недоступны:", e)
+        return
+
+    for pack in packs:
+        try:
+            os.makedirs(PACKS_DIR, exist_ok=True)
+            label = _safe_name(pack.get("title") or pack["id"][:8])
+            zip_path = os.path.join(PACKS_DIR, f"{label}.zip")
+            added = 0
+            with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+                for f in pack.get("files", []):
+                    asset = f.get("asset_name") or os.path.splitext(f.get("filename", ""))[0]
+                    src = os.path.join(UPSCALED_DIR, asset + ".png")
+                    if not os.path.exists(src):
+                        continue
+                    zf.write(src, arcname=f"{asset}.png")
+                    added += 1
+            log(f"пак «{label}»: {added} изображений -> {zip_path}")
+            requests.post(
+                f"{API_BASE}/api/public/agent/packs",
+                headers=HEADERS,
+                data=json.dumps({"pack_id": pack["id"], "zip_path": zip_path}),
+                timeout=60,
+            )
+        except Exception as e:
+            log("ошибка сборки пака:", str(e)[:200])
+
+
 def main():
     if "вставьте" in AGENT_TOKEN:
         print("Заполните AGENT_TOKEN в настройках скрипта.")
@@ -1177,9 +1228,11 @@ def main():
     while True:
         try:
             process_queue()
+            process_packs()
         except Exception as e:
             log("ошибка обработки очереди:", e)
         time.sleep(POLL_INTERVAL)
+
 
 
 

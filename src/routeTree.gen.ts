@@ -15,8 +15,10 @@ import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedTemplatesRouteImport } from './routes/_authenticated/templates'
 import { Route as AuthenticatedSetupRouteImport } from './routes/_authenticated/setup'
 import { Route as AuthenticatedQueueRouteImport } from './routes/_authenticated/queue'
+import { Route as AuthenticatedPacksRouteImport } from './routes/_authenticated/packs'
 import { Route as AuthenticatedCharactersRouteImport } from './routes/_authenticated/characters'
 import { Route as ApiPublicAgentStatusRouteImport } from './routes/api/public/agent/status'
+import { Route as ApiPublicAgentPacksRouteImport } from './routes/api/public/agent/packs'
 import { Route as ApiPublicAgentIngestRouteImport } from './routes/api/public/agent/ingest'
 import { Route as ApiPublicAgentClaimRouteImport } from './routes/api/public/agent/claim'
 
@@ -49,6 +51,11 @@ const AuthenticatedQueueRoute = AuthenticatedQueueRouteImport.update({
   path: '/queue',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedPacksRoute = AuthenticatedPacksRouteImport.update({
+  id: '/packs',
+  path: '/packs',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedCharactersRoute = AuthenticatedCharactersRouteImport.update({
   id: '/characters',
   path: '/characters',
@@ -57,6 +64,11 @@ const AuthenticatedCharactersRoute = AuthenticatedCharactersRouteImport.update({
 const ApiPublicAgentStatusRoute = ApiPublicAgentStatusRouteImport.update({
   id: '/api/public/agent/status',
   path: '/api/public/agent/status',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicAgentPacksRoute = ApiPublicAgentPacksRouteImport.update({
+  id: '/api/public/agent/packs',
+  path: '/api/public/agent/packs',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicAgentIngestRoute = ApiPublicAgentIngestRouteImport.update({
@@ -74,22 +86,26 @@ export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/auth': typeof AuthRoute
   '/characters': typeof AuthenticatedCharactersRoute
+  '/packs': typeof AuthenticatedPacksRoute
   '/queue': typeof AuthenticatedQueueRoute
   '/setup': typeof AuthenticatedSetupRoute
   '/templates': typeof AuthenticatedTemplatesRoute
   '/api/public/agent/claim': typeof ApiPublicAgentClaimRoute
   '/api/public/agent/ingest': typeof ApiPublicAgentIngestRoute
+  '/api/public/agent/packs': typeof ApiPublicAgentPacksRoute
   '/api/public/agent/status': typeof ApiPublicAgentStatusRoute
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/characters': typeof AuthenticatedCharactersRoute
+  '/packs': typeof AuthenticatedPacksRoute
   '/queue': typeof AuthenticatedQueueRoute
   '/setup': typeof AuthenticatedSetupRoute
   '/templates': typeof AuthenticatedTemplatesRoute
   '/': typeof AuthenticatedIndexRoute
   '/api/public/agent/claim': typeof ApiPublicAgentClaimRoute
   '/api/public/agent/ingest': typeof ApiPublicAgentIngestRoute
+  '/api/public/agent/packs': typeof ApiPublicAgentPacksRoute
   '/api/public/agent/status': typeof ApiPublicAgentStatusRoute
 }
 export interface FileRoutesById {
@@ -97,12 +113,14 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/characters': typeof AuthenticatedCharactersRoute
+  '/_authenticated/packs': typeof AuthenticatedPacksRoute
   '/_authenticated/queue': typeof AuthenticatedQueueRoute
   '/_authenticated/setup': typeof AuthenticatedSetupRoute
   '/_authenticated/templates': typeof AuthenticatedTemplatesRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/api/public/agent/claim': typeof ApiPublicAgentClaimRoute
   '/api/public/agent/ingest': typeof ApiPublicAgentIngestRoute
+  '/api/public/agent/packs': typeof ApiPublicAgentPacksRoute
   '/api/public/agent/status': typeof ApiPublicAgentStatusRoute
 }
 export interface FileRouteTypes {
@@ -111,34 +129,40 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/characters'
+    | '/packs'
     | '/queue'
     | '/setup'
     | '/templates'
     | '/api/public/agent/claim'
     | '/api/public/agent/ingest'
+    | '/api/public/agent/packs'
     | '/api/public/agent/status'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth'
     | '/characters'
+    | '/packs'
     | '/queue'
     | '/setup'
     | '/templates'
     | '/'
     | '/api/public/agent/claim'
     | '/api/public/agent/ingest'
+    | '/api/public/agent/packs'
     | '/api/public/agent/status'
   id:
     | '__root__'
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/characters'
+    | '/_authenticated/packs'
     | '/_authenticated/queue'
     | '/_authenticated/setup'
     | '/_authenticated/templates'
     | '/_authenticated/'
     | '/api/public/agent/claim'
     | '/api/public/agent/ingest'
+    | '/api/public/agent/packs'
     | '/api/public/agent/status'
   fileRoutesById: FileRoutesById
 }
@@ -147,6 +171,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   ApiPublicAgentClaimRoute: typeof ApiPublicAgentClaimRoute
   ApiPublicAgentIngestRoute: typeof ApiPublicAgentIngestRoute
+  ApiPublicAgentPacksRoute: typeof ApiPublicAgentPacksRoute
   ApiPublicAgentStatusRoute: typeof ApiPublicAgentStatusRoute
 }
 
@@ -194,6 +219,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedQueueRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/packs': {
+      id: '/_authenticated/packs'
+      path: '/packs'
+      fullPath: '/packs'
+      preLoaderRoute: typeof AuthenticatedPacksRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/characters': {
       id: '/_authenticated/characters'
       path: '/characters'
@@ -206,6 +238,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/agent/status'
       fullPath: '/api/public/agent/status'
       preLoaderRoute: typeof ApiPublicAgentStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/agent/packs': {
+      id: '/api/public/agent/packs'
+      path: '/api/public/agent/packs'
+      fullPath: '/api/public/agent/packs'
+      preLoaderRoute: typeof ApiPublicAgentPacksRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/agent/ingest': {
@@ -227,6 +266,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedCharactersRoute: typeof AuthenticatedCharactersRoute
+  AuthenticatedPacksRoute: typeof AuthenticatedPacksRoute
   AuthenticatedQueueRoute: typeof AuthenticatedQueueRoute
   AuthenticatedSetupRoute: typeof AuthenticatedSetupRoute
   AuthenticatedTemplatesRoute: typeof AuthenticatedTemplatesRoute
@@ -235,6 +275,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCharactersRoute: AuthenticatedCharactersRoute,
+  AuthenticatedPacksRoute: AuthenticatedPacksRoute,
   AuthenticatedQueueRoute: AuthenticatedQueueRoute,
   AuthenticatedSetupRoute: AuthenticatedSetupRoute,
   AuthenticatedTemplatesRoute: AuthenticatedTemplatesRoute,
@@ -249,6 +290,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   ApiPublicAgentClaimRoute: ApiPublicAgentClaimRoute,
   ApiPublicAgentIngestRoute: ApiPublicAgentIngestRoute,
+  ApiPublicAgentPacksRoute: ApiPublicAgentPacksRoute,
   ApiPublicAgentStatusRoute: ApiPublicAgentStatusRoute,
 }
 export const routeTree = rootRouteImport

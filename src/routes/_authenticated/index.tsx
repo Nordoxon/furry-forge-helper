@@ -40,6 +40,8 @@ function TriagePage() {
   const [templateId, setTemplateId] = useState<string | null>(null);
   const [extraFolders, setExtraFolders] = useState<string[]>([]);
   const [last, setLast] = useState<{ id: string } | null>(null);
+  const [kind, setKind] = useState<"sfw" | "nsfw">("nsfw");
+  const [isPreview, setIsPreview] = useState(false);
 
   const inbox = useQuery({ queryKey: ["inbox"], queryFn: fetchInbox, refetchInterval: 20000 });
   const chars = useQuery({ queryKey: ["characters"], queryFn: fetchCharacters });
@@ -94,7 +96,9 @@ function TriagePage() {
         charId,
         status === "approved" ? folder : null,
         status === "approved" ? templateId : null,
+        { contentKind: kind, isPreview: status === "approved" ? isPreview : false },
       );
+      setIsPreview(false);
       setDone((d) => (d.includes(id) ? d : [...d, id]));
       setLast({ id });
       
@@ -168,6 +172,7 @@ function TriagePage() {
               onChange={setFolder}
               onAdd={addFolder}
             />
+            <KindPicker kind={kind} onKind={setKind} isPreview={isPreview} onPreview={setIsPreview} />
             <Card item={current} />
 
             <div className="mt-4 grid grid-cols-2 gap-3">
@@ -191,6 +196,46 @@ function TriagePage() {
       </main>
 
       <BottomNav />
+    </div>
+  );
+}
+
+function KindPicker({
+  kind,
+  onKind,
+  isPreview,
+  onPreview,
+}: {
+  kind: "sfw" | "nsfw";
+  onKind: (k: "sfw" | "nsfw") => void;
+  isPreview: boolean;
+  onPreview: (v: boolean) => void;
+}) {
+  return (
+    <div className="mb-3 flex items-center gap-2">
+      {(["sfw", "nsfw"] as const).map((k) => (
+        <button
+          key={k}
+          onClick={() => onKind(k)}
+          className={`flex-1 rounded-full border px-3 py-1.5 text-xs uppercase transition ${
+            kind === k
+              ? "border-primary bg-primary text-primary-foreground"
+              : "border-border text-muted-foreground"
+          }`}
+        >
+          {k}
+        </button>
+      ))}
+      <button
+        onClick={() => onPreview(!isPreview)}
+        className={`flex-1 rounded-full border px-3 py-1.5 text-xs transition ${
+          isPreview
+            ? "border-primary bg-primary text-primary-foreground"
+            : "border-border text-muted-foreground"
+        }`}
+      >
+        В превью
+      </button>
     </div>
   );
 }

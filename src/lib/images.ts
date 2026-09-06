@@ -11,9 +11,11 @@ export const STATUS_LABELS: Record<ImageStatus, string> = {
   rejected: "Отклонено",
   upscaling: "Апскейл",
   uploading: "Загрузка",
+  ready: "Готово (в архив)",
   published: "На DeviantArt",
   error: "Ошибка",
 };
+
 
 export async function signedPreview(path: string | null): Promise<string | null> {
   if (!path) return null;
@@ -58,6 +60,7 @@ export async function decide(
   characterId: string | null,
   galleryFolder?: string | null,
   templateId?: string | null,
+  extra?: { contentKind?: "sfw" | "nsfw"; isPreview?: boolean },
 ) {
   const { error } = await supabase
     .from("images")
@@ -66,7 +69,10 @@ export async function decide(
       character_id: characterId,
       gallery_folder: galleryFolder ?? null,
       template_id: templateId ?? null,
+      ...(extra?.contentKind ? { content_kind: extra.contentKind } : {}),
+      ...(extra?.isPreview !== undefined ? { is_preview: extra.isPreview } : {}),
     })
     .eq("id", id);
   if (error) throw error;
 }
+
