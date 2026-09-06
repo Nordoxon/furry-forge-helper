@@ -18,6 +18,7 @@ import { Route as AuthenticatedQueueRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedPacksRouteImport } from './routes/_authenticated/packs'
 import { Route as AuthenticatedCharactersRouteImport } from './routes/_authenticated/characters'
 import { Route as ApiPublicAgentStatusRouteImport } from './routes/api/public/agent/status'
+import { Route as ApiPublicAgentPacksRouteImport } from './routes/api/public/agent/packs'
 import { Route as ApiPublicAgentIngestRouteImport } from './routes/api/public/agent/ingest'
 import { Route as ApiPublicAgentClaimRouteImport } from './routes/api/public/agent/claim'
 
@@ -65,6 +66,11 @@ const ApiPublicAgentStatusRoute = ApiPublicAgentStatusRouteImport.update({
   path: '/api/public/agent/status',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicAgentPacksRoute = ApiPublicAgentPacksRouteImport.update({
+  id: '/api/public/agent/packs',
+  path: '/api/public/agent/packs',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicAgentIngestRoute = ApiPublicAgentIngestRouteImport.update({
   id: '/api/public/agent/ingest',
   path: '/api/public/agent/ingest',
@@ -86,6 +92,7 @@ export interface FileRoutesByFullPath {
   '/templates': typeof AuthenticatedTemplatesRoute
   '/api/public/agent/claim': typeof ApiPublicAgentClaimRoute
   '/api/public/agent/ingest': typeof ApiPublicAgentIngestRoute
+  '/api/public/agent/packs': typeof ApiPublicAgentPacksRoute
   '/api/public/agent/status': typeof ApiPublicAgentStatusRoute
 }
 export interface FileRoutesByTo {
@@ -98,6 +105,7 @@ export interface FileRoutesByTo {
   '/': typeof AuthenticatedIndexRoute
   '/api/public/agent/claim': typeof ApiPublicAgentClaimRoute
   '/api/public/agent/ingest': typeof ApiPublicAgentIngestRoute
+  '/api/public/agent/packs': typeof ApiPublicAgentPacksRoute
   '/api/public/agent/status': typeof ApiPublicAgentStatusRoute
 }
 export interface FileRoutesById {
@@ -112,6 +120,7 @@ export interface FileRoutesById {
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/api/public/agent/claim': typeof ApiPublicAgentClaimRoute
   '/api/public/agent/ingest': typeof ApiPublicAgentIngestRoute
+  '/api/public/agent/packs': typeof ApiPublicAgentPacksRoute
   '/api/public/agent/status': typeof ApiPublicAgentStatusRoute
 }
 export interface FileRouteTypes {
@@ -126,6 +135,7 @@ export interface FileRouteTypes {
     | '/templates'
     | '/api/public/agent/claim'
     | '/api/public/agent/ingest'
+    | '/api/public/agent/packs'
     | '/api/public/agent/status'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -138,6 +148,7 @@ export interface FileRouteTypes {
     | '/'
     | '/api/public/agent/claim'
     | '/api/public/agent/ingest'
+    | '/api/public/agent/packs'
     | '/api/public/agent/status'
   id:
     | '__root__'
@@ -151,6 +162,7 @@ export interface FileRouteTypes {
     | '/_authenticated/'
     | '/api/public/agent/claim'
     | '/api/public/agent/ingest'
+    | '/api/public/agent/packs'
     | '/api/public/agent/status'
   fileRoutesById: FileRoutesById
 }
@@ -159,6 +171,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   ApiPublicAgentClaimRoute: typeof ApiPublicAgentClaimRoute
   ApiPublicAgentIngestRoute: typeof ApiPublicAgentIngestRoute
+  ApiPublicAgentPacksRoute: typeof ApiPublicAgentPacksRoute
   ApiPublicAgentStatusRoute: typeof ApiPublicAgentStatusRoute
 }
 
@@ -227,6 +240,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicAgentStatusRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/agent/packs': {
+      id: '/api/public/agent/packs'
+      path: '/api/public/agent/packs'
+      fullPath: '/api/public/agent/packs'
+      preLoaderRoute: typeof ApiPublicAgentPacksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/agent/ingest': {
       id: '/api/public/agent/ingest'
       path: '/api/public/agent/ingest'
@@ -270,6 +290,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   ApiPublicAgentClaimRoute: ApiPublicAgentClaimRoute,
   ApiPublicAgentIngestRoute: ApiPublicAgentIngestRoute,
+  ApiPublicAgentPacksRoute: ApiPublicAgentPacksRoute,
   ApiPublicAgentStatusRoute: ApiPublicAgentStatusRoute,
 }
 export const routeTree = rootRouteImport
