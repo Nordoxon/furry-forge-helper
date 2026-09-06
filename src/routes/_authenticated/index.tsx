@@ -41,8 +41,7 @@ function TriagePage() {
   const [templateId, setTemplateId] = useState<string | null>(null);
   const [extraFolders, setExtraFolders] = useState<string[]>([]);
   const [last, setLast] = useState<{ id: string } | null>(null);
-  const [kind, setKind] = useState<"sfw" | "nsfw">("nsfw");
-  const [isPreview, setIsPreview] = useState(false);
+  const [kindOverride, setKindOverride] = useState<"sfw" | "nsfw" | null>(null);
 
   const inbox = useQuery({ queryKey: ["inbox"], queryFn: fetchInbox, refetchInterval: 20000 });
   const chars = useQuery({ queryKey: ["characters"], queryFn: fetchCharacters });
@@ -66,7 +65,19 @@ function TriagePage() {
     [chars.data, charId],
   );
 
-  // выбранная папка запоминается между кадрами и сменой персонажа
+  const selection = useQuery({
+    queryKey: ["selection", charId],
+    queryFn: () => fetchSelection(charId),
+    enabled: Boolean(charId),
+  });
+
+  const batch = useMemo(
+    () => batchState(activeChar, selection.data ?? []),
+    [activeChar, selection.data],
+  );
+
+  // при смене персонажа ручной выбор типа сбрасывается
+  useEffect(() => setKindOverride(null), [charId]);
 
   const activeTemplate = useMemo(
     () => templates.data?.find((t) => t.id === templateId) ?? null,
@@ -86,6 +97,7 @@ function TriagePage() {
   // очередь стабильна: текущий кадр определяется по ID, а не по позиции в списке
   const items = useMemo(() => all.filter((i) => !doneSet.has(i.id)), [all, doneSet]);
   const current = items[0];
+  const kind = kindOverride ?? batch.activeKind;
 
   async function act(status: "approved" | "rejected") {
     if (!current) return;
@@ -97,12 +109,12 @@ function TriagePage() {
         charId,
         status === "approved" ? folder : null,
         status === "approved" ? templateId : null,
-        { contentKind: kind, isPreview: status === "approved" ? isPreview : false },
+        { contentKind: kind, isPreview: false },
       );
-      setIsPreview(false);
       setDone((d) => (d.includes(id) ? d : [...d, id]));
       setLast({ id });
-      
+      setKindOverride(null);
+      void qc.invalidateQueries({ queryKey: ["selection"] });
       void qc.invalidateQueries({ queryKey: ["pipeline"] });
     } catch (e) {
       toast.error(`Не удалось сохранить: ${(e as Error).message}`);
@@ -116,6 +128,7 @@ function TriagePage() {
       setDone((d) => d.filter((x) => x !== last.id));
       setLast(null);
       void inbox.refetch();
+      void qc.invalidateQueries({ queryKey: ["selection"] });
     } catch (e) {
       toast.error(`Не удалось вернуть: ${(e as Error).message}`);
     }
@@ -128,13 +141,44 @@ function TriagePage() {
     setFolder(name);
   }
 
+  async function onClearInbox() {
+    if (!window.confirm(`Удалить ${all.length} неразобранных кадров? Отобранное и паки останутся.`)) return;
+    try {
+      const n = await clearInbox();
+      setDone([]);
+      setLast(null);
+      toast.success(`Удалено: ${n}`);
+      void inbox.refetch();
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  }
+
+  async function onResetBatch() {
+    if (!charId || !activeChar) return;
+    if (
+      !window.confirm(
+        `Сбросить текущий отбор персонажа ${activeChar.name} (${batch.total} кадров)? Уже собранные паки останутся.`,
+      )
+    )
+      return;
+    try {
+      const n = await resetBatch(charId);
+      toast.success(`Отбор сброшен: ${n}`);
+      void qc.invalidateQueries({ queryKey: ["selection"] });
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  }
 
   return (
     <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-30 border-b border-border/60 bg-background/80 px-4 py-3 backdrop-blur-xl">
         <div className="mx-auto flex max-w-2xl items-center justify-between gap-3">
-          <div>
-            <h1 className="font-display text-lg font-semibold leading-tight">Отбор</h1>
+          <div className="min-w-0">
+            <h1 className="truncate font-display text-lg font-semibold leading-tight">
+              {activeChar ? activeChar.name : "Отбор"}
+            </h1>
             <p className="text-xs text-muted-foreground">
               Осталось {items.length} из {all.length}
             </p>
@@ -145,76 +189,83 @@ function TriagePage() {
                 <Undo2 className="mr-1 h-4 w-4" /> Вернуть
               </Button>
             )}
-            {all.length > 0 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-destructive"
-                onClick={async () => {
-                  if (!window.confirm(`Удалить все ${all.length} изображений из отбора?`)) return;
-                  try {
-                    const n = await clearInbox();
-                    setDone([]);
-                    setLast(null);
-                    toast.success(`Удалено: ${n}`);
-                    void inbox.refetch();
-                  } catch (e) {
-                    toast.error((e as Error).message);
-                  }
-                }}
-              >
-                <Trash2 className="mr-1 h-4 w-4" /> Очистить
-              </Button>
-            )}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="text-destructive">
+                  <Trash2 className="mr-1 h-4 w-4" /> Очистить
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem disabled={all.length === 0} onSelect={() => void onClearInbox()}>
+                  Неразобранные кадры ({all.length})
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  disabled={!charId || batch.total === 0}
+                  onSelect={() => void onResetBatch()}
+                >
+                  Отбор персонажа ({batch.total})
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </header>
 
       <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-4">
-        {inbox.isLoading ? (
+        {chars.isLoading ? (
           <div className="grid h-64 place-items-center">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
           </div>
-        ) : !current ? (
-          <EmptyInbox count={all.length} />
+        ) : (chars.data ?? []).length === 0 ? (
+          <NoCharacter />
         ) : (
           <>
-            <CharacterPicker
-              chars={chars.data ?? []}
-              value={charId}
-              onChange={setCharId}
-            />
-            <TemplatePicker
-              templates={templates.data ?? []}
-              value={templateId}
-              onChange={setTemplateId}
-            />
-            <FolderPicker
-              options={folderOptions}
-              value={folder}
-              defaultFolder={activeTemplate?.gallery_folder || activeChar?.gallery_folder || null}
-              onChange={setFolder}
-              onAdd={addFolder}
-            />
-            <KindPicker kind={kind} onKind={setKind} isPreview={isPreview} onPreview={setIsPreview} />
-            <Card item={current} />
+            <CharacterPicker chars={chars.data ?? []} value={charId} onChange={setCharId} />
+            <BatchProgress batch={batch} />
 
-            <div className="mt-4 grid grid-cols-2 gap-3">
-              <Button
-                size="lg"
-                variant="outline"
-                className="h-16 text-base"
-                onClick={() => act("rejected")}
-              >
-                <X className="mr-2 h-5 w-5" /> Мимо
-              </Button>
-              <Button size="lg" className="h-16 text-base" onClick={() => act("approved")}>
-                <Check className="mr-2 h-5 w-5" /> Годится
-              </Button>
-            </div>
-            <p className="mt-3 text-center text-xs text-muted-foreground">
-              Одобренное уйдёт на апскейл и публикацию автоматически.
-            </p>
+            {batch.done ? (
+              <PackReady charId={charId} />
+            ) : inbox.isLoading ? (
+              <div className="grid h-64 place-items-center">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : !current ? (
+              <EmptyInbox count={all.length} />
+            ) : (
+              <>
+                <TemplatePicker
+                  templates={templates.data ?? []}
+                  value={templateId}
+                  onChange={setTemplateId}
+                />
+                <FolderPicker
+                  options={folderOptions}
+                  value={folder}
+                  defaultFolder={activeTemplate?.gallery_folder || activeChar?.gallery_folder || null}
+                  onChange={setFolder}
+                  onAdd={addFolder}
+                />
+                <KindPicker kind={kind} auto={batch.activeKind} onKind={setKindOverride} />
+                <Card item={current} />
+
+                <div className="mt-4 grid grid-cols-2 gap-3">
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    className="h-16 text-base"
+                    onClick={() => act("rejected")}
+                  >
+                    <X className="mr-2 h-5 w-5" /> Мимо
+                  </Button>
+                  <Button size="lg" className="h-16 text-base" onClick={() => act("approved")}>
+                    <Check className="mr-2 h-5 w-5" /> Годится ({kind.toUpperCase()})
+                  </Button>
+                </div>
+                <p className="mt-3 text-center text-xs text-muted-foreground">
+                  Апскейл и архив запускаются только после того, как пак будет собран.
+                </p>
+              </>
+            )}
           </>
         )}
       </main>
@@ -224,23 +275,89 @@ function TriagePage() {
   );
 }
 
+function BatchProgress({ batch }: { batch: BatchState }) {
+  const stage =
+    batch.phase === "sfw"
+      ? "Этап 1: отбираем SFW"
+      : batch.phase === "nsfw"
+        ? "SFW готово — этап 2: отбираем NSFW"
+        : batch.phase === "preview"
+          ? "Отбор завершён — отметьте превью"
+          : "Пак готов к сборке";
+  const pct = Math.min(100, Math.round((batch.total / Math.max(1, batch.targetTotal)) * 100));
+  return (
+    <div className="mb-3 rounded-xl border border-border/60 bg-card px-3 py-2.5">
+      <div className="flex items-center justify-between text-xs">
+        <span className="font-medium">{stage}</span>
+        <span className="text-muted-foreground">
+          {batch.total}/{batch.targetTotal}
+        </span>
+      </div>
+      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
+        <div className="h-full bg-primary transition-all" style={{ width: `${pct}%` }} />
+      </div>
+      <div className="mt-2 flex gap-2 text-[11px] text-muted-foreground">
+        <span className={batch.phase === "sfw" ? "text-primary" : undefined}>
+          SFW {batch.sfw.length}/{batch.sfwTarget}
+        </span>
+        <span className={batch.phase === "nsfw" ? "text-primary" : undefined}>
+          NSFW {batch.nsfw.length}/{batch.nsfwTarget}
+        </span>
+        <span>
+          Превью {batch.previews.length}/{batch.previewTarget}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function PackReady({ charId }: { charId: string | null }) {
+  return (
+    <div className="mt-6 rounded-2xl border border-primary/40 bg-primary/5 p-8 text-center">
+      <PackageCheck className="mx-auto h-8 w-8 text-primary" />
+      <h2 className="mt-3 font-display text-lg font-semibold">Отбор завершён</h2>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Осталось отметить 3–4 превью из отобранных SFW и собрать пак — только после этого начнётся
+        апскейл.
+      </p>
+      <Button asChild className="mt-5">
+        <Link to="/packs" search={{ character: charId ?? undefined }}>
+          Перейти к паку
+        </Link>
+      </Button>
+    </div>
+  );
+}
+
+function NoCharacter() {
+  return (
+    <div className="mt-10 rounded-2xl border border-dashed border-border p-8 text-center">
+      <h2 className="font-display text-lg font-semibold">Сначала создайте персонажа</h2>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Все генерации, отбор и паки относятся к конкретному персонажу.
+      </p>
+      <Button asChild className="mt-5">
+        <Link to="/characters">Создать персонажа</Link>
+      </Button>
+    </div>
+  );
+}
+
 function KindPicker({
   kind,
+  auto,
   onKind,
-  isPreview,
-  onPreview,
 }: {
   kind: "sfw" | "nsfw";
-  onKind: (k: "sfw" | "nsfw") => void;
-  isPreview: boolean;
-  onPreview: (v: boolean) => void;
+  auto: "sfw" | "nsfw";
+  onKind: (k: "sfw" | "nsfw" | null) => void;
 }) {
   return (
     <div className="mb-3 flex items-center gap-2">
       {(["sfw", "nsfw"] as const).map((k) => (
         <button
           key={k}
-          onClick={() => onKind(k)}
+          onClick={() => onKind(k === auto ? null : k)}
           className={`flex-1 rounded-full border px-3 py-1.5 text-xs uppercase transition ${
             kind === k
               ? "border-primary bg-primary text-primary-foreground"
@@ -248,18 +365,9 @@ function KindPicker({
           }`}
         >
           {k}
+          {k === auto ? " •" : ""}
         </button>
       ))}
-      <button
-        onClick={() => onPreview(!isPreview)}
-        className={`flex-1 rounded-full border px-3 py-1.5 text-xs transition ${
-          isPreview
-            ? "border-primary bg-primary text-primary-foreground"
-            : "border-border text-muted-foreground"
-        }`}
-      >
-        В превью
-      </button>
     </div>
   );
 }
