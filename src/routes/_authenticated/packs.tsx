@@ -54,7 +54,8 @@ function PacksPage() {
   const charId = character ?? null;
 
   const selectChar = (id: string | null) =>
-    navigate({ to: "/packs", search: id ? { character: id } : {}, replace: true });
+    navigate({ to: "/packs", search: { character: id ?? undefined }, replace: true });
+
 
   const selection = useQuery({
     queryKey: ["selection", charId],
