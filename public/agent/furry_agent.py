@@ -28,6 +28,7 @@ import sys
 import time
 import threading
 import webbrowser
+import zipfile
 import zlib
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import urlencode, urlparse, parse_qs
