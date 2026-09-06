@@ -19,11 +19,13 @@ export const Route = createFileRoute("/api/public/agent/claim")({
           .in("status", ["upscaling", "uploading"])
           .lt("updated_at", staleBefore);
 
+        // Апскейл начинается только после закрытия пака: берём кадры, уже привязанные к паку
         const { data: approved } = await supabase
           .from("images")
           .select("*")
           .eq("user_id", userId)
           .eq("status", "approved")
+          .not("pack_id", "is", null)
           .order("created_at", { ascending: true })
           .limit(5);
 
