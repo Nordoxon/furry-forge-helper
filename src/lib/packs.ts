@@ -5,13 +5,15 @@ import type { ImageRow } from "@/lib/images";
 export type PackRow = Database["public"]["Tables"]["packs"]["Row"];
 
 /** Отобранные изображения, ещё не вошедшие ни в один пак. */
-export async function fetchSelection(): Promise<ImageRow[]> {
-  const { data, error } = await supabase
+export async function fetchSelection(characterId?: string | null): Promise<ImageRow[]> {
+  let query = supabase
     .from("images")
     .select("*")
     .is("pack_id", null)
     .in("status", ["approved", "upscaling", "uploading", "ready", "published"])
     .order("created_at", { ascending: true });
+  if (characterId) query = query.eq("character_id", characterId);
+  const { data, error } = await query;
   if (error) throw error;
   return data ?? [];
 }
@@ -47,7 +49,12 @@ export async function setPreviewFlag(id: string, isPreview: boolean) {
 }
 
 /** Собирает пак из всех отобранных изображений без пака. */
-export async function buildPack(title: string, items: ImageRow[]): Promise<PackRow> {
+export async function buildPack(
+  title: string,
+  items: ImageRow[],
+  characterId: string | null = null,
+  packNumber: number | null = null,
+): Promise<PackRow> {
   const { data: userData } = await supabase.auth.getUser();
   const userId = userData.user?.id;
   if (!userId) throw new Error("Нет сессии");
@@ -60,6 +67,8 @@ export async function buildPack(title: string, items: ImageRow[]): Promise<PackR
     .insert({
       user_id: userId,
       title: title || new Date().toLocaleDateString("ru-RU"),
+      character_id: characterId,
+      pack_number: packNumber,
       sfw_count: sfw,
       nsfw_count: nsfw,
       status: "building",
@@ -81,4 +90,27 @@ export async function buildPack(title: string, items: ImageRow[]): Promise<PackR
 
 export function packLabel(pack: { sfw_count: number; nsfw_count: number }) {
   return `${pack.sfw_count} SFW + ${pack.nsfw_count} NSFW images`;
+}
+
+/** Удаляет изображения с сайта (записи в базе; файлы на компьютере остаются). */
+export async function deleteImages(ids: string[]) {
+  if (ids.length === 0) return;
+  const { error } = await supabase.from("images").delete().in("id", ids);
+  if (error) throw error;
+}
+
+/** Очищает всё, что сейчас ждёт отбора. */
+export async function clearInbox(): Promise<number> {
+  const { data, error } = await supabase.from("images").delete().eq("status", "new").select("id");
+  if (error) throw error;
+  return (data ?? []).length;
+}
+
+/** Следующий номер пака для персонажа. */
+export async function nextPackNumber(characterId: string | null): Promise<number> {
+  let q = supabase.from("packs").select("pack_number").order("pack_number", { ascending: false }).limit(1);
+  q = characterId ? q.eq("character_id", characterId) : q.is("character_id", null);
+  const { data, error } = await q;
+  if (error) throw error;
+  return (data?.[0]?.pack_number ?? 0) + 1;
 }
