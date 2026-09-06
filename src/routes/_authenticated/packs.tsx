@@ -20,6 +20,7 @@ import {
   nextPackNumber,
 } from "@/lib/packs";
 import { renderCover } from "@/lib/cover";
+import { batchState } from "@/lib/batch";
 
 export const Route = createFileRoute("/_authenticated/packs")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -81,9 +82,10 @@ function PacksPage() {
   const autoTitle = activeChar ? `${activeChar.name} #${number || 1}` : "";
 
   const items = selection.data ?? [];
-  const sfw = items.filter((i) => i.content_kind === "sfw");
-  const nsfw = items.filter((i) => i.content_kind !== "sfw");
-  const previews = items.filter((i) => i.is_preview);
+  const batch = batchState(activeChar, items);
+  const sfw = batch.sfw;
+  const nsfw = batch.nsfw;
+  const previews = batch.previews;
   const caption = `${sfw.length} SFW + ${nsfw.length} NSFW images`;
   const charPacks = (packs.data ?? []).filter((p) => p.character_id === charId);
 
@@ -206,7 +208,20 @@ function PacksPage() {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
             />
-            <Button className="w-full" disabled={items.length === 0 || busy} onClick={onBuild}>
+            <p className="text-[11px] text-muted-foreground">
+              {batch.phase === "sfw"
+                ? `Ещё ${batch.sfwTarget - sfw.length} SFW до конца этапа`
+                : batch.phase === "nsfw"
+                  ? `Ещё ${batch.nsfwTarget - nsfw.length} NSFW до конца отбора`
+                  : previews.length === 0
+                    ? "Отметьте 3–4 превью среди SFW — звёздочкой на кадре"
+                    : "Готово: можно собирать пак, апскейл начнётся сразу после сборки"}
+            </p>
+            <Button
+              className="w-full"
+              disabled={items.length === 0 || busy || previews.length === 0}
+              onClick={onBuild}
+            >
               {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Package className="mr-2 h-4 w-4" />}
               Собрать пак ({items.length})
             </Button>
@@ -272,7 +287,9 @@ function PacksPage() {
                         {p.title || "Без названия"}
                         {p.pack_number ? <span className="ml-2 text-[11px] text-muted-foreground">#{p.pack_number}</span> : null}
                       </p>
-                      <p className="text-xs text-muted-foreground">{packLabel(p)}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {packLabel(p)} · {p.status === "zipped" ? "Архив готов" : "Апскейл и архив"}
+                      </p>
                     </div>
                     <PackCover packId={p.id} caption={packLabel(p)} title={p.title} />
                   </div>
@@ -322,9 +339,15 @@ function Thumb({
         {url && <img src={url} alt={item.filename} className="h-full w-full object-cover" />}
         <button
           onClick={() => onPreview(!item.is_preview)}
+          disabled={item.content_kind !== "sfw"}
+          title={item.content_kind !== "sfw" ? "Превью выбирается из SFW" : "В превью"}
           aria-label="В превью"
           className={`absolute right-1 top-1 rounded-full p-1.5 ${
-            item.is_preview ? "bg-primary text-primary-foreground" : "bg-background/70 text-muted-foreground"
+            item.is_preview
+              ? "bg-primary text-primary-foreground"
+              : item.content_kind !== "sfw"
+                ? "hidden"
+                : "bg-background/70 text-muted-foreground"
           }`}
         >
           <Star className="h-3.5 w-3.5" />
