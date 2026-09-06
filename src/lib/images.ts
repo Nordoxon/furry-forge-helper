@@ -11,9 +11,11 @@ export const STATUS_LABELS: Record<ImageStatus, string> = {
   rejected: "Отклонено",
   upscaling: "Апскейл",
   uploading: "Загрузка",
+  ready: "Готово (в архив)",
   published: "На DeviantArt",
   error: "Ошибка",
 };
+
 
 export async function signedPreview(path: string | null): Promise<string | null> {
   if (!path) return null;
