@@ -748,10 +748,16 @@ def process_queue():
                 continue
             asset = job.get("asset_name") or os.path.splitext(job["filename"])[0]
             big = upscale(src, asset, heartbeat=lambda: report(job["id"], "upscaling"))
+            if not job.get("upload_to_da"):
+                # обычное изображение пака: только апскейл, дальше пойдёт в zip
+                report(job["id"], "ready")
+                log("готово (в архив):", os.path.basename(big))
+                continue
             report(job["id"], "uploading")
             url = da_publish(big, job)
             report(job["id"], "published", deviation_url=url)
             log("опубликовано:", url)
+
         except A1111Busy as e:
             log("SD занят генерацией — возвращаю в очередь:", job["filename"])
             report(job["id"], "approved")
