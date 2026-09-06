@@ -129,12 +129,11 @@ function CharactersPage() {
           </div>
         ) : (
           list.map((c) => (
-            <button
+            <div
               key={c.id}
-              onClick={() => openEdit(c)}
-              className="flex w-full items-center justify-between gap-3 rounded-xl border border-border/60 bg-card px-4 py-3 text-left"
+              className="flex w-full items-center justify-between gap-3 rounded-xl border border-border/60 bg-card px-4 py-3"
             >
-              <div className="min-w-0">
+              <button onClick={() => openEdit(c)} className="min-w-0 flex-1 text-left">
                 <p className="truncate text-sm font-medium">
                   {c.name}
                   {c.is_default && <span className="ml-2 text-[10px] text-primary">по умолчанию</span>}
@@ -142,9 +141,15 @@ function CharactersPage() {
                 <p className="truncate text-[11px] text-muted-foreground">
                   {c.base_tags.length > 0 ? c.base_tags.map((t) => `#${t}`).join(" ") : "Без базовых тегов"}
                 </p>
-              </div>
-            </button>
+              </button>
+              <Button size="sm" variant="outline" asChild>
+                <Link to="/packs" search={{ character: c.id }}>
+                  <Package className="mr-1 h-4 w-4" /> Паки
+                </Link>
+              </Button>
+            </div>
           ))
+
         )}
 
         {editing !== null && (
