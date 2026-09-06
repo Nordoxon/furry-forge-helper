@@ -15,6 +15,13 @@
       "when": 1788712914052,
       "tag": "0001_image_status_ready",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1788713551708,
+      "tag": "0002_packs_character_number",
+      "breakpoints": true
     }
   ]
 }

@@ -1,12 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Package, Star, ImageDown } from "lucide-react";
+import { Loader2, Package, Star, ImageDown, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { BottomNav } from "@/components/bottom-nav";
-import { signedPreview, type ImageRow } from "@/lib/images";
+import { fetchCharacters, signedPreview, type ImageRow } from "@/lib/images";
 import {
   buildPack,
   fetchPacks,
@@ -15,6 +15,8 @@ import {
   packLabel,
   setKind,
   setPreviewFlag,
+  deleteImages,
+  nextPackNumber,
 } from "@/lib/packs";
 import { renderCover } from "@/lib/cover";
 
@@ -40,9 +42,36 @@ function PacksPage() {
   const qc = useQueryClient();
   const [title, setTitle] = useState("");
   const [busy, setBusy] = useState(false);
+  const [charId, setCharId] = useState<string | null>(null);
+  const [number, setNumber] = useState("");
 
-  const selection = useQuery({ queryKey: ["selection"], queryFn: fetchSelection, refetchInterval: 20000 });
+  const chars = useQuery({ queryKey: ["characters"], queryFn: fetchCharacters });
+  const selection = useQuery({
+    queryKey: ["selection", charId],
+    queryFn: () => fetchSelection(charId),
+    refetchInterval: 20000,
+  });
   const packs = useQuery({ queryKey: ["packs"], queryFn: fetchPacks });
+
+  useEffect(() => {
+    if (charId === null && chars.data?.length) {
+      setCharId((chars.data.find((c) => c.is_default) ?? chars.data[0]).id);
+    }
+  }, [chars.data, charId]);
+
+  const activeChar = chars.data?.find((c) => c.id === charId) ?? null;
+
+  useEffect(() => {
+    let alive = true;
+    void nextPackNumber(charId).then((n) => {
+      if (alive) setNumber(String(n));
+    });
+    return () => {
+      alive = false;
+    };
+  }, [charId, packs.data]);
+
+  const autoTitle = activeChar ? `${activeChar.name} #${number || 1}` : "";
 
   const items = selection.data ?? [];
   const sfw = items.filter((i) => i.content_kind === "sfw");
@@ -54,7 +83,7 @@ function PacksPage() {
     if (items.length === 0) return;
     setBusy(true);
     try {
-      await buildPack(title.trim(), items);
+      await buildPack(title.trim() || autoTitle, items, charId, Number(number) || null);
       setTitle("");
       toast.success("Пак собран");
       void qc.invalidateQueries({ queryKey: ["selection"] });
@@ -76,6 +105,24 @@ function PacksPage() {
       </header>
 
       <main className="mx-auto w-full max-w-2xl flex-1 space-y-6 px-4 py-4">
+        {(chars.data ?? []).length > 0 && (
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {(chars.data ?? []).map((c) => (
+              <button
+                key={c.id}
+                onClick={() => setCharId(c.id)}
+                className={`shrink-0 rounded-full border px-3 py-1.5 text-xs transition ${
+                  charId === c.id
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border text-muted-foreground"
+                }`}
+              >
+                {c.name}
+              </button>
+            ))}
+          </div>
+        )}
+
         <section className="rounded-2xl border border-border/60 bg-card p-4">
           <div className="flex items-center gap-3">
             <Counter label="SFW" value={sfw.length} />
@@ -85,7 +132,14 @@ function PacksPage() {
 
           <div className="mt-4 space-y-2">
             <Input
-              placeholder="Название пака (необязательно)"
+              type="number"
+              min={1}
+              placeholder="Номер пака"
+              value={number}
+              onChange={(e) => setNumber(e.target.value)}
+            />
+            <Input
+              placeholder={autoTitle || "Название пака (необязательно)"}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
             />
@@ -99,7 +153,22 @@ function PacksPage() {
 
         {items.length > 0 && (
           <section>
-            <h2 className="mb-2 text-sm font-medium">Отобрано, ещё не в паке</h2>
+            <div className="mb-2 flex items-center justify-between">
+              <h2 className="text-sm font-medium">Отобрано, ещё не в паке</h2>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-destructive"
+                onClick={async () => {
+                  if (!window.confirm(`Удалить ${items.length} изображений с сайта?`)) return;
+                  await deleteImages(items.map((i) => i.id));
+                  toast.success("Удалено");
+                  void qc.invalidateQueries({ queryKey: ["selection"] });
+                }}
+              >
+                <Trash2 className="mr-1 h-4 w-4" /> Очистить
+              </Button>
+            </div>
             <div className="grid grid-cols-3 gap-2">
               {items.map((i) => (
                 <Thumb
@@ -111,6 +180,10 @@ function PacksPage() {
                   }}
                   onPreview={async (v) => {
                     await setPreviewFlag(i.id, v);
+                    void qc.invalidateQueries({ queryKey: ["selection"] });
+                  }}
+                  onDelete={async () => {
+                    await deleteImages([i.id]);
                     void qc.invalidateQueries({ queryKey: ["selection"] });
                   }}
                 />
@@ -131,7 +204,10 @@ function PacksPage() {
                 <li key={p.id} className="rounded-xl border border-border/60 bg-card p-3">
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">{p.title || "Без названия"}</p>
+                      <p className="truncate text-sm font-medium">
+                        {p.title || "Без названия"}
+                        {p.pack_number ? <span className="ml-2 text-[11px] text-muted-foreground">#{p.pack_number}</span> : null}
+                      </p>
                       <p className="text-xs text-muted-foreground">{packLabel(p)}</p>
                     </div>
                     <PackCover packId={p.id} caption={packLabel(p)} title={p.title} />
@@ -168,10 +244,12 @@ function Thumb({
   item,
   onKind,
   onPreview,
+  onDelete,
 }: {
   item: ImageRow;
   onKind: (k: "sfw" | "nsfw") => void;
   onPreview: (v: boolean) => void;
+  onDelete: () => void;
 }) {
   const { data: url } = useSigned(item);
   return (
@@ -186,6 +264,13 @@ function Thumb({
           }`}
         >
           <Star className="h-3.5 w-3.5" />
+        </button>
+        <button
+          onClick={onDelete}
+          aria-label="Удалить"
+          className="absolute left-1 top-1 rounded-full bg-background/70 p-1.5 text-muted-foreground"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
         </button>
       </div>
       <div className="flex">
