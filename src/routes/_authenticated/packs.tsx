@@ -22,6 +22,9 @@ import {
 import { renderCover } from "@/lib/cover";
 
 export const Route = createFileRoute("/_authenticated/packs")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    character: typeof search["character"] === "string" ? (search["character"] as string) : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Паки — Furry Content Manager" },
@@ -41,26 +44,28 @@ export const Route = createFileRoute("/_authenticated/packs")({
 
 function PacksPage() {
   const qc = useQueryClient();
+  const navigate = useNavigate();
+  const { character } = Route.useSearch();
   const [title, setTitle] = useState("");
   const [busy, setBusy] = useState(false);
-  const [charId, setCharId] = useState<string | null>(null);
   const [number, setNumber] = useState("");
 
   const chars = useQuery({ queryKey: ["characters"], queryFn: fetchCharacters });
+  const charId = character ?? null;
+
+  const selectChar = (id: string | null) =>
+    navigate({ to: "/packs", search: id ? { character: id } : {}, replace: true });
+
   const selection = useQuery({
     queryKey: ["selection", charId],
     queryFn: () => fetchSelection(charId),
     refetchInterval: 20000,
+    enabled: Boolean(charId),
   });
   const packs = useQuery({ queryKey: ["packs"], queryFn: fetchPacks });
 
-  useEffect(() => {
-    if (charId === null && chars.data?.length) {
-      setCharId((chars.data.find((c) => c.is_default) ?? chars.data[0]).id);
-    }
-  }, [chars.data, charId]);
-
   const activeChar = chars.data?.find((c) => c.id === charId) ?? null;
+
 
   useEffect(() => {
     let alive = true;
