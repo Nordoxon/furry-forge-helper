@@ -90,6 +90,7 @@ export type Database = {
         Row: {
           asset_name: string | null
           character_id: string | null
+          content_kind: string
           created_at: string
           description: string
           deviation_url: string | null
@@ -98,7 +99,9 @@ export type Database = {
           gallery_folder: string | null
           height: number | null
           id: string
+          is_preview: boolean
           local_path: string
+          pack_id: string | null
           preview_path: string | null
           seq: number
           status: Database["public"]["Enums"]["image_status"]
@@ -112,6 +115,7 @@ export type Database = {
         Insert: {
           asset_name?: string | null
           character_id?: string | null
+          content_kind?: string
           created_at?: string
           description?: string
           deviation_url?: string | null
@@ -120,7 +124,9 @@ export type Database = {
           gallery_folder?: string | null
           height?: number | null
           id?: string
+          is_preview?: boolean
           local_path: string
+          pack_id?: string | null
           preview_path?: string | null
           seq?: number
           status?: Database["public"]["Enums"]["image_status"]
@@ -134,6 +140,7 @@ export type Database = {
         Update: {
           asset_name?: string | null
           character_id?: string | null
+          content_kind?: string
           created_at?: string
           description?: string
           deviation_url?: string | null
@@ -142,7 +149,9 @@ export type Database = {
           gallery_folder?: string | null
           height?: number | null
           id?: string
+          is_preview?: boolean
           local_path?: string
+          pack_id?: string | null
           preview_path?: string | null
           seq?: number
           status?: Database["public"]["Enums"]["image_status"]
@@ -162,6 +171,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "images_pack_id_fkey"
+            columns: ["pack_id"]
+            isOneToOne: false
+            referencedRelation: "packs"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "images_template_id_fkey"
             columns: ["template_id"]
             isOneToOne: false
@@ -169,6 +185,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      packs: {
+        Row: {
+          created_at: string
+          id: string
+          nsfw_count: number
+          sfw_count: number
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+          zip_path: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          nsfw_count?: number
+          sfw_count?: number
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id: string
+          zip_path?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nsfw_count?: number
+          sfw_count?: number
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+          zip_path?: string | null
+        }
+        Relationships: []
       }
       publish_templates: {
         Row: {
