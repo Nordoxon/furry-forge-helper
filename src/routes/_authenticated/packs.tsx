@@ -84,6 +84,8 @@ function PacksPage() {
   const nsfw = items.filter((i) => i.content_kind !== "sfw");
   const previews = items.filter((i) => i.is_preview);
   const caption = `${sfw.length} SFW + ${nsfw.length} NSFW images`;
+  const charPacks = (packs.data ?? []).filter((p) => p.character_id === charId);
+
 
   async function onBuild() {
     if (items.length === 0) return;
