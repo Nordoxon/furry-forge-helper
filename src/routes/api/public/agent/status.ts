@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { authenticateAgent, json } from "@/lib/agent-auth";
 
-const ALLOWED = new Set(["upscaling", "uploading", "published", "error", "approved"]);
+const ALLOWED = new Set(["upscaling", "uploading", "published", "ready", "error", "approved"]);
 
 export const Route = createFileRoute("/api/public/agent/status")({
   server: {

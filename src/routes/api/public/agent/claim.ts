@@ -98,6 +98,8 @@ export const Route = createFileRoute("/api/public/agent/claim")({
             local_path: img.local_path,
             filename: img.filename,
             asset_name: assetName,
+            content_kind: img.content_kind,
+            upload_to_da: img.is_preview,
             output_filename: `${assetName}.png`,
             title,
             description,
