@@ -188,9 +188,11 @@ export type Database = {
       }
       packs: {
         Row: {
+          character_id: string | null
           created_at: string
           id: string
           nsfw_count: number
+          pack_number: number | null
           sfw_count: number
           status: string
           title: string
@@ -199,9 +201,11 @@ export type Database = {
           zip_path: string | null
         }
         Insert: {
+          character_id?: string | null
           created_at?: string
           id?: string
           nsfw_count?: number
+          pack_number?: number | null
           sfw_count?: number
           status?: string
           title?: string
@@ -210,9 +214,11 @@ export type Database = {
           zip_path?: string | null
         }
         Update: {
+          character_id?: string | null
           created_at?: string
           id?: string
           nsfw_count?: number
+          pack_number?: number | null
           sfw_count?: number
           status?: string
           title?: string
@@ -220,7 +226,15 @@ export type Database = {
           user_id?: string
           zip_path?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "packs_character_id_fkey"
+            columns: ["character_id"]
+            isOneToOne: false
+            referencedRelation: "characters"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       publish_templates: {
         Row: {
