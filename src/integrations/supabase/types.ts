@@ -52,6 +52,9 @@ export type Database = {
           is_mature: boolean
           name: string
           notes: string
+          nsfw_target: number
+          preview_target: number
+          sfw_target: number
           species: string
           title_template: string
           user_id: string
@@ -66,6 +69,9 @@ export type Database = {
           is_mature?: boolean
           name: string
           notes?: string
+          nsfw_target?: number
+          preview_target?: number
+          sfw_target?: number
           species?: string
           title_template?: string
           user_id: string
@@ -80,6 +86,9 @@ export type Database = {
           is_mature?: boolean
           name?: string
           notes?: string
+          nsfw_target?: number
+          preview_target?: number
+          sfw_target?: number
           species?: string
           title_template?: string
           user_id?: string
