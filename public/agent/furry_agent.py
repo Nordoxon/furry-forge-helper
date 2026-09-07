@@ -33,8 +33,18 @@ import zlib
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import urlencode, urlparse, parse_qs
 
-import requests
-from PIL import Image
+try:
+    import requests
+    from PIL import Image
+except ImportError as _e:
+    print("Не хватает библиотек:", _e)
+    print("Выполните в командной строке:  pip install requests pillow")
+    try:
+        input("\nНажмите Enter, чтобы закрыть окно...")
+    except Exception:
+        pass
+    raise SystemExit(1)
+
 
 # ─────────────────────────── НАСТРОЙКИ ───────────────────────────
 API_BASE = "https://your-app.lovable.app"      # адрес сайта
@@ -1216,10 +1226,27 @@ def process_packs():
             log("ошибка сборки пака:", str(e)[:200])
 
 
+def preflight():
+    """Понятные сообщения вместо мгновенного закрытия окна."""
+    problems = []
+    if "вставьте" in AGENT_TOKEN or not AGENT_TOKEN.strip():
+        problems.append("Не заполнен AGENT_TOKEN — скопируйте ключ со страницы «Агент» на сайте.")
+    if "your-app" in API_BASE or not API_BASE.startswith("http"):
+        problems.append("Не заполнен API_BASE — вставьте адрес вашего сайта.")
+    if not os.path.isdir(WATCH_DIR):
+        problems.append(f"Папка с генерациями не найдена: {WATCH_DIR}")
+    return problems
+
+
 def main():
-    if "вставьте" in AGENT_TOKEN:
-        print("Заполните AGENT_TOKEN в настройках скрипта.")
-        sys.exit(1)
+    problems = preflight()
+    if problems:
+        print("\nСкрипт не может стартовать:\n")
+        for p in problems:
+            print("  •", p)
+        print("\nОткройте furry_agent.py в блокноте и поправьте блок НАСТРОЙКИ вверху файла.")
+        raise SystemExit(1)
+
     log("агент запущен, папка:", WATCH_DIR)
     if GEN_ENABLED:
         threading.Thread(target=gen_loop, daemon=True).start()
@@ -1234,7 +1261,22 @@ def main():
         time.sleep(POLL_INTERVAL)
 
 
-
-
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\nОстановлено вручную.")
+    except SystemExit:
+        pass
+    except Exception:
+        import traceback
+
+        print("\n=== Скрипт остановился из-за ошибки ===")
+        traceback.print_exc()
+    finally:
+        # окно не закрывается мгновенно — ошибку видно
+        try:
+            input("\nНажмите Enter, чтобы закрыть окно...")
+        except Exception:
+            pass
+
