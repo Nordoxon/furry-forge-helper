@@ -78,7 +78,7 @@ export const Route = createFileRoute("/api/public/agent/claim")({
           const ch = img.character_id ? charById.get(img.character_id) : undefined;
           const tpl = (img.template_id ? tplById.get(img.template_id) : null) ?? defaultTpl;
           seq += 1;
-          const assetName = img.asset_name || uniqueGirlName(used);
+          const assetName = img.asset_name || characterAssetName(ch?.name, used);
           const vars = {
             name: assetName,
             character: ch?.name ?? "",
