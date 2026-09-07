@@ -33,8 +33,18 @@ import zlib
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import urlencode, urlparse, parse_qs
 
-import requests
-from PIL import Image
+try:
+    import requests
+    from PIL import Image
+except ImportError as _e:
+    print("Не хватает библиотек:", _e)
+    print("Выполните в командной строке:  pip install requests pillow")
+    try:
+        input("\nНажмите Enter, чтобы закрыть окно...")
+    except Exception:
+        pass
+    raise SystemExit(1)
+
 
 # ─────────────────────────── НАСТРОЙКИ ───────────────────────────
 API_BASE = "https://your-app.lovable.app"      # адрес сайта
