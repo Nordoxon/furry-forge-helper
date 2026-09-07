@@ -1335,9 +1335,9 @@ def main():
     threading.Thread(target=scan_loop, daemon=True).start()
     while True:
         try:
-            process_queue()
             _pack_busy.set()
             try:
+                process_queue()
                 process_packs()
             finally:
                 _pack_busy.clear()
