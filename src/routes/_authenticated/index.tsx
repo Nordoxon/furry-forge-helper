@@ -118,6 +118,14 @@ function TriagePage() {
 
   async function act(status: "approved" | "rejected") {
     if (!current) return;
+    if (status === "approved") {
+      const limit = kind === "sfw" ? batch.sfwTarget : batch.nsfwTarget;
+      const picked = kind === "sfw" ? batch.sfw.length : batch.nsfw.length;
+      if (picked >= limit) {
+        toast.error(`${kind === "sfw" ? "SFW" : "NSFW"} уже набрано ${limit} — этап закрыт`);
+        return;
+      }
+    }
     const id = current.id;
     try {
       await decide(
