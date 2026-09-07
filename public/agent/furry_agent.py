@@ -748,7 +748,11 @@ def process_queue():
         jobs = r.json().get("jobs", [])
     except Exception as e:
         log("очередь недоступна:", e)
-        return
+        return False
+
+    if not jobs:
+        return False
+    _pack_busy.set()  # пока идёт работа по паку — не забираем новые генерации
 
     for job in jobs:
         log("обработка:", job["filename"], "->", job.get("asset_name", ""))
@@ -776,6 +780,8 @@ def process_queue():
         except Exception as e:
             log("ошибка:", e)
             report(job["id"], "error", error=str(e)[:300])
+
+    return True
 
 
 def gen_newest_png():
@@ -1254,7 +1260,11 @@ def process_packs():
         packs = r.json().get("packs", [])
     except Exception as e:
         log("паки недоступны:", e)
-        return
+        return False
+
+    if not packs:
+        return False
+    _pack_busy.set()
 
     for pack in packs:
         try:
@@ -1306,6 +1316,8 @@ def process_packs():
         except Exception as e:
             log("ошибка сборки пака:", str(e)[:200])
 
+    return True
+
 
 def preflight():
     """Понятные сообщения вместо мгновенного закрытия окна."""
@@ -1335,11 +1347,9 @@ def main():
     threading.Thread(target=scan_loop, daemon=True).start()
     while True:
         try:
-            _pack_busy.set()
-            try:
-                process_queue()
-                process_packs()
-            finally:
+            busy = process_queue()
+            busy = process_packs() or busy
+            if not busy:
                 _pack_busy.clear()
         except Exception as e:
             log("ошибка обработки очереди:", e)
