@@ -48,6 +48,14 @@ export function batchState(character: CharacterRow | null, items: ImageRow[]): B
   };
 }
 
+/** Точный состав пака: ровно sfwTarget SFW (превью в приоритете) + nsfwTarget NSFW. */
+export function packItems(batch: BatchState): ImageRow[] {
+  const sfwSorted = [...batch.sfw].sort(
+    (a, b) => Number(!!b.is_preview) - Number(!!a.is_preview),
+  );
+  return [...sfwSorted.slice(0, batch.sfwTarget), ...batch.nsfw.slice(0, batch.nsfwTarget)];
+}
+
 /** Сбрасывает текущую незакрытую партию персонажа (собранные паки не трогает). */
 export async function resetBatch(characterId: string): Promise<number> {
   const { data, error } = await supabase

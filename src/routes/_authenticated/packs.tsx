@@ -20,7 +20,7 @@ import {
   nextPackNumber,
 } from "@/lib/packs";
 import { renderCover } from "@/lib/cover";
-import { batchState } from "@/lib/batch";
+import { batchState, packItems } from "@/lib/batch";
 
 export const Route = createFileRoute("/_authenticated/packs")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -86,15 +86,17 @@ function PacksPage() {
   const sfw = batch.sfw;
   const nsfw = batch.nsfw;
   const previews = batch.previews;
-  const caption = `${sfw.length} SFW + ${nsfw.length} NSFW images`;
+  const packSet = packItems(batch);
+  const packSfw = packSet.filter((i) => i.content_kind === "sfw").length;
+  const caption = `${packSfw} SFW + ${packSet.length - packSfw} NSFW images`;
   const charPacks = (packs.data ?? []).filter((p) => p.character_id === charId);
 
 
   async function onBuild() {
-    if (items.length === 0) return;
+    if (packSet.length === 0) return;
     setBusy(true);
     try {
-      await buildPack(title.trim() || autoTitle, items, charId, Number(number) || null);
+      await buildPack(title.trim() || autoTitle, packSet, charId, Number(number) || null);
       setTitle("");
       toast.success("Пак собран");
       void qc.invalidateQueries({ queryKey: ["selection"] });
@@ -219,11 +221,11 @@ function PacksPage() {
             </p>
             <Button
               className="w-full"
-              disabled={items.length === 0 || busy || previews.length === 0}
+              disabled={packSet.length === 0 || busy || previews.length === 0}
               onClick={onBuild}
             >
               {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Package className="mr-2 h-4 w-4" />}
-              Собрать пак ({items.length})
+              Собрать пак ({packSet.length})
             </Button>
             <CoverButton items={previews.length ? previews : items} caption={caption} title={title} />
           </div>
