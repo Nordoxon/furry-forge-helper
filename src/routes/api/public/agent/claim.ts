@@ -1,6 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { authenticateAgent, json, renderTemplate } from "@/lib/agent-auth";
-import { uniqueGirlName } from "@/lib/girl-names";
+/** Имя файла/работы: имя персонажа + порядковый номер (Lucario_001). */
+function characterAssetName(characterName: string | undefined, used: Set<string>) {
+  const base = (characterName || "Image").replace(/[^A-Za-z0-9]+/g, "") || "Image";
+  let i = 1;
+  let candidate = `${base}_${String(i).padStart(3, "0")}`;
+  while (used.has(candidate.toLowerCase())) {
+    i += 1;
+    candidate = `${base}_${String(i).padStart(3, "0")}`;
+  }
+  used.add(candidate.toLowerCase());
+  return candidate;
+}
 
 export const Route = createFileRoute("/api/public/agent/claim")({
   server: {
