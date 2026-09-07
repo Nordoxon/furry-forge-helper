@@ -389,7 +389,7 @@ function CoverButton({
   title?: string;
 }) {
   const [busy, setBusy] = useState(false);
-  const ids = useMemo(() => items.slice(0, 4), [items]);
+  const ids = useMemo(() => items.slice(0, 1), [items]);
 
   async function make() {
     if (ids.length === 0) {
@@ -424,6 +424,8 @@ function CoverButton({
 
 function PackCover({ packId, caption, title }: { packId: string; caption: string; title: string }) {
   const { data } = useQuery({ queryKey: ["pack-images", packId], queryFn: () => fetchPackImages(packId) });
-  const items = (data ?? []).filter((i) => i.is_preview);
+  const items = (data ?? [])
+    .filter((i) => i.is_preview)
+    .sort((a, b) => String(a.updated_at).localeCompare(String(b.updated_at)));
   return <CoverButton items={items.length ? items : (data ?? [])} caption={caption} title={title} />;
 }

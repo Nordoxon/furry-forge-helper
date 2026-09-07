@@ -748,7 +748,11 @@ def process_queue():
         jobs = r.json().get("jobs", [])
     except Exception as e:
         log("очередь недоступна:", e)
-        return
+        return False
+
+    if not jobs:
+        return False
+    _pack_busy.set()  # пока идёт работа по паку — не забираем новые генерации
 
     for job in jobs:
         log("обработка:", job["filename"], "->", job.get("asset_name", ""))
@@ -776,6 +780,8 @@ def process_queue():
         except Exception as e:
             log("ошибка:", e)
             report(job["id"], "error", error=str(e)[:300])
+
+    return True
 
 
 def gen_newest_png():
@@ -1161,8 +1167,11 @@ def gen_loop():
 def scan_loop():
     while True:
         try:
-            log("сканирую папку outputs на новые изображения")
-            scan_and_upload()
+            if _pack_busy.is_set():
+                log("идёт сборка пака — новые изображения пока не забираю")
+            else:
+                log("сканирую папку outputs на новые изображения")
+                scan_and_upload()
             if GEN_ENABLED:
                 try:
                     if gen_busy():
@@ -1184,11 +1193,63 @@ def scan_loop():
 
 PACKS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "packs")
 
+# пока идёт сборка пака (апскейл + zip + обложка) новые генерации не забираем
+_pack_busy = threading.Event()
+
 
 def _safe_name(text):
     keep = "-_() "
     out = "".join(c for c in str(text) if c.isalnum() or c in keep).strip()
     return out or "pack"
+
+
+COVER_FOLDER = ""  # стек на DA для обложек; пусто — как у превью
+
+
+def make_cover(src, caption, title, out_path):
+    """Обложка из одного кадра: картинка + надпись «8 SFW + 23 NSFW images»."""
+    from PIL import Image, ImageDraw, ImageFont
+
+    W, H = 1600, 2048
+    base = Image.open(src).convert("RGB")
+    scale = max(W / base.width, H / base.height)
+    base = base.resize((int(base.width * scale), int(base.height * scale)), Image.LANCZOS)
+    canvas = base.crop(
+        (
+            (base.width - W) // 2,
+            (base.height - H) // 2,
+            (base.width - W) // 2 + W,
+            (base.height - H) // 2 + H,
+        )
+    )
+    shade = Image.new("RGBA", (W, int(H * 0.35)), (0, 0, 0, 0))
+    sd = ImageDraw.Draw(shade)
+    for y in range(shade.height):
+        sd.line([(0, y), (W, y)], fill=(0, 0, 0, int(225 * y / shade.height)))
+    canvas = canvas.convert("RGBA")
+    canvas.alpha_composite(shade, (0, H - shade.height))
+    canvas = canvas.convert("RGB")
+
+    draw = ImageDraw.Draw(canvas)
+
+    def font(size):
+        for name in ("arialbd.ttf", "arial.ttf", "DejaVuSans-Bold.ttf"):
+            try:
+                return ImageFont.truetype(name, size)
+            except Exception:
+                continue
+        return ImageFont.load_default()
+
+    def centered(text, f, y, fill):
+        if not text:
+            return
+        box = draw.textbbox((0, 0), text, font=f)
+        draw.text(((W - (box[2] - box[0])) / 2, y), text, font=f, fill=fill)
+
+    centered(title, font(80), H - 330, (235, 235, 235))
+    centered(caption, font(130), H - 210, (255, 255, 255))
+    canvas.save(out_path, "PNG")
+    return out_path
 
 
 def process_packs():
@@ -1199,7 +1260,11 @@ def process_packs():
         packs = r.json().get("packs", [])
     except Exception as e:
         log("паки недоступны:", e)
-        return
+        return False
+
+    if not packs:
+        return False
+    _pack_busy.set()
 
     for pack in packs:
         try:
@@ -1216,6 +1281,32 @@ def process_packs():
                     zf.write(src, arcname=f"{asset}.png")
                     added += 1
             log(f"пак «{label}»: {added} изображений -> {zip_path}")
+
+            cover = pack.get("cover") or {}
+            cover_asset = cover.get("asset_name") or os.path.splitext(cover.get("filename", ""))[0]
+            cover_src = os.path.join(UPSCALED_DIR, str(cover_asset) + ".png") if cover_asset else ""
+            if cover_src and os.path.exists(cover_src):
+                try:
+                    cover_path = make_cover(
+                        cover_src,
+                        pack.get("caption") or "",
+                        pack.get("title") or "",
+                        os.path.join(PACKS_DIR, f"{label}_cover.png"),
+                    )
+                    log("обложка:", cover_path)
+                    da_publish(
+                        cover_path,
+                        {
+                            "asset_name": f"{pack.get('title') or label} cover",
+                            "description": pack.get("caption") or "",
+                            "tags": [],
+                            "gallery_folder": COVER_FOLDER or "",
+                            "is_mature": False,
+                        },
+                    )
+                    log("обложка загружена на DeviantArt")
+                except Exception as e:
+                    log("обложка: ошибка:", str(e)[:200])
             requests.post(
                 f"{API_BASE}/api/public/agent/packs",
                 headers=HEADERS,
@@ -1224,6 +1315,8 @@ def process_packs():
             )
         except Exception as e:
             log("ошибка сборки пака:", str(e)[:200])
+
+    return True
 
 
 def preflight():
@@ -1254,8 +1347,10 @@ def main():
     threading.Thread(target=scan_loop, daemon=True).start()
     while True:
         try:
-            process_queue()
-            process_packs()
+            busy = process_queue()
+            busy = process_packs() or busy
+            if not busy:
+                _pack_busy.clear()
         except Exception as e:
             log("ошибка обработки очереди:", e)
         time.sleep(POLL_INTERVAL)
