@@ -52,11 +52,17 @@ export const Route = createFileRoute("/api/public/agent/packs")({
             (i) => i.status !== "ready" && i.status !== "published" && i.status !== "error",
           );
           if (pending.length > 0) continue;
+          // обложка делается из одного кадра — первого отмеченного превью
+          const coverImg = list.find((i) => i.is_preview) ?? list[0];
           result.push({
             id: pack.id,
             title: pack.title,
             sfw_count: pack.sfw_count,
             nsfw_count: pack.nsfw_count,
+            caption: `${pack.sfw_count} SFW + ${pack.nsfw_count} NSFW images`,
+            cover: coverImg
+              ? { asset_name: coverImg.asset_name, filename: coverImg.filename }
+              : null,
             files: list.map((i) => ({
               asset_name: i.asset_name,
               filename: i.filename,
