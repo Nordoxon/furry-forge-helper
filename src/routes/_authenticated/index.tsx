@@ -1,17 +1,7 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  Check,
-  X,
-  Loader2,
-  Inbox,
-  Undo2,
-  FolderOpen,
-  LayoutTemplate,
-  Trash2,
-  PackageCheck,
-} from "lucide-react";
+import { Check, X, Loader2, Inbox, Undo2, Trash2, PackageCheck } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,7 +18,6 @@ import {
   signedPreview,
   type ImageRow,
 } from "@/lib/images";
-import { fetchTemplates, type TemplateRow } from "@/lib/templates";
 import { clearInbox, fetchSelection } from "@/lib/packs";
 import { batchState, resetBatch, type BatchState } from "@/lib/batch";
 
