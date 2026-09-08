@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Package, Star, ImageDown, Trash2, Plus, ChevronLeft, Crown, Download } from "lucide-react";
+import { Loader2, Package, Star, ImageDown, Trash2, Plus, ChevronLeft, Crown, Download, Play, Pause } from "lucide-react";
 
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,47 @@ import {
 } from "@/lib/packs";
 import { renderCover } from "@/lib/cover";
 import { batchState, packItems } from "@/lib/batch";
+import { pauseGeneration, startGeneration } from "@/lib/generation";
+
+function GenerationControl({
+  enabled,
+  onToggle,
+}: {
+  enabled: boolean;
+  onToggle: (on: boolean) => void | Promise<void>;
+}) {
+  return (
+    <section className="rounded-2xl border border-border/60 bg-card p-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm font-medium">
+            {enabled ? "Генерация идёт" : "Генерация остановлена"}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {enabled
+              ? "Компьютер генерирует кадры для текущего этапа. Можно поставить на паузу в любой момент."
+              : "Нажмите, чтобы начать новую сборку — компьютер продолжит с того же места."}
+          </p>
+        </div>
+        <Button
+          variant={enabled ? "outline" : "default"}
+          onClick={() => void onToggle(!enabled)}
+          className="shrink-0"
+        >
+          {enabled ? (
+            <>
+              <Pause className="mr-1 h-4 w-4" /> Пауза
+            </>
+          ) : (
+            <>
+              <Play className="mr-1 h-4 w-4" /> Начать
+            </>
+          )}
+        </Button>
+      </div>
+    </section>
+  );
+}
 
 export const Route = createFileRoute("/_authenticated/packs")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -191,6 +232,24 @@ function PacksPage() {
       </header>
 
       <main className="mx-auto w-full max-w-2xl flex-1 space-y-6 px-4 py-4">
+
+        {activeChar && (
+          <GenerationControl
+            enabled={activeChar.generation_enabled}
+            onToggle={async (on) => {
+              try {
+                if (on) await startGeneration(activeChar.id);
+                else await pauseGeneration(activeChar.id);
+                toast.success(on ? "Генерация запущена" : "Генерация на паузе");
+                void qc.invalidateQueries({ queryKey: ["characters"] });
+              } catch (e) {
+                toast.error((e as Error).message);
+              }
+            }}
+          />
+        )}
+
+
 
 
         <section className="rounded-2xl border border-border/60 bg-card p-4">

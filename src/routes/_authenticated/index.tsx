@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, X, Loader2, Inbox, Undo2, Trash2, PackageCheck } from "lucide-react";
+import { Check, X, Loader2, Inbox, Undo2, Trash2, PackageCheck, Play, Pause } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,6 +20,7 @@ import {
 } from "@/lib/images";
 import { clearInbox, fetchSelection } from "@/lib/packs";
 import { batchState, resetBatch, type BatchState } from "@/lib/batch";
+import { pauseGeneration, startGeneration } from "@/lib/generation";
 
 export const Route = createFileRoute("/_authenticated/")({
   head: () => ({
@@ -162,6 +163,34 @@ function TriagePage() {
             </p>
           </div>
           <div className="flex items-center gap-1">
+            {activeChar && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={async () => {
+                  try {
+                    if (activeChar.generation_enabled) await pauseGeneration(activeChar.id);
+                    else await startGeneration(activeChar.id);
+                    toast.success(
+                      activeChar.generation_enabled ? "Генерация на паузе" : "Генерация запущена",
+                    );
+                    void qc.invalidateQueries({ queryKey: ["characters"] });
+                  } catch (e) {
+                    toast.error((e as Error).message);
+                  }
+                }}
+              >
+                {activeChar.generation_enabled ? (
+                  <>
+                    <Pause className="mr-1 h-4 w-4" /> Пауза
+                  </>
+                ) : (
+                  <>
+                    <Play className="mr-1 h-4 w-4" /> Запустить
+                  </>
+                )}
+              </Button>
+            )}
             {last && (
               <Button variant="ghost" size="sm" onClick={undo}>
                 <Undo2 className="mr-1 h-4 w-4" /> Вернуть
