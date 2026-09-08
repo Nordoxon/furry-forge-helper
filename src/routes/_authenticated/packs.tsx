@@ -18,6 +18,7 @@ import {
   setPreviewFlag,
   setCoverFlag,
   packZipUrl,
+  deletePackZip,
   deleteImages,
   nextPackNumber,
 } from "@/lib/packs";
@@ -300,7 +301,7 @@ function PacksPage() {
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
-                      {p.zip_path && <ZipButton path={p.zip_path} />}
+                      {p.zip_path && <ZipButton path={p.zip_path} packId={p.id} />}
                       <PackCover packId={p.id} caption={packLabel(p)} title={p.title} />
                     </div>
                   </div>
@@ -445,30 +446,60 @@ function CoverButton({
   );
 }
 
-function ZipButton({ path }: { path: string }) {
+function ZipButton({ path, packId }: { path: string; packId: string }) {
+  const qc = useQueryClient();
   const [busy, setBusy] = useState(false);
+  const [removing, setRemoving] = useState(false);
   return (
-    <Button
-      size="sm"
-      variant="outline"
-      disabled={busy}
-      onClick={async () => {
-        setBusy(true);
-        try {
-          const url = await packZipUrl(path);
-          if (!url) throw new Error("Архив ещё не залит с компьютера");
-          window.open(url, "_blank");
-        } catch (e) {
-          toast.error((e as Error).message);
-        } finally {
-          setBusy(false);
-        }
-      }}
-    >
-      {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-    </Button>
+    <>
+      <Button
+        size="sm"
+        variant="outline"
+        disabled={busy}
+        onClick={async () => {
+          setBusy(true);
+          try {
+            const url = await packZipUrl(path);
+            if (!url) throw new Error("Архив ещё не залит с компьютера");
+            window.open(url, "_blank");
+          } catch (e) {
+            toast.error((e as Error).message);
+          } finally {
+            setBusy(false);
+          }
+        }}
+      >
+        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+      </Button>
+      <Button
+        size="sm"
+        variant="ghost"
+        disabled={removing}
+        title="Удалить архив из облака"
+        onClick={async () => {
+          if (!window.confirm("Удалить архив из облака? Скачать его после этого будет нельзя.")) return;
+          setRemoving(true);
+          try {
+            await deletePackZip(packId, path);
+            toast.success("Архив удалён из облака");
+            void qc.invalidateQueries({ queryKey: ["packs"] });
+          } catch (e) {
+            toast.error((e as Error).message);
+          } finally {
+            setRemoving(false);
+          }
+        }}
+      >
+        {removing ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <Trash2 className="h-4 w-4 text-destructive" />
+        )}
+      </Button>
+    </>
   );
 }
+
 
 function PackCover({ packId, caption, title }: { packId: string; caption: string; title: string }) {
   const { data } = useQuery({ queryKey: ["pack-images", packId], queryFn: () => fetchPackImages(packId) });
