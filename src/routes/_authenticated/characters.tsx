@@ -379,3 +379,86 @@ function Field({
     </div>
   );
 }
+
+/** Выбор стиля: селектор из уже известных + ручной ввод имени из styles.csv. */
+function StylePicker({
+  value,
+  options,
+  onChange,
+  onAdd,
+}: {
+  value: string;
+  options: string[];
+  onChange: (v: string) => void;
+  onAdd: (v: string) => void;
+}) {
+  const [manual, setManual] = useState(false);
+  const [draft, setDraft] = useState("");
+
+  function commit() {
+    const name = draft.trim();
+    if (!name) return;
+    onAdd(name);
+    onChange(name);
+    setDraft("");
+    setManual(false);
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => onChange("")}
+          className={`rounded-full border px-3 py-1.5 text-xs transition ${
+            value === ""
+              ? "border-primary bg-primary text-primary-foreground"
+              : "border-border text-muted-foreground"
+          }`}
+        >
+          Без стиля
+        </button>
+        {options.map((o) => (
+          <button
+            key={o}
+            type="button"
+            onClick={() => onChange(o)}
+            className={`rounded-full border px-3 py-1.5 text-xs transition ${
+              value === o
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-border text-muted-foreground"
+            }`}
+          >
+            {o}
+          </button>
+        ))}
+        <button
+          type="button"
+          onClick={() => setManual((m) => !m)}
+          className="rounded-full border border-dashed border-border px-3 py-1.5 text-xs text-muted-foreground"
+        >
+          + Своё имя
+        </button>
+      </div>
+      {manual && (
+        <div className="flex gap-2">
+          <Input
+            autoFocus
+            value={draft}
+            placeholder="Имя из styles.csv"
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                commit();
+              }
+            }}
+          />
+          <Button type="button" onClick={commit}>
+            Добавить
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
