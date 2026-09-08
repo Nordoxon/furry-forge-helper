@@ -44,6 +44,13 @@ export const Route = createFileRoute("/api/public/agent/gen")({
         const sfw = list.filter((i) => i.content_kind === "sfw").length;
         const nsfw = list.length - sfw;
 
+        // сколько кадров реально ждут апскейла/загрузки — если ноль, агенту нечего делать в паузе
+        const { count: pendingCount } = await supabase
+          .from("images")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", userId)
+          .in("status", ["approved", "upscaling", "uploading"]);
+
         let phase: "sfw" | "nsfw" | "done" = "sfw";
         if (sfw >= character.sfw_target) phase = nsfw >= character.nsfw_target ? "done" : "nsfw";
 
@@ -64,6 +71,9 @@ export const Route = createFileRoute("/api/public/agent/gen")({
             batch_count: character.gen_batch_count,
             style: character.gen_style,
           },
+          pending: pendingCount ?? 0,
+          done: phase === "nsfw" ? nsfw : sfw,
+          target: phase === "nsfw" ? character.nsfw_target : character.sfw_target,
           progress: { sfw, nsfw, sfw_target: character.sfw_target, nsfw_target: character.nsfw_target },
           reason:
             phase === "done"
