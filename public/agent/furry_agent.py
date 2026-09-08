@@ -1631,6 +1631,8 @@ def main():
     log("агент запущен, папка:", WATCH_DIR)
     if GEN_ENABLED:
         threading.Thread(target=gen_loop, daemon=True).start()
+        threading.Thread(target=phase_watch_loop, daemon=True).start()
+
     # сканирование папки идёт своим потоком, чтобы долгий апскейл/загрузка его не тормозили
     threading.Thread(target=scan_loop, daemon=True).start()
     while True:
