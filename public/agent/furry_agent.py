@@ -994,6 +994,7 @@ def _gen_ui_worker():
             except Exception:
                 pass
             gen_apply_prompt(page, _gen_prompts.get("prompt") or "")
+            gen_apply_negative_prompt(page, _gen_prompts.get("negative_prompt") or "")
             gen_apply_settings(page, _gen_prompts.get("settings") or {})
             btn = page.locator("#txt2img_generate")
             btn.wait_for(state="visible", timeout=60000)
@@ -1194,6 +1195,7 @@ def gen_pause_and_restart(reason=""):
         plan = site_gen_plan()
         if plan is not None:
             _gen_prompts["prompt"] = plan.get("prompt") or ""
+            _gen_prompts["negative_prompt"] = plan.get("negative_prompt") or ""
             _gen_prompts["phase"] = plan.get("phase") or ""
             _gen_prompts["settings"] = plan.get("settings") or {}
             _s = _gen_prompts["settings"]
