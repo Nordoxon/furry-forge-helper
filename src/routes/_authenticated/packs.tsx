@@ -364,7 +364,9 @@ function PacksPage() {
                       <PackCover packId={p.id} caption={packLabel(p)} title={p.title} />
                     </div>
                   </div>
+                  <PackPreviews paths={p.preview_paths ?? []} />
                 </li>
+
               ))}
             </ul>
           )}
