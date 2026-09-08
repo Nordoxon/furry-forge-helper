@@ -36,6 +36,13 @@
       "when": 1788843365956,
       "tag": "0004_prompts_cover_zip",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1788844404367,
+      "tag": "0005_character_gen_settings",
+      "breakpoints": true
     }
   ]
 }

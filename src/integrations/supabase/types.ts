@@ -47,6 +47,13 @@ export type Database = {
           created_at: string
           description_template: string
           gallery_folder: string
+          gen_batch_count: number
+          gen_cfg: number
+          gen_height: number
+          gen_sampler: string
+          gen_steps: number
+          gen_style: string
+          gen_width: number
           generation_enabled: boolean
           id: string
           is_default: boolean
@@ -68,6 +75,13 @@ export type Database = {
           created_at?: string
           description_template?: string
           gallery_folder?: string
+          gen_batch_count?: number
+          gen_cfg?: number
+          gen_height?: number
+          gen_sampler?: string
+          gen_steps?: number
+          gen_style?: string
+          gen_width?: number
           generation_enabled?: boolean
           id?: string
           is_default?: boolean
@@ -89,6 +103,13 @@ export type Database = {
           created_at?: string
           description_template?: string
           gallery_folder?: string
+          gen_batch_count?: number
+          gen_cfg?: number
+          gen_height?: number
+          gen_sampler?: string
+          gen_steps?: number
+          gen_style?: string
+          gen_width?: number
           generation_enabled?: boolean
           id?: string
           is_default?: boolean
