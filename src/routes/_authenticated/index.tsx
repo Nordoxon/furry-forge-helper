@@ -107,7 +107,7 @@ function TriagePage() {
   async function undo() {
     if (!last) return;
     try {
-      await decide(last.id, "new", null, null);
+      await decide(last.id, "new", null);
       setDone((d) => d.filter((x) => x !== last.id));
       setLast(null);
       void inbox.refetch();
@@ -117,12 +117,7 @@ function TriagePage() {
     }
   }
 
-  function addFolder() {
-    const name = window.prompt("Название папки галереи на DeviantArt")?.trim();
-    if (!name) return;
-    setExtraFolders((f) => (f.includes(name) ? f : [...f, name]));
-    setFolder(name);
-  }
+
 
   async function onClearInbox() {
     if (!window.confirm(`Удалить ${all.length} неразобранных кадров? Отобранное и паки останутся.`)) return;
