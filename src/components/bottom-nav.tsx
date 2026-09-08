@@ -1,11 +1,10 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { CheckCheck, UserRound, ListChecks, Settings, LayoutTemplate, Package } from "lucide-react";
+import { CheckCheck, UserRound, ListChecks, Settings, Package } from "lucide-react";
 
 const tabs = [
   { to: "/", label: "Отбор", icon: CheckCheck },
   { to: "/packs", label: "Паки", icon: Package },
   { to: "/queue", label: "Очередь", icon: ListChecks },
-  { to: "/templates", label: "Шаблоны", icon: LayoutTemplate },
   { to: "/characters", label: "Персонажи", icon: UserRound },
   { to: "/setup", label: "Агент", icon: Settings },
 ] as const;
