@@ -115,6 +115,14 @@ export async function buildPack(
       items.map((i) => i.id),
     );
   if (linkError) throw linkError;
+
+  // сборка пака останавливает генерацию на компьютере
+  if (characterId) {
+    await supabase
+      .from("characters")
+      .update({ generation_enabled: false })
+      .eq("id", characterId);
+  }
   return pack;
 }
 
