@@ -63,6 +63,9 @@ PREVIEW_MAX_SIDE = 640                          # размер превью дл
 PREVIEW_QUALITY = 72
 
 A1111_URL = "http://127.0.0.1:7860"
+# Путь к webui-user.bat: если Stable Diffusion не отвечает, агент сам его запустит.
+# Пусто = не запускать автоматически. Пример: r"D:\stable-diffusion-webui\webui-user.bat"
+A1111_LAUNCH_BAT = r"webui-user.bat"
 UPSCALER = "R-ESRGAN 4x+"
 
 # Режимы: "factor" — по множителю; "size" — по целевому разрешению
@@ -912,6 +915,39 @@ def gen_busy():
 
 
 _sd_offline_since = [0.0]
+_sd_launch_attempted = [0.0]
+
+
+def sd_try_launch():
+    """Если Stable Diffusion не отвечает — сам запускает webui-user.bat и ждёт готовности."""
+    if not A1111_LAUNCH_BAT or not os.path.isfile(A1111_LAUNCH_BAT):
+        return False
+    now = time.time()
+    if now - _sd_launch_attempted[0] < 600:  # не чаще раза в 10 минут
+        return False
+    _sd_launch_attempted[0] = now
+    log("Stable Diffusion не отвечает — запускаю сам:", A1111_LAUNCH_BAT)
+    try:
+        bat_dir = os.path.dirname(os.path.abspath(A1111_LAUNCH_BAT))
+        subprocess.Popen(
+            [A1111_LAUNCH_BAT], cwd=bat_dir,
+            creationflags=getattr(subprocess, "CREATE_NEW_CONSOLE", 0),
+        )
+    except Exception as e:
+        log("не удалось запустить Stable Diffusion:", str(e)[:150])
+        return False
+    # SD стартует долго (модели грузятся) — ждём до 10 минут
+    for _ in range(150):
+        time.sleep(4)
+        try:
+            r = requests.get(f"{A1111_URL}/sdapi/v1/progress?skip_current_image=true", timeout=15)
+            if r.ok:
+                log("Stable Diffusion запустился и отвечает")
+                return True
+        except requests.exceptions.RequestException:
+            pass
+    log("Stable Diffusion за 10 минут не поднялся — жду дальше")
+    return False
 
 
 def gen_busy_safe():
@@ -924,9 +960,9 @@ def gen_busy_safe():
         return busy
     except requests.exceptions.RequestException:
         now = time.time()
-        if now - _sd_offline_since[0] > 300:
+        if now - _sd_offline_since[0] > 60:
             _sd_offline_since[0] = now
-            log(f"Stable Diffusion не отвечает ({A1111_URL}) — запустите его, жду")
+            sd_try_launch()
         return None
 
 
