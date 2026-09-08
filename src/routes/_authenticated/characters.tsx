@@ -239,6 +239,57 @@ function CharactersPage() {
                 onChange={(e) => setForm({ ...form, nsfw_prompt: e.target.value })}
               />
             </Field>
+            <Field label="Стиль персонажа" hint="имя стиля из styles.csv на компьютере">
+              <Input
+                value={form.gen_style}
+                placeholder="Lucario"
+                onChange={(e) => setForm({ ...form, gen_style: e.target.value })}
+              />
+            </Field>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Ширина">
+                <Input
+                  inputMode="numeric"
+                  value={form.gen_width}
+                  onChange={(e) => setForm({ ...form, gen_width: e.target.value })}
+                />
+              </Field>
+              <Field label="Высота">
+                <Input
+                  inputMode="numeric"
+                  value={form.gen_height}
+                  onChange={(e) => setForm({ ...form, gen_height: e.target.value })}
+                />
+              </Field>
+              <Field label="CFG">
+                <Input
+                  inputMode="decimal"
+                  value={form.gen_cfg}
+                  onChange={(e) => setForm({ ...form, gen_cfg: e.target.value })}
+                />
+              </Field>
+              <Field label="Шаги">
+                <Input
+                  inputMode="numeric"
+                  value={form.gen_steps}
+                  onChange={(e) => setForm({ ...form, gen_steps: e.target.value })}
+                />
+              </Field>
+              <Field label="Сэмплер">
+                <Input
+                  value={form.gen_sampler}
+                  placeholder="Euler a"
+                  onChange={(e) => setForm({ ...form, gen_sampler: e.target.value })}
+                />
+              </Field>
+              <Field label="Кадров за запуск">
+                <Input
+                  inputMode="numeric"
+                  value={form.gen_batch_count}
+                  onChange={(e) => setForm({ ...form, gen_batch_count: e.target.value })}
+                />
+              </Field>
+            </div>
             <label className="flex items-center justify-between">
               <span className="text-sm">Промпт подтверждён</span>
               <Switch
