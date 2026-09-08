@@ -109,6 +109,13 @@ function CharactersPage() {
       nsfw_prompt: form.nsfw_prompt,
       prompt_approved: form.prompt_approved,
       generation_enabled: form.generation_enabled,
+      gen_width: Number(form.gen_width) || 832,
+      gen_height: Number(form.gen_height) || 1216,
+      gen_cfg: Number(form.gen_cfg) || 5,
+      gen_steps: Number(form.gen_steps) || 28,
+      gen_sampler: form.gen_sampler.trim() || "Euler a",
+      gen_batch_count: Number(form.gen_batch_count) || 100,
+      gen_style: form.gen_style.trim(),
     };
     if (editing === "new") await supabase.from("characters").insert(payload);
     else if (editing) await supabase.from("characters").update(payload).eq("id", editing);
