@@ -221,12 +221,6 @@ function CharactersPage() {
                 onChange={(e) => setForm({ ...form, description_template: e.target.value })}
               />
             </Field>
-            <Field label="Папка галереи на DeviantArt">
-              <Input
-                value={form.gallery_folder}
-                onChange={(e) => setForm({ ...form, gallery_folder: e.target.value })}
-              />
-            </Field>
             <Field label="Промпт для SFW" hint="его получит компьютер и запустит генерацию">
               <Textarea
                 rows={4}
@@ -251,12 +245,13 @@ function CharactersPage() {
               />
             </Field>
             <Field label="Стиль персонажа" hint="имя стиля из styles.csv на компьютере">
-              <Input
+              <StylePicker
                 value={form.gen_style}
-                placeholder="Lucario"
-                onChange={(e) => setForm({ ...form, gen_style: e.target.value })}
+                options={styleOptions}
+                onChange={(v) => setForm({ ...form, gen_style: v })}
               />
             </Field>
+
             <div className="grid grid-cols-2 gap-3">
               <Field label="Ширина">
                 <Input
