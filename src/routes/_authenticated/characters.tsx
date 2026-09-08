@@ -192,9 +192,10 @@ function CharactersPage() {
                   {c.base_tags.length > 0 ? c.base_tags.map((t) => `#${t}`).join(" ") : "Без базовых тегов"}
                 </p>
               </button>
-              <Button size="sm" variant="outline" asChild>
+              <Button size="sm" variant="outline" className="shrink-0" asChild>
                 <Link to="/packs" search={{ character: c.id }}>
-                  <Package className="mr-1 h-4 w-4" /> Паки
+                  <Package className="h-4 w-4 sm:mr-1" />
+                  <span className="hidden sm:inline">Паки</span>
                 </Link>
               </Button>
             </div>
