@@ -1087,6 +1087,20 @@ def gen_apply_prompt(page, prompt):
     except Exception as e:
         log("не подставил промпт:", str(e)[:150])
 
+def gen_apply_negative_prompt(page, negative_prompt):
+    """Подставляет негативный промпт с сайта в поле txt2img_neg_prompt."""
+    if negative_prompt in (None, ""):
+        return
+    try:
+        box = page.locator("#txt2img_neg_prompt textarea").first
+        if box.count() == 0:
+            return
+        box.wait_for(state="visible", timeout=30000)
+        box.fill(negative_prompt)
+        log("негативный промпт с сайта подставлен в интерфейс")
+    except Exception as e:
+        log("не подставил негативный промпт:", str(e)[:150])
+
 def _ui_set_number(page, selector, value):
     if value in (None, ""):
         return
