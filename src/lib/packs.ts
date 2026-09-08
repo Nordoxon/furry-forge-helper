@@ -66,6 +66,18 @@ export async function packZipUrl(zipPath: string): Promise<string | null> {
   return data?.signedUrl ?? null;
 }
 
+/** Удаляет архив пака из облака, чтобы не занимать место. */
+export async function deletePackZip(packId: string, zipPath: string) {
+  const { error } = await supabase.storage.from("packs").remove([zipPath]);
+  if (error) throw error;
+  const { error: dbError } = await supabase
+    .from("packs")
+    .update({ zip_path: null, status: "done" })
+    .eq("id", packId);
+  if (dbError) throw dbError;
+}
+
+
 /** Собирает пак из всех отобранных изображений без пака. */
 export async function buildPack(
   title: string,
