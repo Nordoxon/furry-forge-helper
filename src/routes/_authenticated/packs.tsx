@@ -566,49 +566,79 @@ function ZipButton({ path, packId }: { path: string; packId: string }) {
 }
 
 /** Превью пака рядом с архивом — их можно скачать на телефон. */
-function PackPreviews({ paths }: { paths: string[] }) {
+function PackPreviews({ packId, paths }: { packId: string; paths: string[] }) {
   if (paths.length === 0) return null;
   return (
     <div className="mt-2 border-t border-border/60 pt-2">
       <p className="mb-1.5 text-[11px] text-muted-foreground">Превью пака ({paths.length})</p>
       <div className="flex flex-wrap gap-2">
         {paths.map((path) => (
-          <PreviewDownload key={path} path={path} />
+          <PreviewDownload key={path} packId={packId} path={path} paths={paths} />
         ))}
       </div>
     </div>
   );
 }
 
-function PreviewDownload({ path }: { path: string }) {
+function PreviewDownload({ packId, path, paths }: { packId: string; path: string; paths: string[] }) {
+  const qc = useQueryClient();
   const [busy, setBusy] = useState(false);
+  const [removing, setRemoving] = useState(false);
   const name = path.split("/").pop() ?? "превью";
   return (
-    <Button
-      size="sm"
-      variant="outline"
-      disabled={busy}
-      className="max-w-[48%]"
-      onClick={async () => {
-        setBusy(true);
-        try {
-          const url = await packZipUrl(path);
-          if (!url) throw new Error("Файл ещё не залит с компьютера");
-          window.open(url, "_blank");
-        } catch (e) {
-          toast.error((e as Error).message);
-        } finally {
-          setBusy(false);
-        }
-      }}
-    >
-      {busy ? (
-        <Loader2 className="h-4 w-4 animate-spin" />
-      ) : (
-        <Download className="mr-1 h-4 w-4 shrink-0" />
-      )}
-      <span className="truncate text-xs">{name}</span>
-    </Button>
+    <div className="flex max-w-full items-center gap-1">
+      <Button
+        size="sm"
+        variant="outline"
+        disabled={busy}
+        className="max-w-[10rem]"
+        onClick={async () => {
+          setBusy(true);
+          try {
+            const url = await packZipUrl(path);
+            if (!url) throw new Error("Файл ещё не залит с компьютера");
+            window.open(url, "_blank");
+          } catch (e) {
+            toast.error((e as Error).message);
+          } finally {
+            setBusy(false);
+          }
+        }}
+      >
+        {busy ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <Download className="mr-1 h-4 w-4 shrink-0" />
+        )}
+        <span className="truncate text-xs">{name}</span>
+      </Button>
+      <Button
+        size="sm"
+        variant="ghost"
+        disabled={removing}
+        title="Удалить превью из облака"
+        aria-label="Удалить превью из облака"
+        onClick={async () => {
+          if (!window.confirm("Удалить это превью из облака?")) return;
+          setRemoving(true);
+          try {
+            await deletePackPreview(packId, path, paths);
+            toast.success("Превью удалено");
+            void qc.invalidateQueries({ queryKey: ["packs"] });
+          } catch (e) {
+            toast.error((e as Error).message);
+          } finally {
+            setRemoving(false);
+          }
+        }}
+      >
+        {removing ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <Trash2 className="h-4 w-4 text-destructive" />
+        )}
+      </Button>
+    </div>
   );
 }
 
