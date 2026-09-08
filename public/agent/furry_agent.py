@@ -1138,6 +1138,8 @@ def gen_ui_click_generate():
 
 
 _gen_prompts = {"sfw": "", "nsfw": "", "phase": ""}
+_gen_running_phase = ""  # этап, под который сейчас идёт генерация
+
 
 
 def site_gen_plan():
