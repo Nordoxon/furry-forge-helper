@@ -43,7 +43,7 @@ export const Route = createFileRoute("/api/public/agent/packs")({
         for (const pack of packs ?? []) {
           const { data: imgs } = await supabase
             .from("images")
-            .select("id, asset_name, filename, status, content_kind, is_preview, updated_at")
+            .select("id, asset_name, filename, status, content_kind, is_preview, is_cover, updated_at")
             .eq("pack_id", pack.id)
             .order("updated_at", { ascending: true });
           const list = imgs ?? [];
@@ -53,7 +53,7 @@ export const Route = createFileRoute("/api/public/agent/packs")({
           );
           if (pending.length > 0) continue;
           // обложка делается из одного кадра — первого отмеченного превью
-          const coverImg = list.find((i) => i.is_preview) ?? list[0];
+          const coverImg = list.find((i) => i.is_cover) ?? list.find((i) => i.is_preview) ?? list[0];
           result.push({
             id: pack.id,
             title: pack.title,

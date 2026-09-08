@@ -48,6 +48,24 @@ export async function setPreviewFlag(id: string, isPreview: boolean) {
   if (error) throw error;
 }
 
+/** Обложка — ровно одно изображение в текущем отборе. */
+export async function setCoverFlag(id: string, characterId: string | null, isCover: boolean) {
+  if (isCover) {
+    let q = supabase.from("images").update({ is_cover: false }).is("pack_id", null);
+    if (characterId) q = q.eq("character_id", characterId);
+    const { error: clearError } = await q;
+    if (clearError) throw clearError;
+  }
+  const { error } = await supabase.from("images").update({ is_cover: isCover }).eq("id", id);
+  if (error) throw error;
+}
+
+/** Ссылка на скачивание архива пака (действует час). */
+export async function packZipUrl(zipPath: string): Promise<string | null> {
+  const { data } = await supabase.storage.from("packs").createSignedUrl(zipPath, 3600);
+  return data?.signedUrl ?? null;
+}
+
 /** Собирает пак из всех отобранных изображений без пака. */
 export async function buildPack(
   title: string,

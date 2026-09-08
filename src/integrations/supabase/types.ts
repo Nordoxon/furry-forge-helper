@@ -47,13 +47,17 @@ export type Database = {
           created_at: string
           description_template: string
           gallery_folder: string
+          generation_enabled: boolean
           id: string
           is_default: boolean
           is_mature: boolean
           name: string
           notes: string
+          nsfw_prompt: string
           nsfw_target: number
           preview_target: number
+          prompt_approved: boolean
+          sfw_prompt: string
           sfw_target: number
           species: string
           title_template: string
@@ -64,13 +68,17 @@ export type Database = {
           created_at?: string
           description_template?: string
           gallery_folder?: string
+          generation_enabled?: boolean
           id?: string
           is_default?: boolean
           is_mature?: boolean
           name: string
           notes?: string
+          nsfw_prompt?: string
           nsfw_target?: number
           preview_target?: number
+          prompt_approved?: boolean
+          sfw_prompt?: string
           sfw_target?: number
           species?: string
           title_template?: string
@@ -81,13 +89,17 @@ export type Database = {
           created_at?: string
           description_template?: string
           gallery_folder?: string
+          generation_enabled?: boolean
           id?: string
           is_default?: boolean
           is_mature?: boolean
           name?: string
           notes?: string
+          nsfw_prompt?: string
           nsfw_target?: number
           preview_target?: number
+          prompt_approved?: boolean
+          sfw_prompt?: string
           sfw_target?: number
           species?: string
           title_template?: string
@@ -108,6 +120,7 @@ export type Database = {
           gallery_folder: string | null
           height: number | null
           id: string
+          is_cover: boolean
           is_preview: boolean
           local_path: string
           pack_id: string | null
@@ -133,6 +146,7 @@ export type Database = {
           gallery_folder?: string | null
           height?: number | null
           id?: string
+          is_cover?: boolean
           is_preview?: boolean
           local_path: string
           pack_id?: string | null
@@ -158,6 +172,7 @@ export type Database = {
           gallery_folder?: string | null
           height?: number | null
           id?: string
+          is_cover?: boolean
           is_preview?: boolean
           local_path?: string
           pack_id?: string | null
@@ -208,6 +223,7 @@ export type Database = {
           updated_at: string
           user_id: string
           zip_path: string | null
+          zip_url: string | null
         }
         Insert: {
           character_id?: string | null
@@ -221,6 +237,7 @@ export type Database = {
           updated_at?: string
           user_id: string
           zip_path?: string | null
+          zip_url?: string | null
         }
         Update: {
           character_id?: string | null
@@ -234,6 +251,7 @@ export type Database = {
           updated_at?: string
           user_id?: string
           zip_path?: string | null
+          zip_url?: string | null
         }
         Relationships: [
           {
