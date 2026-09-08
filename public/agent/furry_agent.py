@@ -457,19 +457,18 @@ def da_token():
 
 
 def da_publish(path, job):
-    """Загружаем файл в Sta.sh с нужным именем и в нужный стек (папку)."""
+    """Загружаем файл в Sta.sh с нужным именем (без папок — прямо в корень)."""
     token = da_token()
 
     title = job.get("asset_name") or job.get("title") or os.path.splitext(os.path.basename(path))[0]
     tpl = job.get("template") or {}
-    stack = job.get("gallery_folder") or ""
+    stack = ""
 
     data = {
         "title": title,
         "artist_comments": job.get("description", ""),
     }
-    if stack:
-        data["stack"] = stack  # Sta.sh создаст/использует стек с таким именем
+
 
     for i, tag in enumerate(job.get("tags", [])[:30]):
         data[f"tags[{i}]"] = tag
@@ -1435,7 +1434,7 @@ def process_packs():
                             "asset_name": f"{pack.get('title') or label} cover",
                             "description": pack.get("caption") or "",
                             "tags": [],
-                            "gallery_folder": COVER_FOLDER or "",
+                            "gallery_folder": "",
                             "is_mature": False,
                         },
                     )

@@ -48,12 +48,8 @@ export const Route = createFileRoute("/api/public/agent/claim")({
           .eq("user_id", userId);
         const charById = new Map((chars ?? []).map((c) => [c.id, c]));
 
-        const { data: tpls } = await supabase
-          .from("publish_templates")
-          .select("*")
-          .eq("user_id", userId);
-        const tplById = new Map((tpls ?? []).map((t) => [t.id, t]));
-        const defaultTpl = (tpls ?? []).find((t) => t.is_default) ?? null;
+
+
 
         const { data: maxRow } = await supabase
           .from("images")
@@ -76,7 +72,6 @@ export const Route = createFileRoute("/api/public/agent/claim")({
         const jobs = [];
         for (const img of approved) {
           const ch = img.character_id ? charById.get(img.character_id) : undefined;
-          const tpl = (img.template_id ? tplById.get(img.template_id) : null) ?? defaultTpl;
           seq += 1;
           const assetName = img.asset_name || characterAssetName(ch?.name, used);
           const vars = {
@@ -89,13 +84,10 @@ export const Route = createFileRoute("/api/public/agent/claim")({
           const title =
             img.title || renderTemplate(ch?.title_template ?? "{filename}", vars) || img.filename;
           const description =
-            img.description ||
-            renderTemplate(tpl?.description_template || ch?.description_template || "", vars);
+            img.description || renderTemplate(ch?.description_template || "", vars);
           const tags = Array.from(
             new Set(
-              [...(ch?.base_tags ?? []), ...(tpl?.tags ?? []), ...(img.tags ?? [])]
-                .map((t) => t.trim())
-                .filter(Boolean),
+              [...(ch?.base_tags ?? []), ...(img.tags ?? [])].map((t) => t.trim()).filter(Boolean),
             ),
           ).slice(0, 30);
 
@@ -117,29 +109,9 @@ export const Route = createFileRoute("/api/public/agent/claim")({
             title,
             description,
             tags,
-            gallery_folder: img.gallery_folder || tpl?.gallery_folder || ch?.gallery_folder || "",
-            is_mature: tpl ? tpl.is_mature : (ch?.is_mature ?? false),
-            template: tpl
-              ? {
-                  name: tpl.name,
-                  is_mature: tpl.is_mature,
-                  mature_level: tpl.mature_level,
-                  mature_classification: tpl.mature_classification,
-                  is_ai_generated: tpl.is_ai_generated,
-                  noai: tpl.noai,
-                  allow_comments: tpl.allow_comments,
-                  allow_free_download: tpl.allow_free_download,
-                  add_watermark: tpl.add_watermark,
-                  display_resolution: tpl.display_resolution,
-                  license_cc: tpl.license_cc,
-                  license_commercial: tpl.license_commercial,
-                  license_modify: tpl.license_modify,
-                  category_path: tpl.category_path,
-                  auto_publish: tpl.auto_publish,
-                  is_downloadable: tpl.is_downloadable,
-                  download_price: tpl.download_price,
-                }
-              : null,
+            gallery_folder: "",
+            is_mature: ch?.is_mature ?? false,
+            template: null,
           });
         }
         return json({ jobs });

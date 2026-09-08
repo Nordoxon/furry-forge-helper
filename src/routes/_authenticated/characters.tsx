@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Trash2, Loader2, Package } from "lucide-react";
 
@@ -36,7 +36,7 @@ const BLANK = {
   base_tags: "",
   title_template: "{character} #{n}",
   description_template: "",
-  gallery_folder: "",
+  
   is_mature: false,
   is_default: false,
   sfw_prompt: "",
@@ -59,6 +59,19 @@ function CharactersPage() {
   const [editing, setEditing] = useState<string | "new" | null>(null);
   const [form, setForm] = useState({ ...BLANK });
   const [busy, setBusy] = useState(false);
+  const [customStyles, setCustomStyles] = useState<string[]>([]);
+
+  // Стили, уже использованные у персонажей, плюс добавленные вручную из styles.csv
+  const styleOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const c of q.data ?? []) if (c.gen_style) set.add(c.gen_style);
+    for (const s of customStyles) set.add(s);
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [q.data, customStyles]);
+
+  function addStyle(name: string) {
+    setCustomStyles((s) => (s.includes(name) ? s : [...s, name]));
+  }
 
   function openNew() {
     setForm({ ...BLANK });
@@ -71,7 +84,7 @@ function CharactersPage() {
       base_tags: c.base_tags.join(", "),
       title_template: c.title_template,
       description_template: c.description_template,
-      gallery_folder: c.gallery_folder,
+      
       is_mature: c.is_mature,
       is_default: c.is_default,
       sfw_prompt: c.sfw_prompt,
@@ -104,7 +117,7 @@ function CharactersPage() {
         .filter(Boolean),
       title_template: form.title_template,
       description_template: form.description_template,
-      gallery_folder: form.gallery_folder.trim(),
+      
       is_mature: form.is_mature,
       is_default: form.is_default,
       sfw_prompt: form.sfw_prompt,
@@ -221,12 +234,6 @@ function CharactersPage() {
                 onChange={(e) => setForm({ ...form, description_template: e.target.value })}
               />
             </Field>
-            <Field label="Папка галереи на DeviantArt">
-              <Input
-                value={form.gallery_folder}
-                onChange={(e) => setForm({ ...form, gallery_folder: e.target.value })}
-              />
-            </Field>
             <Field label="Промпт для SFW" hint="его получит компьютер и запустит генерацию">
               <Textarea
                 rows={4}
@@ -251,12 +258,15 @@ function CharactersPage() {
               />
             </Field>
             <Field label="Стиль персонажа" hint="имя стиля из styles.csv на компьютере">
-              <Input
+              <StylePicker
                 value={form.gen_style}
-                placeholder="Lucario"
-                onChange={(e) => setForm({ ...form, gen_style: e.target.value })}
+                options={styleOptions}
+                onChange={(v) => setForm({ ...form, gen_style: v })}
+                onAdd={addStyle}
               />
+
             </Field>
+
             <div className="grid grid-cols-2 gap-3">
               <Field label="Ширина">
                 <Input
@@ -366,6 +376,89 @@ function Field({
       <Label>{label}</Label>
       {children}
       {hint && <p className="text-[11px] text-muted-foreground">{hint}</p>}
+    </div>
+  );
+}
+
+/** Выбор стиля: селектор из уже известных + ручной ввод имени из styles.csv. */
+function StylePicker({
+  value,
+  options,
+  onChange,
+  onAdd,
+}: {
+  value: string;
+  options: string[];
+  onChange: (v: string) => void;
+  onAdd: (v: string) => void;
+}) {
+  const [manual, setManual] = useState(false);
+  const [draft, setDraft] = useState("");
+
+  function commit() {
+    const name = draft.trim();
+    if (!name) return;
+    onAdd(name);
+    onChange(name);
+    setDraft("");
+    setManual(false);
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => onChange("")}
+          className={`rounded-full border px-3 py-1.5 text-xs transition ${
+            value === ""
+              ? "border-primary bg-primary text-primary-foreground"
+              : "border-border text-muted-foreground"
+          }`}
+        >
+          Без стиля
+        </button>
+        {options.map((o) => (
+          <button
+            key={o}
+            type="button"
+            onClick={() => onChange(o)}
+            className={`rounded-full border px-3 py-1.5 text-xs transition ${
+              value === o
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-border text-muted-foreground"
+            }`}
+          >
+            {o}
+          </button>
+        ))}
+        <button
+          type="button"
+          onClick={() => setManual((m) => !m)}
+          className="rounded-full border border-dashed border-border px-3 py-1.5 text-xs text-muted-foreground"
+        >
+          + Своё имя
+        </button>
+      </div>
+      {manual && (
+        <div className="flex gap-2">
+          <Input
+            autoFocus
+            value={draft}
+            placeholder="Имя из styles.csv"
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                commit();
+              }
+            }}
+          />
+          <Button type="button" onClick={commit}>
+            Добавить
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

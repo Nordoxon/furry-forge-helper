@@ -1,17 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  Check,
-  X,
-  Loader2,
-  Inbox,
-  Undo2,
-  FolderOpen,
-  LayoutTemplate,
-  Trash2,
-  PackageCheck,
-} from "lucide-react";
+import { Check, X, Loader2, Inbox, Undo2, Trash2, PackageCheck } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,7 +18,6 @@ import {
   signedPreview,
   type ImageRow,
 } from "@/lib/images";
-import { fetchTemplates, type TemplateRow } from "@/lib/templates";
 import { clearInbox, fetchSelection } from "@/lib/packs";
 import { batchState, resetBatch, type BatchState } from "@/lib/batch";
 
@@ -54,28 +43,17 @@ function TriagePage() {
   const qc = useQueryClient();
   const [done, setDone] = useState<string[]>([]);
   const [charId, setCharId] = useState<string | null>(null);
-  const [folder, setFolder] = useState<string | null>(null);
-  const [templateId, setTemplateId] = useState<string | null>(null);
-  const [extraFolders, setExtraFolders] = useState<string[]>([]);
   const [last, setLast] = useState<{ id: string } | null>(null);
   const [kindOverride, setKindOverride] = useState<"sfw" | "nsfw" | null>(null);
 
   const inbox = useQuery({ queryKey: ["inbox"], queryFn: fetchInbox, refetchInterval: 20000 });
   const chars = useQuery({ queryKey: ["characters"], queryFn: fetchCharacters });
-  const templates = useQuery({ queryKey: ["templates"], queryFn: fetchTemplates });
 
   useEffect(() => {
     if (charId === null && chars.data?.length) {
       setCharId((chars.data.find((c) => c.is_default) ?? chars.data[0]).id);
     }
   }, [chars.data, charId]);
-
-  useEffect(() => {
-    if (templateId === null && templates.data?.length) {
-      const def = templates.data.find((t) => t.is_default);
-      if (def) setTemplateId(def.id);
-    }
-  }, [templates.data, templateId]);
 
   const activeChar = useMemo(
     () => chars.data?.find((c) => c.id === charId) ?? null,
@@ -96,19 +74,6 @@ function TriagePage() {
   // при смене персонажа ручной выбор типа сбрасывается
   useEffect(() => setKindOverride(null), [charId]);
 
-  const activeTemplate = useMemo(
-    () => templates.data?.find((t) => t.id === templateId) ?? null,
-    [templates.data, templateId],
-  );
-
-  const folderOptions = useMemo(() => {
-    const set = new Set<string>();
-    for (const c of chars.data ?? []) if (c.gallery_folder) set.add(c.gallery_folder);
-    for (const t of templates.data ?? []) if (t.gallery_folder) set.add(t.gallery_folder);
-    for (const f of extraFolders) set.add(f);
-    return Array.from(set);
-  }, [chars.data, templates.data, extraFolders]);
-
   const all = inbox.data ?? [];
   const doneSet = useMemo(() => new Set(done), [done]);
   // очередь стабильна: текущий кадр определяется по ID, а не по позиции в списке
@@ -128,14 +93,7 @@ function TriagePage() {
     }
     const id = current.id;
     try {
-      await decide(
-        id,
-        status,
-        charId,
-        status === "approved" ? folder : null,
-        status === "approved" ? templateId : null,
-        { contentKind: kind, isPreview: false },
-      );
+      await decide(id, status, charId, { contentKind: kind, isPreview: false });
       setDone((d) => (d.includes(id) ? d : [...d, id]));
       setLast({ id });
       setKindOverride(null);
@@ -149,7 +107,7 @@ function TriagePage() {
   async function undo() {
     if (!last) return;
     try {
-      await decide(last.id, "new", null, null);
+      await decide(last.id, "new", null);
       setDone((d) => d.filter((x) => x !== last.id));
       setLast(null);
       void inbox.refetch();
@@ -159,12 +117,7 @@ function TriagePage() {
     }
   }
 
-  function addFolder() {
-    const name = window.prompt("Название папки галереи на DeviantArt")?.trim();
-    if (!name) return;
-    setExtraFolders((f) => (f.includes(name) ? f : [...f, name]));
-    setFolder(name);
-  }
+
 
   async function onClearInbox() {
     if (!window.confirm(`Удалить ${all.length} неразобранных кадров? Отобранное и паки останутся.`)) return;
@@ -258,19 +211,8 @@ function TriagePage() {
               <EmptyInbox count={all.length} />
             ) : (
               <>
-                <TemplatePicker
-                  templates={templates.data ?? []}
-                  value={templateId}
-                  onChange={setTemplateId}
-                />
-                <FolderPicker
-                  options={folderOptions}
-                  value={folder}
-                  defaultFolder={activeTemplate?.gallery_folder || activeChar?.gallery_folder || null}
-                  onChange={setFolder}
-                  onAdd={addFolder}
-                />
                 <KindPicker kind={kind} auto={batch.activeKind} onKind={setKindOverride} />
+
                 <Card item={current} />
 
                 <div className="mt-4 grid grid-cols-2 gap-3">
@@ -454,113 +396,6 @@ function CharacterPicker({
   );
 }
 
-function TemplatePicker({
-  templates,
-  value,
-  onChange,
-}: {
-  templates: TemplateRow[];
-  value: string | null;
-  onChange: (v: string | null) => void;
-}) {
-  if (templates.length === 0) {
-    return (
-      <p className="mb-3 rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">
-        Создайте шаблон с тегами и опциями DeviantArt —{" "}
-        <Link to="/templates" className="underline underline-offset-2">
-          Шаблоны
-        </Link>
-      </p>
-    );
-  }
-  return (
-    <div className="mb-3">
-      <p className="mb-1.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-        <LayoutTemplate className="h-3.5 w-3.5" /> Шаблон публикации
-      </p>
-      <div className="flex gap-2 overflow-x-auto pb-1">
-        <button
-          onClick={() => onChange(null)}
-          className={`shrink-0 rounded-full border px-3 py-1.5 text-xs transition ${
-            value === null
-              ? "border-primary bg-primary text-primary-foreground"
-              : "border-border text-muted-foreground"
-          }`}
-        >
-          Без шаблона
-        </button>
-        {templates.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => onChange(t.id)}
-            className={`shrink-0 rounded-full border px-3 py-1.5 text-xs transition ${
-              value === t.id
-                ? "border-primary bg-primary text-primary-foreground"
-                : "border-border text-muted-foreground"
-            }`}
-          >
-            {t.name}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function FolderPicker({
-  options,
-  value,
-  defaultFolder,
-  onChange,
-  onAdd,
-}: {
-  options: string[];
-  value: string | null;
-  defaultFolder: string | null;
-  onChange: (v: string | null) => void;
-  onAdd: () => void;
-}) {
-  return (
-    <div className="mb-3">
-      <p className="mb-1.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-        <FolderOpen className="h-3.5 w-3.5" /> Папка на DeviantArt
-      </p>
-      <div className="flex gap-2 overflow-x-auto pb-1">
-        <button
-          onClick={() => onChange(null)}
-          className={`shrink-0 rounded-full border px-3 py-1.5 text-xs transition ${
-            value === null
-              ? "border-primary bg-primary text-primary-foreground"
-              : "border-border text-muted-foreground"
-          }`}
-        >
-          {defaultFolder ? `По умолчанию: ${defaultFolder}` : "По умолчанию"}
-        </button>
-        {options
-          .filter((o) => o !== defaultFolder)
-          .map((o) => (
-            <button
-              key={o}
-              onClick={() => onChange(o)}
-              className={`shrink-0 rounded-full border px-3 py-1.5 text-xs transition ${
-                value === o
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-border text-muted-foreground"
-              }`}
-            >
-              {o}
-            </button>
-          ))}
-        <button
-          onClick={onAdd}
-          className="shrink-0 rounded-full border border-dashed border-border px-3 py-1.5 text-xs text-muted-foreground"
-        >
-          + Другая
-        </button>
-      </div>
-    </div>
-  );
-}
 
 function Card({ item }: { item: ImageRow }) {
   const { data: url } = useQuery({
