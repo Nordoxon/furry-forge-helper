@@ -300,7 +300,7 @@ function PacksPage() {
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
-                      {p.zip_path && <ZipButton path={p.zip_path} />}
+                      {p.zip_path && <ZipButton path={p.zip_path} packId={p.id} />}
                       <PackCover packId={p.id} caption={packLabel(p)} title={p.title} />
                     </div>
                   </div>
