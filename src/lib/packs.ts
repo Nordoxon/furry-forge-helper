@@ -77,6 +77,17 @@ export async function deletePackZip(packId: string, zipPath: string) {
   if (dbError) throw dbError;
 }
 
+/** Удаляет одно превью пака из облака. */
+export async function deletePackPreview(packId: string, previewPath: string, paths: string[]) {
+  const { error } = await supabase.storage.from("packs").remove([previewPath]);
+  if (error) throw error;
+  const { error: dbError } = await supabase
+    .from("packs")
+    .update({ preview_paths: paths.filter((p) => p !== previewPath) })
+    .eq("id", packId);
+  if (dbError) throw dbError;
+}
+
 
 /** Собирает пак из всех отобранных изображений без пака. */
 export async function buildPack(
