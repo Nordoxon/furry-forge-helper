@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Package, Star, ImageDown, Trash2, Plus, ChevronLeft, Crown, Download } from "lucide-react";
+import { Loader2, Package, Star, ImageDown, Trash2, Plus, ChevronLeft, Crown, Download, Play, Pause } from "lucide-react";
 
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
