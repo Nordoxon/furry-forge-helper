@@ -1087,6 +1087,53 @@ def gen_apply_prompt(page, prompt):
     except Exception as e:
         log("не подставил промпт:", str(e)[:150])
 
+def _ui_set_number(page, selector, value):
+    if value in (None, ""):
+        return
+    box = page.locator(selector).first
+    if box.count() == 0:
+        return
+    box.fill(str(value))
+    box.press("Tab")
+
+
+def gen_apply_settings(page, settings):
+    """Подставляет разрешение, CFG, шаги, сэмплер, batch count и стиль персонажа."""
+    if not settings:
+        return
+    try:
+        _ui_set_number(page, "#txt2img_width input[type=number]", settings.get("width"))
+        _ui_set_number(page, "#txt2img_height input[type=number]", settings.get("height"))
+        _ui_set_number(page, "#txt2img_cfg_scale input[type=number]", settings.get("cfg_scale"))
+        _ui_set_number(page, "#txt2img_steps input[type=number]", settings.get("steps"))
+        _ui_set_number(page, "#txt2img_batch_count input[type=number]", settings.get("batch_count"))
+
+        sampler = settings.get("sampler_name")
+        if sampler:
+            for sel in ("#txt2img_sampling input", "#txt2img_sampling select"):
+                node = page.locator(sel).first
+                if node.count() == 0:
+                    continue
+                try:
+                    node.fill(str(sampler))
+                    node.press("Enter")
+                except Exception:
+                    node.select_option(label=str(sampler))
+                break
+
+        style = settings.get("style")
+        if style:
+            node = page.locator("#txt2img_styles input").first
+            if node.count() > 0:
+                node.click()
+                node.fill(str(style))
+                node.press("Enter")
+        log("настройки генерации с сайта применены в интерфейсе")
+    except Exception as e:
+        log("не применил настройки генерации:", str(e)[:150])
+
+
+
 
 def upload_pack_zip(pack_id, zip_path):
     """Заливает архив пака в облако, чтобы его можно было скачать с телефона."""
