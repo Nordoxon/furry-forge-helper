@@ -1274,7 +1274,7 @@ def gen_interrupt(reason=""):
         log("генерация остановлена" + (f": {reason}" if reason else ""))
         for _ in range(20):
             time.sleep(2)
-            if not gen_busy():
+            if not gen_busy_safe():
                 break
         return True
     except Exception as e:
@@ -1369,7 +1369,7 @@ def gen_pause_and_restart(reason="", force_now=False):
         # Во время паузы очередь может запустить апскейл через тот же A1111 API.
         # Это не новый цикл генерации: просто ждём, пока SD освободится.
         busy_logged = False
-        while gen_busy():
+        while gen_busy_safe():
             if not busy_logged:
                 log("авто-рестарт: пауза закончилась, жду завершения апскейла/задачи SD")
                 busy_logged = True
