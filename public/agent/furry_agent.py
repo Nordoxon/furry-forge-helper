@@ -1753,6 +1753,7 @@ def process_packs():
                     added += 1
             log(f"пак «{label}»: {added} изображений -> {zip_path}")
 
+            preview_paths = []
             cover = pack.get("cover") or {}
             cover_asset = cover.get("asset_name") or os.path.splitext(cover.get("filename", ""))[0]
             cover_src = os.path.join(UPSCALED_DIR, str(cover_asset) + ".png") if cover_asset else ""
@@ -1765,6 +1766,14 @@ def process_packs():
                         os.path.join(PACKS_DIR, f"{label}_cover.png"),
                     )
                     log("обложка:", cover_path)
+                    try:
+                        preview_paths.append(
+                            upload_pack_file(
+                                pack["id"], cover_path, name=f"{label}_cover.png", content_type="image/png"
+                            )
+                        )
+                    except Exception as e:
+                        log("обложка не залилась в облако:", str(e)[:200])
                     da_publish(
                         cover_path,
                         {
@@ -1778,6 +1787,26 @@ def process_packs():
                     log("обложка загружена на DeviantArt")
                 except Exception as e:
                     log("обложка: ошибка:", str(e)[:200])
+
+            # превью пака — рядом с архивом, чтобы скачать их с телефона
+            for f in pack.get("files", []):
+                if not f.get("is_preview"):
+                    continue
+                asset = f.get("asset_name") or os.path.splitext(f.get("filename", ""))[0]
+                src = os.path.join(UPSCALED_DIR, str(asset) + ".png")
+                if not os.path.exists(src):
+                    continue
+                try:
+                    preview_paths.append(
+                        upload_pack_file(
+                            pack["id"], src, name=f"{asset}.png", content_type="image/png"
+                        )
+                    )
+                except Exception as e:
+                    log("превью не залилось в облако:", str(e)[:150])
+            if preview_paths:
+                log(f"превью в облаке: {len(preview_paths)} — можно скачать с телефона")
+
             stored = zip_path
             try:
                 stored = upload_pack_zip(pack["id"], zip_path)
@@ -1787,9 +1816,12 @@ def process_packs():
             requests.post(
                 f"{API_BASE}/api/public/agent/packs",
                 headers=HEADERS,
-                data=json.dumps({"pack_id": pack["id"], "zip_path": stored}),
+                data=json.dumps(
+                    {"pack_id": pack["id"], "zip_path": stored, "preview_paths": preview_paths}
+                ),
                 timeout=60,
             )
+
         except Exception as e:
             log("ошибка сборки пака:", str(e)[:200])
 
