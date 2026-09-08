@@ -995,6 +995,14 @@ def _gen_ui_worker():
             gen_apply_prompt(page, _gen_prompts.get("prompt") or "")
             gen_apply_negative_prompt(page, _gen_prompts.get("negative_prompt") or "")
             gen_apply_settings(page, _gen_prompts.get("settings") or {})
+            _st = _gen_prompts.get("settings") or {}
+            log(
+                "настройки с сайта подставлены:",
+                f"фаза={_gen_prompts.get('phase') or '-'}",
+                f"{_st.get('width')}x{_st.get('height')}",
+                f"steps={_st.get('steps')} cfg={_st.get('cfg_scale')}",
+                f"sampler={_st.get('sampler_name')} style={_st.get('style') or '-'}",
+            )
             btn = page.locator("#txt2img_generate")
             btn.wait_for(state="visible", timeout=60000)
             btn.click()
