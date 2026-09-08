@@ -1202,6 +1202,7 @@ def gen_pause_and_restart(reason=""):
             if _s:
                 payload = payload or {}
                 payload["prompt"] = _gen_prompts["prompt"] or payload.get("prompt", "")
+                payload["negative_prompt"] = _gen_prompts.get("negative_prompt") or payload.get("negative_prompt", "")
                 payload["width"] = _s.get("width", payload.get("width"))
                 payload["height"] = _s.get("height", payload.get("height"))
                 payload["cfg_scale"] = _s.get("cfg_scale", payload.get("cfg_scale"))
