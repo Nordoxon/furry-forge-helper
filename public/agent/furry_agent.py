@@ -1242,7 +1242,7 @@ def gen_pause_and_restart(reason=""):
             return True
 
         payload["batch_size"] = 1
-        payload["n_iter"] = 100  # максимум batch count в интерфейсе
+        payload["n_iter"] = int((_gen_prompts.get("settings") or {}).get("batch_count") or 100)
         log(f"авто-рестарт #{_gen_restarts}: запускаю генерацию заново")
         r = requests.post(f"{A1111_URL}/sdapi/v1/txt2img", json=payload, timeout=60 * 60 * 12)
         r.raise_for_status()
