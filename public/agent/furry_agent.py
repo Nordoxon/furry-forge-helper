@@ -925,18 +925,70 @@ def _gen_pw():
     return pw
 
 
+def _gen_chrome_exe():
+    cands = [
+        os.path.join(os.environ.get("PROGRAMFILES", r"C:\Program Files"), "Google", "Chrome", "Application", "chrome.exe"),
+        os.path.join(os.environ.get("PROGRAMFILES(X86)", r"C:\Program Files (x86)"), "Google", "Chrome", "Application", "chrome.exe"),
+        os.path.join(os.environ.get("LOCALAPPDATA", ""), "Google", "Chrome", "Application", "chrome.exe"),
+        os.path.join(os.environ.get("PROGRAMFILES", r"C:\Program Files"), "Microsoft", "Edge", "Application", "msedge.exe"),
+        os.path.join(os.environ.get("PROGRAMFILES(X86)", r"C:\Program Files (x86)"), "Microsoft", "Edge", "Application", "msedge.exe"),
+    ]
+    for c in cands:
+        if c and os.path.isfile(c):
+            return c
+    return None
+
+
+def _gen_cdp_ready(timeout=25):
+    end = time.time() + timeout
+    while time.time() < end:
+        try:
+            requests.get(f"{GEN_CDP_URL}/json/version", timeout=2).raise_for_status()
+            return True
+        except Exception:
+            time.sleep(1)
+    return False
+
+
+def _gen_launch_chrome():
+    """Сам запускает отдельное окно браузера с отладочным портом и вкладкой A1111."""
+    exe = _gen_chrome_exe()
+    if not exe:
+        return False
+    profile = os.path.join(tempfile.gettempdir(), "sd-agent-profile")
+    port = urlparse(GEN_CDP_URL).port or 9222
+    target = GEN_UI_URL or A1111_URL
+    try:
+        subprocess.Popen(
+            [exe, f"--remote-debugging-port={port}", f"--user-data-dir={profile}",
+             "--no-first-run", "--no-default-browser-check", target],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        )
+    except Exception:
+        return False
+    log("авто-рестарт: открываю отдельное окно браузера с отладочным портом")
+    return _gen_cdp_ready()
+
+
 def gen_attach_page():
     """Находит УЖЕ ОТКРЫТУЮ вкладку с интерфейсом Automatic1111 через отладочный порт."""
     pw = _gen_pw()
     try:
         browser = pw.chromium.connect_over_cdp(GEN_CDP_URL, timeout=15000)
     except Exception as e:
-        raise RuntimeError(
-            "не подключился к открытому браузеру ("
-            + str(e)[:120]
-            + "). Запустите браузер с отладочным портом, например: "
-            'chrome.exe --remote-debugging-port=9222 --user-data-dir="%TEMP%\\sd-profile"'
-        )
+        if _gen_launch_chrome():
+            try:
+                browser = pw.chromium.connect_over_cdp(GEN_CDP_URL, timeout=20000)
+            except Exception as e2:
+                raise RuntimeError("не подключился к браузеру: " + str(e2)[:120])
+        else:
+            raise RuntimeError(
+                "не подключился к открытому браузеру ("
+                + str(e)[:120]
+                + "). Закройте ВСЕ окна Chrome и запустите его заново командой: "
+                'chrome.exe --remote-debugging-port=9222 --user-data-dir="%TEMP%\\sd-agent-profile"'
+            )
+
     target = (GEN_UI_URL or A1111_URL).rstrip("/")
     host = urlparse(target).netloc
     for ctx in browser.contexts:
