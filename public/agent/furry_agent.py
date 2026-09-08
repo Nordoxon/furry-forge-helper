@@ -1314,14 +1314,75 @@ def gen_apply_settings(page, settings):
 
         style = settings.get("style")
         if style:
-            node = page.locator("#txt2img_styles input").first
-            if node.count() > 0:
-                node.click()
-                node.fill(str(style))
-                node.press("Enter")
+            gen_apply_style(page, str(style))
         log("настройки генерации с сайта применены в интерфейсе")
     except Exception as e:
         log("не применил настройки генерации:", str(e)[:150])
+
+
+def _style_selected(page, style):
+    """Проверяет, что стиль реально выбран в поле Styles."""
+    try:
+        txt = page.locator("#txt2img_styles").first.inner_text(timeout=3000)
+    except Exception:
+        return False
+    return style.lower() in (txt or "").lower()
+
+
+def gen_apply_style(page, style):
+    """Выбирает стиль (styles.csv) в Forge/A1111: поле — мультиселект, его нужно
+    открыть, очистить старые токены и выбрать пункт из выпадающего списка."""
+    for attempt in range(3):
+        try:
+            if _style_selected(page, style):
+                if attempt:
+                    log("стиль выбран:", style)
+                return True
+
+            box = page.locator("#txt2img_styles").first
+            if box.count() == 0:
+                log("поле Styles не найдено в интерфейсе")
+                return False
+
+            # убираем ранее выбранные стили, чтобы не смешивать промпты
+            for _ in range(10):
+                rm = box.locator(".token-remove, .remove, li.token .token-remove").first
+                if rm.count() == 0:
+                    break
+                rm.click()
+                page.wait_for_timeout(100)
+
+            inp = box.locator("input").first
+            inp.click()
+            page.wait_for_timeout(200)
+            try:
+                inp.fill("")
+            except Exception:
+                pass
+            inp.type(style, delay=25)
+            page.wait_for_timeout(500)
+
+            # выбираем именно пункт списка, а не просто Enter по тексту
+            opt = page.locator("ul.options li, .options .item, li[role=option]").filter(
+                has_text=style
+            ).first
+            if opt.count() > 0:
+                opt.click()
+            else:
+                inp.press("Enter")
+            page.wait_for_timeout(400)
+            inp.press("Escape")
+            page.wait_for_timeout(200)
+
+            if _style_selected(page, style):
+                log("стиль выбран:", style)
+                return True
+        except Exception as e:
+            log("стиль: попытка", attempt + 1, "не удалась:", str(e)[:120])
+        page.wait_for_timeout(600)
+    log("не удалось выбрать стиль:", style, "— проверьте, что он есть в styles.csv")
+    return False
+
 
 
 
