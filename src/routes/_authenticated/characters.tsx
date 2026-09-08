@@ -77,6 +77,13 @@ function CharactersPage() {
       nsfw_prompt: c.nsfw_prompt,
       prompt_approved: c.prompt_approved,
       generation_enabled: c.generation_enabled,
+      gen_width: String(c.gen_width),
+      gen_height: String(c.gen_height),
+      gen_cfg: String(c.gen_cfg),
+      gen_steps: String(c.gen_steps),
+      gen_sampler: c.gen_sampler,
+      gen_batch_count: String(c.gen_batch_count),
+      gen_style: c.gen_style,
     });
     setEditing(c.id);
   }
