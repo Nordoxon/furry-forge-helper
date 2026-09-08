@@ -43,6 +43,13 @@ const BLANK = {
   nsfw_prompt: "",
   prompt_approved: false,
   generation_enabled: true,
+  gen_width: "832",
+  gen_height: "1216",
+  gen_cfg: "5",
+  gen_steps: "28",
+  gen_sampler: "Euler a",
+  gen_batch_count: "100",
+  gen_style: "",
 };
 
 function CharactersPage() {
@@ -70,6 +77,13 @@ function CharactersPage() {
       nsfw_prompt: c.nsfw_prompt,
       prompt_approved: c.prompt_approved,
       generation_enabled: c.generation_enabled,
+      gen_width: String(c.gen_width),
+      gen_height: String(c.gen_height),
+      gen_cfg: String(c.gen_cfg),
+      gen_steps: String(c.gen_steps),
+      gen_sampler: c.gen_sampler,
+      gen_batch_count: String(c.gen_batch_count),
+      gen_style: c.gen_style,
     });
     setEditing(c.id);
   }
@@ -95,6 +109,13 @@ function CharactersPage() {
       nsfw_prompt: form.nsfw_prompt,
       prompt_approved: form.prompt_approved,
       generation_enabled: form.generation_enabled,
+      gen_width: Number(form.gen_width) || 832,
+      gen_height: Number(form.gen_height) || 1216,
+      gen_cfg: Number(form.gen_cfg) || 5,
+      gen_steps: Number(form.gen_steps) || 28,
+      gen_sampler: form.gen_sampler.trim() || "Euler a",
+      gen_batch_count: Number(form.gen_batch_count) || 100,
+      gen_style: form.gen_style.trim(),
     };
     if (editing === "new") await supabase.from("characters").insert(payload);
     else if (editing) await supabase.from("characters").update(payload).eq("id", editing);
@@ -218,6 +239,57 @@ function CharactersPage() {
                 onChange={(e) => setForm({ ...form, nsfw_prompt: e.target.value })}
               />
             </Field>
+            <Field label="Стиль персонажа" hint="имя стиля из styles.csv на компьютере">
+              <Input
+                value={form.gen_style}
+                placeholder="Lucario"
+                onChange={(e) => setForm({ ...form, gen_style: e.target.value })}
+              />
+            </Field>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Ширина">
+                <Input
+                  inputMode="numeric"
+                  value={form.gen_width}
+                  onChange={(e) => setForm({ ...form, gen_width: e.target.value })}
+                />
+              </Field>
+              <Field label="Высота">
+                <Input
+                  inputMode="numeric"
+                  value={form.gen_height}
+                  onChange={(e) => setForm({ ...form, gen_height: e.target.value })}
+                />
+              </Field>
+              <Field label="CFG">
+                <Input
+                  inputMode="decimal"
+                  value={form.gen_cfg}
+                  onChange={(e) => setForm({ ...form, gen_cfg: e.target.value })}
+                />
+              </Field>
+              <Field label="Шаги">
+                <Input
+                  inputMode="numeric"
+                  value={form.gen_steps}
+                  onChange={(e) => setForm({ ...form, gen_steps: e.target.value })}
+                />
+              </Field>
+              <Field label="Сэмплер">
+                <Input
+                  value={form.gen_sampler}
+                  placeholder="Euler a"
+                  onChange={(e) => setForm({ ...form, gen_sampler: e.target.value })}
+                />
+              </Field>
+              <Field label="Кадров за запуск">
+                <Input
+                  inputMode="numeric"
+                  value={form.gen_batch_count}
+                  onChange={(e) => setForm({ ...form, gen_batch_count: e.target.value })}
+                />
+              </Field>
+            </div>
             <label className="flex items-center justify-between">
               <span className="text-sm">Промпт подтверждён</span>
               <Switch

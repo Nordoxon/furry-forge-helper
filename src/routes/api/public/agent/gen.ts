@@ -54,6 +54,15 @@ export const Route = createFileRoute("/api/public/agent/gen")({
           phase,
           prompt,
           character: character.name,
+          settings: {
+            width: character.gen_width,
+            height: character.gen_height,
+            cfg_scale: Number(character.gen_cfg),
+            steps: character.gen_steps,
+            sampler_name: character.gen_sampler,
+            batch_count: character.gen_batch_count,
+            style: character.gen_style,
+          },
           progress: { sfw, nsfw, sfw_target: character.sfw_target, nsfw_target: character.nsfw_target },
           reason:
             phase === "done"

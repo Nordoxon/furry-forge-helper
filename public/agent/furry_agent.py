@@ -994,6 +994,7 @@ def _gen_ui_worker():
             except Exception:
                 pass
             gen_apply_prompt(page, _gen_prompts.get("prompt") or "")
+            gen_apply_settings(page, _gen_prompts.get("settings") or {})
             btn = page.locator("#txt2img_generate")
             btn.wait_for(state="visible", timeout=60000)
             btn.click()
@@ -1086,6 +1087,53 @@ def gen_apply_prompt(page, prompt):
     except Exception as e:
         log("не подставил промпт:", str(e)[:150])
 
+def _ui_set_number(page, selector, value):
+    if value in (None, ""):
+        return
+    box = page.locator(selector).first
+    if box.count() == 0:
+        return
+    box.fill(str(value))
+    box.press("Tab")
+
+
+def gen_apply_settings(page, settings):
+    """Подставляет разрешение, CFG, шаги, сэмплер, batch count и стиль персонажа."""
+    if not settings:
+        return
+    try:
+        _ui_set_number(page, "#txt2img_width input[type=number]", settings.get("width"))
+        _ui_set_number(page, "#txt2img_height input[type=number]", settings.get("height"))
+        _ui_set_number(page, "#txt2img_cfg_scale input[type=number]", settings.get("cfg_scale"))
+        _ui_set_number(page, "#txt2img_steps input[type=number]", settings.get("steps"))
+        _ui_set_number(page, "#txt2img_batch_count input[type=number]", settings.get("batch_count"))
+
+        sampler = settings.get("sampler_name")
+        if sampler:
+            for sel in ("#txt2img_sampling input", "#txt2img_sampling select"):
+                node = page.locator(sel).first
+                if node.count() == 0:
+                    continue
+                try:
+                    node.fill(str(sampler))
+                    node.press("Enter")
+                except Exception:
+                    node.select_option(label=str(sampler))
+                break
+
+        style = settings.get("style")
+        if style:
+            node = page.locator("#txt2img_styles input").first
+            if node.count() > 0:
+                node.click()
+                node.fill(str(style))
+                node.press("Enter")
+        log("настройки генерации с сайта применены в интерфейсе")
+    except Exception as e:
+        log("не применил настройки генерации:", str(e)[:150])
+
+
+
 
 def upload_pack_zip(pack_id, zip_path):
     """Заливает архив пака в облако, чтобы его можно было скачать с телефона."""
@@ -1133,6 +1181,18 @@ def gen_pause_and_restart(reason=""):
         if plan is not None:
             _gen_prompts["prompt"] = plan.get("prompt") or ""
             _gen_prompts["phase"] = plan.get("phase") or ""
+            _gen_prompts["settings"] = plan.get("settings") or {}
+            _s = _gen_prompts["settings"]
+            if _s:
+                payload = payload or {}
+                payload["prompt"] = _gen_prompts["prompt"] or payload.get("prompt", "")
+                payload["width"] = _s.get("width", payload.get("width"))
+                payload["height"] = _s.get("height", payload.get("height"))
+                payload["cfg_scale"] = _s.get("cfg_scale", payload.get("cfg_scale"))
+                payload["steps"] = _s.get("steps", payload.get("steps"))
+                payload["sampler_name"] = _s.get("sampler_name", payload.get("sampler_name"))
+                if _s.get("style"):
+                    payload["styles"] = [_s["style"]]
             if not plan.get("generate"):
                 log("сайт говорит: генерация не нужна (" + str(plan.get("phase") or "нет задачи") + ")")
                 return False
@@ -1182,7 +1242,7 @@ def gen_pause_and_restart(reason=""):
             return True
 
         payload["batch_size"] = 1
-        payload["n_iter"] = 100  # максимум batch count в интерфейсе
+        payload["n_iter"] = int((_gen_prompts.get("settings") or {}).get("batch_count") or 100)
         log(f"авто-рестарт #{_gen_restarts}: запускаю генерацию заново")
         r = requests.post(f"{A1111_URL}/sdapi/v1/txt2img", json=payload, timeout=60 * 60 * 12)
         r.raise_for_status()
