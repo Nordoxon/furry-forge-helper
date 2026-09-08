@@ -19,6 +19,7 @@ import {
   setCoverFlag,
   packZipUrl,
   deletePackZip,
+  deletePackPreview,
   deleteImages,
   nextPackNumber,
 } from "@/lib/packs";
