@@ -114,11 +114,13 @@ GEN_CDP_URL = "http://127.0.0.1:9222"  # отладочный порт брау�
 GEN_WINDOW_TITLE = "Stable Diffusion"  # часть заголовка окна браузера для режима "hotkey"
 GEN_BROWSER_HEADLESS = False  # для режима "ui": False — окно браузера видно
 GEN_UI_URL = ""               # пусто = A1111_URL
-GEN_RESTARTS = 10             # сколько раз перезапустить (0 — бесконечно)
+GEN_RESTARTS = 0              # сколько раз перезапустить (0 — бесконечно)
 GEN_IDLE_SECONDS = 15         # сколько секунд простоя считать «остановилось»
 GEN_RETRY_WAIT = 30           # пауза перед повтором при ошибке
 GEN_MAX_ERRORS = 5            # после скольких ошибок подряд остановиться
 GEN_PAUSE_SECONDS = 600       # пауза после цикла (10 мин) на апскейл/загрузку отобранного
+GEN_PHASE_CHECK = 30          # как часто (сек) спрашивать сайт про этап отбора
+
 
 
 
@@ -1136,6 +1138,8 @@ def gen_ui_click_generate():
 
 
 _gen_prompts = {"sfw": "", "nsfw": "", "phase": ""}
+_gen_running_phase = ""  # этап, под который сейчас идёт генерация
+
 
 
 def site_gen_plan():
@@ -1244,12 +1248,28 @@ def upload_pack_zip(pack_id, zip_path):
     return info["path"]
 
 
-def gen_pause_and_restart(reason=""):
+def gen_interrupt(reason=""):
+    """Останавливает текущую генерацию в Stable Diffusion."""
+    try:
+        requests.post(f"{A1111_URL}/sdapi/v1/interrupt", timeout=15)
+        log("генерация остановлена" + (f": {reason}" if reason else ""))
+        for _ in range(20):
+            time.sleep(2)
+            if not gen_busy():
+                break
+        return True
+    except Exception as e:
+        log("не удалось остановить генерацию:", str(e)[:150])
+        return False
+
+
+def gen_pause_and_restart(reason="", force_now=False):
     """Пауза на апскейл/загрузку, ожидание свободного SD и повторный «Generate»."""
     global _gen_restarts
     if not _gen_lock.acquire(blocking=False):
         return False  # цикл уже запускается другим потоком
     try:
+
         if GEN_RESTARTS and _gen_restarts >= GEN_RESTARTS:
             return False
 
@@ -1297,8 +1317,11 @@ def gen_pause_and_restart(reason=""):
             log("авто-рестарт:", reason)
 
         # пауза перед новым циклом: даём агенту апскейлить и залить отобранное
-        if skip_pause:
+        if force_now:
+            log("авто-рестарт: этап сменился — запускаю новый промпт сразу, без паузы")
+        elif skip_pause:
             log("авто-рестарт: отобранных кадров нет — паузу пропускаю, запускаю генерацию сразу")
+
         elif GEN_PAUSE_SECONDS > 0:
             log(f"авто-рестарт: пауза {GEN_PAUSE_SECONDS // 60} мин на апскейл и загрузку отобранного")
             waited = 0
@@ -1319,9 +1342,12 @@ def gen_pause_and_restart(reason=""):
             time.sleep(5)
 
         _gen_restarts += 1
+        global _gen_running_phase
+        _gen_running_phase = _gen_prompts.get("phase") or ""
         if GEN_MODE != "api":
-            log(f"авто-рестарт #{_gen_restarts}: нажимаю Generate в интерфейсе")
+            log(f"авто-рестарт #{_gen_restarts}: нажимаю Generate в интерфейсе (этап {_gen_running_phase or '-'})")
             gen_ui_click_generate()
+
             # ждём, пока интерфейс реально начнёт генерацию
             started = False
             for _ in range(30):
@@ -1353,7 +1379,48 @@ def gen_pause_and_restart(reason=""):
         _gen_lock.release()
 
 
+def phase_watch_loop():
+    """Следит за этапом отбора на сайте: останавливает генерацию, когда категория набрана,
+    и сразу перезапускает её с промптом следующего этапа."""
+    global _gen_running_phase
+    log("контроль этапов отбора включён")
+    while True:
+        try:
+            plan = site_gen_plan()
+            if plan is None:
+                time.sleep(GEN_PHASE_CHECK)
+                continue
+            phase = plan.get("phase") or ""
+            want = bool(plan.get("generate"))
+            busy = gen_busy()
+
+            if busy and not want:
+                gen_interrupt(f"этап {phase or '-'} закрыт, нужное количество набрано")
+                _gen_running_phase = ""
+            elif busy and _gen_running_phase and phase and phase != _gen_running_phase:
+                gen_interrupt(f"этап сменился на {phase} — меняю промпт")
+                _gen_running_phase = ""
+                if not _gen_lock.locked():
+                    threading.Thread(
+                        target=gen_pause_and_restart,
+                        args=(f"новый этап {phase}",),
+                        kwargs={"force_now": True},
+                        daemon=True,
+                    ).start()
+            elif not busy and want and not _gen_lock.locked():
+                threading.Thread(
+                    target=gen_pause_and_restart,
+                    args=(f"этап {phase}: набрано {plan.get('done')}/{plan.get('target')} — продолжаю генерацию",),
+                    kwargs={"force_now": phase != _gen_running_phase},
+                    daemon=True,
+                ).start()
+        except Exception as e:
+            log("контроль этапов: ошибка:", str(e)[:150])
+        time.sleep(GEN_PHASE_CHECK)
+
+
 def gen_loop():
+
     """Ждёт остановки генерации и «нажимает Generate» снова с теми же параметрами."""
     log("авто-рестарт генерации включён")
     idle_since = None
@@ -1564,6 +1631,8 @@ def main():
     log("агент запущен, папка:", WATCH_DIR)
     if GEN_ENABLED:
         threading.Thread(target=gen_loop, daemon=True).start()
+        threading.Thread(target=phase_watch_loop, daemon=True).start()
+
     # сканирование папки идёт своим потоком, чтобы долгий апскейл/загрузка его не тормозили
     threading.Thread(target=scan_loop, daemon=True).start()
     while True:
