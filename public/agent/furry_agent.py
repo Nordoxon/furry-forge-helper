@@ -121,7 +121,7 @@ GEN_RESTARTS = 0              # сколько раз перезапустить
 GEN_IDLE_SECONDS = 15         # сколько секунд простоя считать «остановилось»
 GEN_RETRY_WAIT = 30           # пауза перед повтором при ошибке
 GEN_MAX_ERRORS = 5            # после скольких ошибок подряд остановиться
-GEN_PAUSE_SECONDS = 600       # пауза после цикла (10 мин) на апскейл/загрузку отобранного
+GEN_PAUSE_SECONDS = 0         # паузы больше нет: генерацией управляет сайт (кнопки «Пауза»/«Начать»)
 GEN_PHASE_CHECK = 30          # как часто (сек) спрашивать сайт про этап отбора
 
 
@@ -1586,22 +1586,7 @@ def scan_loop():
             else:
                 log("сканирую папку outputs на новые изображения")
                 scan_and_upload()
-            if GEN_ENABLED:
-                try:
-                    busy = gen_busy_safe()
-                    if busy is None:
-                        pass
-                    elif busy:
-                        log("проверка генерации: идёт, всё ок")
-                    elif not _gen_lock.locked():
-                        log("проверка генерации: остановлена — беру паузу и перезапущу")
-                        threading.Thread(
-                            target=gen_pause_and_restart,
-                            args=("генерация не идёт (проверка при сканировании)",),
-                            daemon=True,
-                        ).start()
-                except Exception as e:
-                    log("проверка генерации: ошибка:", str(e)[:150])
+            # перезапуском генерации управляет только сайт (phase_watch_loop)
         except Exception as e:
             log("ошибка сканирования:", e)
         time.sleep(SCAN_INTERVAL)
@@ -1765,7 +1750,7 @@ def main():
 
     log("агент запущен, папка:", WATCH_DIR)
     if GEN_ENABLED:
-        threading.Thread(target=gen_loop, daemon=True).start()
+        # генерацией управляет сайт: старт/пауза/смена этапа
         threading.Thread(target=phase_watch_loop, daemon=True).start()
 
     # сканирование папки идёт своим потоком, чтобы долгий апскейл/загрузка его не тормозили
