@@ -20,6 +20,7 @@ import {
 } from "@/lib/images";
 import { clearInbox, fetchSelection } from "@/lib/packs";
 import { batchState, resetBatch, type BatchState } from "@/lib/batch";
+import { pauseGeneration, startGeneration } from "@/lib/generation";
 
 export const Route = createFileRoute("/_authenticated/")({
   head: () => ({
