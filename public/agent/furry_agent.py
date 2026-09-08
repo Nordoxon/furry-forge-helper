@@ -1358,10 +1358,14 @@ def gen_pause_and_restart(reason="", force_now=False):
 
         _gen_restarts += 1
         global _gen_running_phase
-        _gen_running_phase = _gen_prompts.get("phase") or ""
+        _gen_running_phase = f"{_gen_prompts.get('character') or ''}:{_gen_prompts.get('phase') or ''}"
         if GEN_MODE != "api":
-            log(f"авто-рестарт #{_gen_restarts}: нажимаю Generate в интерфейсе (этап {_gen_running_phase or '-'})")
+            log(
+                f"авто-рестарт #{_gen_restarts}: нажимаю Generate в интерфейсе "
+                f"({_gen_prompts.get('character') or '-'} / этап {_gen_prompts.get('phase') or '-'})"
+            )
             gen_ui_click_generate()
+
 
             # ждём, пока интерфейс реально начнёт генерацию
             started = False
