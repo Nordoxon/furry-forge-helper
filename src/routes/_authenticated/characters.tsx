@@ -242,6 +242,14 @@ function CharactersPage() {
                 onChange={(e) => setForm({ ...form, nsfw_prompt: e.target.value })}
               />
             </Field>
+            <Field label="Негативный промпт" hint="один общий для SFW и NSFW">
+              <Textarea
+                rows={3}
+                value={form.negative_prompt}
+                placeholder="lowres, bad anatomy, blurry…"
+                onChange={(e) => setForm({ ...form, negative_prompt: e.target.value })}
+              />
+            </Field>
             <Field label="Стиль персонажа" hint="имя стиля из styles.csv на компьютере">
               <Input
                 value={form.gen_style}
