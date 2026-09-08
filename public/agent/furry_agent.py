@@ -64,8 +64,8 @@ PREVIEW_QUALITY = 72
 
 A1111_URL = "http://127.0.0.1:7860"
 # Путь к webui-user.bat: если Stable Diffusion не отвечает, агент сам его запустит.
-# Пусто = не запускать автоматически. Пример: r"D:\stable-diffusion-webui\webui-user.bat"
-A1111_LAUNCH_BAT = r"webui-user.bat"
+# Пусто = искать автоматически рядом с папкой генераций. Пример: r"D:\stable-diffusion-webui\webui-user.bat"
+A1111_LAUNCH_BAT = ""
 UPSCALER = "R-ESRGAN 4x+"
 
 # Режимы: "factor" — по множителю; "size" — по целевому разрешению
@@ -916,21 +916,60 @@ def gen_busy():
 
 _sd_offline_since = [0.0]
 _sd_launch_attempted = [0.0]
+_sd_last_notice = [0.0]
+_sd_bat_cache = [None]
+
+
+def sd_find_bat():
+    """Находит webui-user.bat: сначала настройка, потом папки рядом с WATCH_DIR, потом типовые пути."""
+    if _sd_bat_cache[0] is not None:
+        return _sd_bat_cache[0]
+
+    cands = []
+    if A1111_LAUNCH_BAT:
+        cands.append(A1111_LAUNCH_BAT)
+
+    # outputs -> корень webui (поднимаемся на несколько уровней вверх)
+    d = os.path.abspath(WATCH_DIR)
+    for _ in range(4):
+        cands.append(os.path.join(d, "webui-user.bat"))
+        parent = os.path.dirname(d)
+        if parent == d:
+            break
+        d = parent
+
+    for drive in ("C:", "D:", "E:"):
+        for name in ("stable-diffusion-webui", "stable-diffusion-webui-master", "stable-diffusion",
+                     "stable-diffusion-webui-forge", "sd"):
+            cands.append(os.path.join(drive + os.sep, name, "webui-user.bat"))
+
+    for c in cands:
+        try:
+            if c and os.path.isfile(c):
+                _sd_bat_cache[0] = os.path.abspath(c)
+                return _sd_bat_cache[0]
+        except OSError:
+            pass
+    _sd_bat_cache[0] = ""
+    return ""
 
 
 def sd_try_launch():
     """Если Stable Diffusion не отвечает — сам запускает webui-user.bat и ждёт готовности."""
-    if not A1111_LAUNCH_BAT or not os.path.isfile(A1111_LAUNCH_BAT):
+    bat = sd_find_bat()
+    if not bat:
+        log("Stable Diffusion не запущен, а webui-user.bat не найден — "
+            "укажите путь в строке A1111_LAUNCH_BAT вверху файла")
         return False
     now = time.time()
     if now - _sd_launch_attempted[0] < 600:  # не чаще раза в 10 минут
         return False
     _sd_launch_attempted[0] = now
-    log("Stable Diffusion не отвечает — запускаю сам:", A1111_LAUNCH_BAT)
+    log("Stable Diffusion не отвечает — запускаю сам:", bat)
     try:
-        bat_dir = os.path.dirname(os.path.abspath(A1111_LAUNCH_BAT))
+        bat_dir = os.path.dirname(bat)
         subprocess.Popen(
-            [A1111_LAUNCH_BAT], cwd=bat_dir,
+            [bat], cwd=bat_dir,
             creationflags=getattr(subprocess, "CREATE_NEW_CONSOLE", 0),
         )
     except Exception as e:
@@ -957,11 +996,16 @@ def gen_busy_safe():
         if _sd_offline_since[0]:
             log("Stable Diffusion снова на связи")
             _sd_offline_since[0] = 0.0
+            _sd_last_notice[0] = 0.0
         return busy
     except requests.exceptions.RequestException:
         now = time.time()
-        if now - _sd_offline_since[0] > 60:
+        if not _sd_offline_since[0]:
             _sd_offline_since[0] = now
+        if now - _sd_last_notice[0] > 120:
+            _sd_last_notice[0] = now
+            log(f"Stable Diffusion не отвечает на {A1111_URL} — генерация не идёт")
+        if now - _sd_offline_since[0] > 30:
             sd_try_launch()
         return None
 
