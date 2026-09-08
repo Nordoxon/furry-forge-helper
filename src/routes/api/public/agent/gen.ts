@@ -53,6 +53,7 @@ export const Route = createFileRoute("/api/public/agent/gen")({
           generate: phase !== "done" && Boolean(prompt.trim()),
           phase,
           prompt,
+          negative_prompt: character.negative_prompt,
           character: character.name,
           settings: {
             width: character.gen_width,
