@@ -1246,12 +1246,28 @@ def upload_pack_zip(pack_id, zip_path):
     return info["path"]
 
 
-def gen_pause_and_restart(reason=""):
+def gen_interrupt(reason=""):
+    """Останавливает текущую генерацию в Stable Diffusion."""
+    try:
+        requests.post(f"{A1111_URL}/sdapi/v1/interrupt", timeout=15)
+        log("генерация остановлена" + (f": {reason}" if reason else ""))
+        for _ in range(20):
+            time.sleep(2)
+            if not gen_busy():
+                break
+        return True
+    except Exception as e:
+        log("не удалось остановить генерацию:", str(e)[:150])
+        return False
+
+
+def gen_pause_and_restart(reason="", force_now=False):
     """Пауза на апскейл/загрузку, ожидание свободного SD и повторный «Generate»."""
     global _gen_restarts
     if not _gen_lock.acquire(blocking=False):
         return False  # цикл уже запускается другим потоком
     try:
+
         if GEN_RESTARTS and _gen_restarts >= GEN_RESTARTS:
             return False
 
