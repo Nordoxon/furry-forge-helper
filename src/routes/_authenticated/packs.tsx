@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Package, Star, ImageDown, Trash2, Plus, ChevronLeft } from "lucide-react";
+import { Loader2, Package, Star, ImageDown, Trash2, Plus, ChevronLeft, Crown, Download } from "lucide-react";
 
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,8 @@ import {
   packLabel,
   setKind,
   setPreviewFlag,
+  setCoverFlag,
+  packZipUrl,
   deleteImages,
   nextPackNumber,
 } from "@/lib/packs";
@@ -262,6 +264,10 @@ function PacksPage() {
                     await setPreviewFlag(i.id, v);
                     void qc.invalidateQueries({ queryKey: ["selection"] });
                   }}
+                  onCover={async (v) => {
+                    await setCoverFlag(i.id, charId ?? null, v);
+                    void qc.invalidateQueries({ queryKey: ["selection"] });
+                  }}
                   onDelete={async () => {
                     await deleteImages([i.id]);
                     void qc.invalidateQueries({ queryKey: ["selection"] });
@@ -293,7 +299,10 @@ function PacksPage() {
                         {packLabel(p)} · {p.status === "zipped" ? "Архив готов" : "Апскейл и архив"}
                       </p>
                     </div>
-                    <PackCover packId={p.id} caption={packLabel(p)} title={p.title} />
+                    <div className="flex items-center gap-2">
+                      {p.zip_path && <ZipButton path={p.zip_path} />}
+                      <PackCover packId={p.id} caption={packLabel(p)} title={p.title} />
+                    </div>
                   </div>
                 </li>
               ))}
@@ -327,11 +336,13 @@ function Thumb({
   item,
   onKind,
   onPreview,
+  onCover,
   onDelete,
 }: {
   item: ImageRow;
   onKind: (k: "sfw" | "nsfw") => void;
   onPreview: (v: boolean) => void;
+  onCover: (v: boolean) => void;
   onDelete: () => void;
 }) {
   const { data: url } = useSigned(item);
@@ -353,6 +364,16 @@ function Thumb({
           }`}
         >
           <Star className="h-3.5 w-3.5" />
+        </button>
+        <button
+          onClick={() => onCover(!item.is_cover)}
+          title="Обложка для DeviantArt"
+          aria-label="Обложка"
+          className={`absolute bottom-1 right-1 rounded-full p-1.5 ${
+            item.is_cover ? "bg-primary text-primary-foreground" : "bg-background/70 text-muted-foreground"
+          }`}
+        >
+          <Crown className="h-3.5 w-3.5" />
         </button>
         <button
           onClick={onDelete}
@@ -420,6 +441,31 @@ function CoverButton({
     <Button variant="outline" className="w-full" onClick={make} disabled={busy}>
       {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ImageDown className="mr-2 h-4 w-4" />}
       Сделать обложку
+    </Button>
+  );
+}
+
+function ZipButton({ path }: { path: string }) {
+  const [busy, setBusy] = useState(false);
+  return (
+    <Button
+      size="sm"
+      variant="outline"
+      disabled={busy}
+      onClick={async () => {
+        setBusy(true);
+        try {
+          const url = await packZipUrl(path);
+          if (!url) throw new Error("Архив ещё не залит с компьютера");
+          window.open(url, "_blank");
+        } catch (e) {
+          toast.error((e as Error).message);
+        } finally {
+          setBusy(false);
+        }
+      }}
+    >
+      {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
     </Button>
   );
 }
