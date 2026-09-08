@@ -1003,9 +1003,20 @@ def gen_attach_page():
             if host and host in url and page.locator("#txt2img_generate").count() > 0:
                 _gen_browser.update({"browser": browser, "page": page})
                 return page
-    raise RuntimeError(
-        f"в открытом браузере нет вкладки с интерфейсом Automatic1111 ({target}) — откройте её"
-    )
+    # вкладки с интерфейсом нет — открываем её сами в подключённом браузере
+    try:
+        ctx = browser.contexts[0] if browser.contexts else browser.new_context()
+        page = ctx.new_page()
+        page.goto(target, wait_until="domcontentloaded", timeout=120000)
+        page.wait_for_selector("#txt2img_generate", timeout=120000)
+        _gen_browser.update({"browser": browser, "page": page})
+        log("авто-рестарт: открыл вкладку Automatic1111 в подключённом браузере")
+        return page
+    except Exception as e:
+        raise RuntimeError(
+            f"не смог открыть вкладку с интерфейсом Automatic1111 ({target}): {str(e)[:120]}"
+        )
+
 
 
 def gen_ui_page():
