@@ -1137,7 +1137,7 @@ def gen_ui_click_generate():
     return True
 
 
-_gen_prompts = {"sfw": "", "nsfw": "", "phase": ""}
+_gen_prompts = {"sfw": "", "nsfw": "", "phase": "", "character": ""}
 _gen_running_phase = ""  # этап, под который сейчас идёт генерация
 
 
@@ -1295,8 +1295,23 @@ def gen_pause_and_restart(reason="", force_now=False):
             _gen_prompts["prompt"] = plan.get("prompt") or ""
             _gen_prompts["negative_prompt"] = plan.get("negative_prompt") or ""
             _gen_prompts["phase"] = plan.get("phase") or ""
+            _gen_prompts["character"] = plan.get("character") or ""
             _gen_prompts["settings"] = plan.get("settings") or {}
+            if not plan.get("generate"):
+                log("авто-рестарт: сайт говорит не генерировать —", plan.get("reason") or "этап закрыт")
+                return False
+            if not (_gen_prompts["prompt"] or "").strip():
+                log(
+                    f"авто-рестарт: нет промпта для персонажа {_gen_prompts['character'] or '-'} "
+                    f"на этапе {_gen_prompts['phase'] or '-'} — жду"
+                )
+                return False
+            log(
+                f"промпт с сайта: персонаж {_gen_prompts['character'] or '-'}, "
+                f"этап {_gen_prompts['phase'] or '-'}"
+            )
             _s = _gen_prompts["settings"]
+
             if _s:
                 payload = payload or {}
                 payload["prompt"] = _gen_prompts["prompt"] or payload.get("prompt", "")
@@ -1343,10 +1358,14 @@ def gen_pause_and_restart(reason="", force_now=False):
 
         _gen_restarts += 1
         global _gen_running_phase
-        _gen_running_phase = _gen_prompts.get("phase") or ""
+        _gen_running_phase = f"{_gen_prompts.get('character') or ''}:{_gen_prompts.get('phase') or ''}"
         if GEN_MODE != "api":
-            log(f"авто-рестарт #{_gen_restarts}: нажимаю Generate в интерфейсе (этап {_gen_running_phase or '-'})")
+            log(
+                f"авто-рестарт #{_gen_restarts}: нажимаю Generate в интерфейсе "
+                f"({_gen_prompts.get('character') or '-'} / этап {_gen_prompts.get('phase') or '-'})"
+            )
             gen_ui_click_generate()
+
 
             # ждём, пока интерфейс реально начнёт генерацию
             started = False
@@ -1391,29 +1410,35 @@ def phase_watch_loop():
                 time.sleep(GEN_PHASE_CHECK)
                 continue
             phase = plan.get("phase") or ""
+            character = plan.get("character") or ""
+            key = f"{character}:{phase}"
             want = bool(plan.get("generate"))
             busy = gen_busy()
 
             if busy and not want:
-                gen_interrupt(f"этап {phase or '-'} закрыт, нужное количество набрано")
+                gen_interrupt(f"{character or '-'} / этап {phase or '-'} закрыт, нужное количество набрано")
                 _gen_running_phase = ""
-            elif busy and _gen_running_phase and phase and phase != _gen_running_phase:
-                gen_interrupt(f"этап сменился на {phase} — меняю промпт")
+            elif busy and _gen_running_phase and phase and key != _gen_running_phase:
+                gen_interrupt(f"сменился персонаж/этап на {character or '-'} / {phase} — меняю промпт")
                 _gen_running_phase = ""
                 if not _gen_lock.locked():
                     threading.Thread(
                         target=gen_pause_and_restart,
-                        args=(f"новый этап {phase}",),
+                        args=(f"новый промпт: {character or '-'} / {phase}",),
                         kwargs={"force_now": True},
                         daemon=True,
                     ).start()
             elif not busy and want and not _gen_lock.locked():
                 threading.Thread(
                     target=gen_pause_and_restart,
-                    args=(f"этап {phase}: набрано {plan.get('done')}/{plan.get('target')} — продолжаю генерацию",),
-                    kwargs={"force_now": phase != _gen_running_phase},
+                    args=(
+                        f"{character or '-'} / этап {phase}: набрано "
+                        f"{plan.get('done')}/{plan.get('target')} — продолжаю генерацию",
+                    ),
+                    kwargs={"force_now": key != _gen_running_phase},
                     daemon=True,
                 ).start()
+
         except Exception as e:
             log("контроль этапов: ошибка:", str(e)[:150])
         time.sleep(GEN_PHASE_CHECK)
