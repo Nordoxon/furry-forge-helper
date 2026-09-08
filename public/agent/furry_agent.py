@@ -63,6 +63,9 @@ PREVIEW_MAX_SIDE = 640                          # размер превью дл
 PREVIEW_QUALITY = 72
 
 A1111_URL = "http://127.0.0.1:7860"
+# Путь к webui-user.bat: если Stable Diffusion не отвечает, агент сам его запустит.
+# Пусто = не запускать автоматически. Пример: r"D:\stable-diffusion-webui\webui-user.bat"
+A1111_LAUNCH_BAT = r"webui-user.bat"
 UPSCALER = "R-ESRGAN 4x+"
 
 # Режимы: "factor" — по множителю; "size" — по целевому разрешению
