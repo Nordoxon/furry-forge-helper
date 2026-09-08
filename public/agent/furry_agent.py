@@ -911,6 +911,25 @@ def gen_busy():
     return bool(state.get("job_count", 0) > 0 or (data.get("progress") or 0) > 0.001)
 
 
+_sd_offline_since = [0.0]
+
+
+def gen_busy_safe():
+    """gen_busy(), но без падений: возвращает None, если Stable Diffusion недоступен."""
+    try:
+        busy = gen_busy()
+        if _sd_offline_since[0]:
+            log("Stable Diffusion снова на связи")
+            _sd_offline_since[0] = 0.0
+        return busy
+    except requests.exceptions.RequestException:
+        now = time.time()
+        if now - _sd_offline_since[0] > 300:
+            _sd_offline_since[0] = now
+            log(f"Stable Diffusion не отвечает ({A1111_URL}) — запустите его, жду")
+        return None
+
+
 _gen_lock = threading.Lock()
 _gen_restarts = 0
 _gen_browser = {"pw": None, "browser": None, "page": None}
@@ -1413,7 +1432,10 @@ def phase_watch_loop():
             character = plan.get("character") or ""
             key = f"{character}:{phase}"
             want = bool(plan.get("generate"))
-            busy = gen_busy()
+            busy = gen_busy_safe()
+            if busy is None:
+                time.sleep(GEN_PHASE_CHECK)
+                continue
 
             if busy and not want:
                 gen_interrupt(f"{character or '-'} / этап {phase or '-'} закрыт, нужное количество набрано")
@@ -1451,7 +1473,12 @@ def gen_loop():
     idle_since = None
     while GEN_RESTARTS == 0 or _gen_restarts < GEN_RESTARTS:
         try:
-            if gen_busy():
+            busy = gen_busy_safe()
+            if busy is None:
+                idle_since = None
+                time.sleep(GEN_RETRY_WAIT)
+                continue
+            if busy:
                 idle_since = None
                 time.sleep(5)
                 continue
@@ -1481,7 +1508,10 @@ def scan_loop():
                 scan_and_upload()
             if GEN_ENABLED:
                 try:
-                    if gen_busy():
+                    busy = gen_busy_safe()
+                    if busy is None:
+                        pass
+                    elif busy:
                         log("проверка генерации: идёт, всё ок")
                     elif not _gen_lock.locked():
                         log("проверка генерации: остановлена — беру паузу и перезапущу")
