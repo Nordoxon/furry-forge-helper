@@ -1379,7 +1379,48 @@ def gen_pause_and_restart(reason="", force_now=False):
         _gen_lock.release()
 
 
+def phase_watch_loop():
+    """Следит за этапом отбора на сайте: останавливает генерацию, когда категория набрана,
+    и сразу перезапускает её с промптом следующего этапа."""
+    global _gen_running_phase
+    log("контроль этапов отбора включён")
+    while True:
+        try:
+            plan = site_gen_plan()
+            if plan is None:
+                time.sleep(GEN_PHASE_CHECK)
+                continue
+            phase = plan.get("phase") or ""
+            want = bool(plan.get("generate"))
+            busy = gen_busy()
+
+            if busy and not want:
+                gen_interrupt(f"этап {phase or '-'} закрыт, нужное количество набрано")
+                _gen_running_phase = ""
+            elif busy and _gen_running_phase and phase and phase != _gen_running_phase:
+                gen_interrupt(f"этап сменился на {phase} — меняю промпт")
+                _gen_running_phase = ""
+                if not _gen_lock.locked():
+                    threading.Thread(
+                        target=gen_pause_and_restart,
+                        args=(f"новый этап {phase}",),
+                        kwargs={"force_now": True},
+                        daemon=True,
+                    ).start()
+            elif not busy and want and not _gen_lock.locked():
+                threading.Thread(
+                    target=gen_pause_and_restart,
+                    args=(f"этап {phase}: набрано {plan.get('done')}/{plan.get('target')} — продолжаю генерацию",),
+                    kwargs={"force_now": phase != _gen_running_phase},
+                    daemon=True,
+                ).start()
+        except Exception as e:
+            log("контроль этапов: ошибка:", str(e)[:150])
+        time.sleep(GEN_PHASE_CHECK)
+
+
 def gen_loop():
+
     """Ждёт остановки генерации и «нажимает Generate» снова с теми же параметрами."""
     log("авто-рестарт генерации включён")
     idle_since = None
