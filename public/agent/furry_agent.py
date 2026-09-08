@@ -1435,7 +1435,7 @@ def process_packs():
                             "asset_name": f"{pack.get('title') or label} cover",
                             "description": pack.get("caption") or "",
                             "tags": [],
-                            "gallery_folder": COVER_FOLDER or "",
+                            "gallery_folder": "",
                             "is_mature": False,
                         },
                     )
