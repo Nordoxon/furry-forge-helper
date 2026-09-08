@@ -71,6 +71,9 @@ export const Route = createFileRoute("/api/public/agent/gen")({
             batch_count: character.gen_batch_count,
             style: character.gen_style,
           },
+          pending: pendingCount ?? 0,
+          done: phase === "nsfw" ? nsfw : sfw,
+          target: phase === "nsfw" ? character.nsfw_target : character.sfw_target,
           progress: { sfw, nsfw, sfw_target: character.sfw_target, nsfw_target: character.nsfw_target },
           reason:
             phase === "done"
