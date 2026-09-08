@@ -43,28 +43,17 @@ function TriagePage() {
   const qc = useQueryClient();
   const [done, setDone] = useState<string[]>([]);
   const [charId, setCharId] = useState<string | null>(null);
-  const [folder, setFolder] = useState<string | null>(null);
-  const [templateId, setTemplateId] = useState<string | null>(null);
-  const [extraFolders, setExtraFolders] = useState<string[]>([]);
   const [last, setLast] = useState<{ id: string } | null>(null);
   const [kindOverride, setKindOverride] = useState<"sfw" | "nsfw" | null>(null);
 
   const inbox = useQuery({ queryKey: ["inbox"], queryFn: fetchInbox, refetchInterval: 20000 });
   const chars = useQuery({ queryKey: ["characters"], queryFn: fetchCharacters });
-  const templates = useQuery({ queryKey: ["templates"], queryFn: fetchTemplates });
 
   useEffect(() => {
     if (charId === null && chars.data?.length) {
       setCharId((chars.data.find((c) => c.is_default) ?? chars.data[0]).id);
     }
   }, [chars.data, charId]);
-
-  useEffect(() => {
-    if (templateId === null && templates.data?.length) {
-      const def = templates.data.find((t) => t.is_default);
-      if (def) setTemplateId(def.id);
-    }
-  }, [templates.data, templateId]);
 
   const activeChar = useMemo(
     () => chars.data?.find((c) => c.id === charId) ?? null,
@@ -85,19 +74,6 @@ function TriagePage() {
   // при смене персонажа ручной выбор типа сбрасывается
   useEffect(() => setKindOverride(null), [charId]);
 
-  const activeTemplate = useMemo(
-    () => templates.data?.find((t) => t.id === templateId) ?? null,
-    [templates.data, templateId],
-  );
-
-  const folderOptions = useMemo(() => {
-    const set = new Set<string>();
-    for (const c of chars.data ?? []) if (c.gallery_folder) set.add(c.gallery_folder);
-    for (const t of templates.data ?? []) if (t.gallery_folder) set.add(t.gallery_folder);
-    for (const f of extraFolders) set.add(f);
-    return Array.from(set);
-  }, [chars.data, templates.data, extraFolders]);
-
   const all = inbox.data ?? [];
   const doneSet = useMemo(() => new Set(done), [done]);
   // очередь стабильна: текущий кадр определяется по ID, а не по позиции в списке
@@ -117,14 +93,7 @@ function TriagePage() {
     }
     const id = current.id;
     try {
-      await decide(
-        id,
-        status,
-        charId,
-        status === "approved" ? folder : null,
-        status === "approved" ? templateId : null,
-        { contentKind: kind, isPreview: false },
-      );
+      await decide(id, status, charId, { contentKind: kind, isPreview: false });
       setDone((d) => (d.includes(id) ? d : [...d, id]));
       setLast({ id });
       setKindOverride(null);
