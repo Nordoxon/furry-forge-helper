@@ -24,6 +24,47 @@ import {
 } from "@/lib/packs";
 import { renderCover } from "@/lib/cover";
 import { batchState, packItems } from "@/lib/batch";
+import { pauseGeneration, startGeneration } from "@/lib/generation";
+
+function GenerationControl({
+  enabled,
+  onToggle,
+}: {
+  enabled: boolean;
+  onToggle: (on: boolean) => void | Promise<void>;
+}) {
+  return (
+    <section className="rounded-2xl border border-border/60 bg-card p-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm font-medium">
+            {enabled ? "Генерация идёт" : "Генерация остановлена"}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {enabled
+              ? "Компьютер генерирует кадры для текущего этапа. Можно поставить на паузу в любой момент."
+              : "Нажмите, чтобы начать новую сборку — компьютер продолжит с того же места."}
+          </p>
+        </div>
+        <Button
+          variant={enabled ? "outline" : "default"}
+          onClick={() => void onToggle(!enabled)}
+          className="shrink-0"
+        >
+          {enabled ? (
+            <>
+              <Pause className="mr-1 h-4 w-4" /> Пауза
+            </>
+          ) : (
+            <>
+              <Play className="mr-1 h-4 w-4" /> Начать
+            </>
+          )}
+        </Button>
+      </div>
+    </section>
+  );
+}
 
 export const Route = createFileRoute("/_authenticated/packs")({
   validateSearch: (search: Record<string, unknown>) => ({
