@@ -162,6 +162,34 @@ function TriagePage() {
             </p>
           </div>
           <div className="flex items-center gap-1">
+            {activeChar && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={async () => {
+                  try {
+                    if (activeChar.generation_enabled) await pauseGeneration(activeChar.id);
+                    else await startGeneration(activeChar.id);
+                    toast.success(
+                      activeChar.generation_enabled ? "Генерация на паузе" : "Генерация запущена",
+                    );
+                    void qc.invalidateQueries({ queryKey: ["characters"] });
+                  } catch (e) {
+                    toast.error((e as Error).message);
+                  }
+                }}
+              >
+                {activeChar.generation_enabled ? (
+                  <>
+                    <Pause className="mr-1 h-4 w-4" /> Пауза
+                  </>
+                ) : (
+                  <>
+                    <Play className="mr-1 h-4 w-4" /> Запустить
+                  </>
+                )}
+              </Button>
+            )}
             {last && (
               <Button variant="ghost" size="sm" onClick={undo}>
                 <Undo2 className="mr-1 h-4 w-4" /> Вернуть
