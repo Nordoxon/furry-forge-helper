@@ -14,7 +14,7 @@ export const Route = createFileRoute("/api/public/agent/packs")({
         if (!auth) return json({ error: "invalid token" }, 401);
         const { supabase, userId } = auth;
 
-        let body: { pack_id?: string; zip_path?: string } = {};
+        let body: { pack_id?: string; zip_path?: string; preview_paths?: string[] } = {};
         try {
           body = (await request.json()) as typeof body;
         } catch {
@@ -24,12 +24,19 @@ export const Route = createFileRoute("/api/public/agent/packs")({
         if (body.pack_id) {
           const { error } = await supabase
             .from("packs")
-            .update({ status: "zipped", zip_path: body.zip_path ?? null })
+            .update({
+              status: "zipped",
+              zip_path: body.zip_path ?? null,
+              ...(Array.isArray(body.preview_paths)
+                ? { preview_paths: body.preview_paths.slice(0, 20) }
+                : {}),
+            })
             .eq("id", body.pack_id)
             .eq("user_id", userId);
           if (error) return json({ error: error.message }, 400);
           return json({ ok: true });
         }
+
 
         const { data: packs } = await supabase
           .from("packs")

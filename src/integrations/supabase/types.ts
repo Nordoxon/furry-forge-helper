@@ -241,6 +241,7 @@ export type Database = {
           id: string
           nsfw_count: number
           pack_number: number | null
+          preview_paths: string[]
           sfw_count: number
           status: string
           title: string
@@ -255,6 +256,7 @@ export type Database = {
           id?: string
           nsfw_count?: number
           pack_number?: number | null
+          preview_paths?: string[]
           sfw_count?: number
           status?: string
           title?: string
@@ -269,6 +271,7 @@ export type Database = {
           id?: string
           nsfw_count?: number
           pack_number?: number | null
+          preview_paths?: string[]
           sfw_count?: number
           status?: string
           title?: string

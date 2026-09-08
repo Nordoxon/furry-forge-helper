@@ -364,7 +364,9 @@ function PacksPage() {
                       <PackCover packId={p.id} caption={packLabel(p)} title={p.title} />
                     </div>
                   </div>
+                  <PackPreviews paths={p.preview_paths ?? []} />
                 </li>
+
               ))}
             </ul>
           )}
@@ -558,6 +560,55 @@ function ZipButton({ path, packId }: { path: string; packId: string }) {
     </>
   );
 }
+
+/** Превью пака рядом с архивом — их можно скачать на телефон. */
+function PackPreviews({ paths }: { paths: string[] }) {
+  if (paths.length === 0) return null;
+  return (
+    <div className="mt-2 border-t border-border/60 pt-2">
+      <p className="mb-1.5 text-[11px] text-muted-foreground">Превью пака ({paths.length})</p>
+      <div className="flex flex-wrap gap-2">
+        {paths.map((path) => (
+          <PreviewDownload key={path} path={path} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function PreviewDownload({ path }: { path: string }) {
+  const [busy, setBusy] = useState(false);
+  const name = path.split("/").pop() ?? "превью";
+  return (
+    <Button
+      size="sm"
+      variant="outline"
+      disabled={busy}
+      className="max-w-[48%]"
+      onClick={async () => {
+        setBusy(true);
+        try {
+          const url = await packZipUrl(path);
+          if (!url) throw new Error("Файл ещё не залит с компьютера");
+          window.open(url, "_blank");
+        } catch (e) {
+          toast.error((e as Error).message);
+        } finally {
+          setBusy(false);
+        }
+      }}
+    >
+      {busy ? (
+        <Loader2 className="h-4 w-4 animate-spin" />
+      ) : (
+        <Download className="mr-1 h-4 w-4 shrink-0" />
+      )}
+      <span className="truncate text-xs">{name}</span>
+    </Button>
+  );
+}
+
+
 
 
 function PackCover({ packId, caption, title }: { packId: string; caption: string; title: string }) {
