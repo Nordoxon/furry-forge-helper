@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Trash2, Loader2, Package } from "lucide-react";
 
@@ -36,7 +36,7 @@ const BLANK = {
   base_tags: "",
   title_template: "{character} #{n}",
   description_template: "",
-  gallery_folder: "",
+  
   is_mature: false,
   is_default: false,
   sfw_prompt: "",
@@ -59,6 +59,19 @@ function CharactersPage() {
   const [editing, setEditing] = useState<string | "new" | null>(null);
   const [form, setForm] = useState({ ...BLANK });
   const [busy, setBusy] = useState(false);
+  const [customStyles, setCustomStyles] = useState<string[]>([]);
+
+  // Стили, уже использованные у персонажей, плюс добавленные вручную из styles.csv
+  const styleOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const c of q.data ?? []) if (c.gen_style) set.add(c.gen_style);
+    for (const s of customStyles) set.add(s);
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [q.data, customStyles]);
+
+  function addStyle(name: string) {
+    setCustomStyles((s) => (s.includes(name) ? s : [...s, name]));
+  }
 
   function openNew() {
     setForm({ ...BLANK });
@@ -71,7 +84,7 @@ function CharactersPage() {
       base_tags: c.base_tags.join(", "),
       title_template: c.title_template,
       description_template: c.description_template,
-      gallery_folder: c.gallery_folder,
+      
       is_mature: c.is_mature,
       is_default: c.is_default,
       sfw_prompt: c.sfw_prompt,
@@ -104,7 +117,7 @@ function CharactersPage() {
         .filter(Boolean),
       title_template: form.title_template,
       description_template: form.description_template,
-      gallery_folder: form.gallery_folder.trim(),
+      
       is_mature: form.is_mature,
       is_default: form.is_default,
       sfw_prompt: form.sfw_prompt,
