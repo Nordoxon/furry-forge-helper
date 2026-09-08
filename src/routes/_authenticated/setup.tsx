@@ -70,8 +70,9 @@ function SetupPage() {
             <h1 className="font-display text-lg font-semibold leading-tight">Агент</h1>
             <p className="text-xs text-muted-foreground">Программа на вашем компьютере</p>
           </div>
-          <Button variant="ghost" size="sm" onClick={() => supabase.auth.signOut()}>
-            <LogOut className="mr-1 h-4 w-4" /> Выйти
+          <Button variant="ghost" size="sm" className="shrink-0" onClick={() => supabase.auth.signOut()}>
+            <LogOut className="h-4 w-4 sm:mr-1" />
+            <span className="hidden sm:inline">Выйти</span>
           </Button>
         </div>
       </header>
