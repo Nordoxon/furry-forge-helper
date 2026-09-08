@@ -1192,7 +1192,12 @@ def gen_pause_and_restart(reason=""):
                 return False
 
         plan = site_gen_plan()
+        skip_pause = False
         if plan is not None:
+            try:
+                skip_pause = int(plan.get("pending") or 0) == 0
+            except Exception:
+                skip_pause = False
             _gen_prompts["prompt"] = plan.get("prompt") or ""
             _gen_prompts["negative_prompt"] = plan.get("negative_prompt") or ""
             _gen_prompts["phase"] = plan.get("phase") or ""
