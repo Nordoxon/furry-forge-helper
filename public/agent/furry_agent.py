@@ -1137,7 +1137,7 @@ def gen_ui_click_generate():
     return True
 
 
-_gen_prompts = {"sfw": "", "nsfw": "", "phase": ""}
+_gen_prompts = {"sfw": "", "nsfw": "", "phase": "", "character": ""}
 _gen_running_phase = ""  # этап, под который сейчас идёт генерация
 
 
