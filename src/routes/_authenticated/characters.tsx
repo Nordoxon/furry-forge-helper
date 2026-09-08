@@ -39,6 +39,10 @@ const BLANK = {
   gallery_folder: "",
   is_mature: false,
   is_default: false,
+  sfw_prompt: "",
+  nsfw_prompt: "",
+  prompt_approved: false,
+  generation_enabled: true,
 };
 
 function CharactersPage() {
@@ -62,6 +66,10 @@ function CharactersPage() {
       gallery_folder: c.gallery_folder,
       is_mature: c.is_mature,
       is_default: c.is_default,
+      sfw_prompt: c.sfw_prompt,
+      nsfw_prompt: c.nsfw_prompt,
+      prompt_approved: c.prompt_approved,
+      generation_enabled: c.generation_enabled,
     });
     setEditing(c.id);
   }
@@ -83,6 +91,10 @@ function CharactersPage() {
       gallery_folder: form.gallery_folder.trim(),
       is_mature: form.is_mature,
       is_default: form.is_default,
+      sfw_prompt: form.sfw_prompt,
+      nsfw_prompt: form.nsfw_prompt,
+      prompt_approved: form.prompt_approved,
+      generation_enabled: form.generation_enabled,
     };
     if (editing === "new") await supabase.from("characters").insert(payload);
     else if (editing) await supabase.from("characters").update(payload).eq("id", editing);
@@ -191,6 +203,35 @@ function CharactersPage() {
                 onChange={(e) => setForm({ ...form, gallery_folder: e.target.value })}
               />
             </Field>
+            <Field label="Промпт для SFW" hint="его получит компьютер и запустит генерацию">
+              <Textarea
+                rows={4}
+                value={form.sfw_prompt}
+                placeholder="masterpiece, portrait, {character}…"
+                onChange={(e) => setForm({ ...form, sfw_prompt: e.target.value })}
+              />
+            </Field>
+            <Field label="Промпт для NSFW" hint="включится сам, когда SFW-этап закрыт">
+              <Textarea
+                rows={4}
+                value={form.nsfw_prompt}
+                onChange={(e) => setForm({ ...form, nsfw_prompt: e.target.value })}
+              />
+            </Field>
+            <label className="flex items-center justify-between">
+              <span className="text-sm">Промпт подтверждён</span>
+              <Switch
+                checked={form.prompt_approved}
+                onCheckedChange={(v) => setForm({ ...form, prompt_approved: v })}
+              />
+            </label>
+            <label className="flex items-center justify-between">
+              <span className="text-sm">Разрешить генерацию на компьютере</span>
+              <Switch
+                checked={form.generation_enabled}
+                onCheckedChange={(v) => setForm({ ...form, generation_enabled: v })}
+              />
+            </label>
             <label className="flex items-center justify-between">
               <span className="text-sm">Контент 18+</span>
               <Switch
