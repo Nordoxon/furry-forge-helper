@@ -43,6 +43,13 @@ const BLANK = {
   nsfw_prompt: "",
   prompt_approved: false,
   generation_enabled: true,
+  gen_width: "832",
+  gen_height: "1216",
+  gen_cfg: "5",
+  gen_steps: "28",
+  gen_sampler: "Euler a",
+  gen_batch_count: "100",
+  gen_style: "",
 };
 
 function CharactersPage() {
