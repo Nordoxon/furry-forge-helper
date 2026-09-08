@@ -993,6 +993,7 @@ def _gen_ui_worker():
                 page.bring_to_front()
             except Exception:
                 pass
+            gen_apply_prompt(page, _gen_prompts.get("prompt") or "")
             btn = page.locator("#txt2img_generate")
             btn.wait_for(state="visible", timeout=60000)
             btn.click()
@@ -1059,6 +1060,54 @@ def gen_ui_click_generate():
     return True
 
 
+_gen_prompts = {"sfw": "", "nsfw": "", "phase": ""}
+
+
+def site_gen_plan():
+    """Спрашивает у сайта: какая сейчас фаза, какой промпт и нужно ли ещё генерировать."""
+    try:
+        r = requests.post(f"{API_BASE}/api/public/agent/gen", headers=HEADERS, data="{}", timeout=60)
+        r.raise_for_status()
+        return r.json()
+    except Exception as e:
+        log("промпт с сайта недоступен:", str(e)[:150])
+        return None
+
+
+def gen_apply_prompt(page, prompt):
+    """Подставляет промпт с сайта в поле txt2img интерфейса A1111."""
+    if not prompt:
+        return
+    try:
+        box = page.locator("#txt2img_prompt textarea").first
+        box.wait_for(state="visible", timeout=30000)
+        box.fill(prompt)
+        log("промпт с сайта подставлен в интерфейс")
+    except Exception as e:
+        log("не подставил промпт:", str(e)[:150])
+
+
+def upload_pack_zip(pack_id, zip_path):
+    """Заливает архив пака в облако, чтобы его можно было скачать с телефона."""
+    r = requests.post(
+        f"{API_BASE}/api/public/agent/zip",
+        headers=HEADERS,
+        data=json.dumps({"pack_id": pack_id}),
+        timeout=60,
+    )
+    r.raise_for_status()
+    info = r.json()
+    with open(zip_path, "rb") as fh:
+        up = requests.put(
+            info["upload_url"],
+            data=fh,
+            headers={"content-type": "application/zip"},
+            timeout=60 * 60,
+        )
+    up.raise_for_status()
+    return info["path"]
+
+
 def gen_pause_and_restart(reason=""):
     """Пауза на апскейл/загрузку, ожидание свободного SD и повторный «Generate»."""
     global _gen_restarts
@@ -1079,6 +1128,15 @@ def gen_pause_and_restart(reason=""):
             if not payload:
                 log("авто-рестарт: не нашёл параметры последней генерации, жду")
                 return False
+
+        plan = site_gen_plan()
+        if plan is not None:
+            _gen_prompts["prompt"] = plan.get("prompt") or ""
+            _gen_prompts["phase"] = plan.get("phase") or ""
+            if not plan.get("generate"):
+                log("сайт говорит: генерация не нужна (" + str(plan.get("phase") or "нет задачи") + ")")
+                return False
+            log(f"этап {plan.get('phase')}: отобрано {plan.get('done')}/{plan.get('target')}")
 
         if reason:
             log("авто-рестарт:", reason)
@@ -1307,10 +1365,16 @@ def process_packs():
                     log("обложка загружена на DeviantArt")
                 except Exception as e:
                     log("обложка: ошибка:", str(e)[:200])
+            stored = zip_path
+            try:
+                stored = upload_pack_zip(pack["id"], zip_path)
+                log("архив залит в облако — можно скачать с телефона")
+            except Exception as e:
+                log("архив не залился в облако:", str(e)[:200])
             requests.post(
                 f"{API_BASE}/api/public/agent/packs",
                 headers=HEADERS,
-                data=json.dumps({"pack_id": pack["id"], "zip_path": zip_path}),
+                data=json.dumps({"pack_id": pack["id"], "zip_path": stored}),
                 timeout=60,
             )
         except Exception as e:
