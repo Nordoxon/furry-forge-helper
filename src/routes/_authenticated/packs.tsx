@@ -368,7 +368,7 @@ function PacksPage() {
                   <div className="mt-2">
                     <PackCover packId={p.id} caption={packLabel(p)} title={p.title} />
                   </div>
-                  <PackPreviews paths={p.preview_paths ?? []} />
+                  <PackPreviews packId={p.id} paths={p.preview_paths ?? []} />
                 </li>
 
               ))}
