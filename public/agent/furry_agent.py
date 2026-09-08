@@ -24,7 +24,10 @@ import os
 import queue
 import secrets
 import struct
+import subprocess
 import sys
+import tempfile
+
 import time
 import threading
 import webbrowser
