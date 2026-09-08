@@ -13,7 +13,7 @@ export const Route = createFileRoute("/api/public/agent/zip")({
         if (!auth) return json({ error: "invalid token" }, 401);
         const { supabase, userId } = auth;
 
-        let body: { pack_id?: string } = {};
+        let body: { pack_id?: string; name?: string } = {};
         try {
           body = (await request.json()) as typeof body;
         } catch {
@@ -29,13 +29,16 @@ export const Route = createFileRoute("/api/public/agent/zip")({
           .maybeSingle();
         if (!pack) return json({ error: "pack not found" }, 404);
 
-        const path = `${userId}/${pack.id}.zip`;
+        // без name — архив пака, с name — превью/обложка рядом с архивом
+        const safe = (body.name ?? "").replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 80);
+        const path = safe ? `${userId}/${pack.id}/${safe}` : `${userId}/${pack.id}.zip`;
         const { data, error } = await supabase.storage
           .from("packs")
           .createSignedUploadUrl(path, { upsert: true });
         if (error) return json({ error: error.message }, 400);
 
         return json({ upload_url: data.signedUrl, path });
+
       },
     },
   },
