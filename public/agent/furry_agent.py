@@ -1406,29 +1406,35 @@ def phase_watch_loop():
                 time.sleep(GEN_PHASE_CHECK)
                 continue
             phase = plan.get("phase") or ""
+            character = plan.get("character") or ""
+            key = f"{character}:{phase}"
             want = bool(plan.get("generate"))
             busy = gen_busy()
 
             if busy and not want:
-                gen_interrupt(f"этап {phase or '-'} закрыт, нужное количество набрано")
+                gen_interrupt(f"{character or '-'} / этап {phase or '-'} закрыт, нужное количество набрано")
                 _gen_running_phase = ""
-            elif busy and _gen_running_phase and phase and phase != _gen_running_phase:
-                gen_interrupt(f"этап сменился на {phase} — меняю промпт")
+            elif busy and _gen_running_phase and phase and key != _gen_running_phase:
+                gen_interrupt(f"сменился персонаж/этап на {character or '-'} / {phase} — меняю промпт")
                 _gen_running_phase = ""
                 if not _gen_lock.locked():
                     threading.Thread(
                         target=gen_pause_and_restart,
-                        args=(f"новый этап {phase}",),
+                        args=(f"новый промпт: {character or '-'} / {phase}",),
                         kwargs={"force_now": True},
                         daemon=True,
                     ).start()
             elif not busy and want and not _gen_lock.locked():
                 threading.Thread(
                     target=gen_pause_and_restart,
-                    args=(f"этап {phase}: набрано {plan.get('done')}/{plan.get('target')} — продолжаю генерацию",),
-                    kwargs={"force_now": phase != _gen_running_phase},
+                    args=(
+                        f"{character or '-'} / этап {phase}: набрано "
+                        f"{plan.get('done')}/{plan.get('target')} — продолжаю генерацию",
+                    ),
+                    kwargs={"force_now": key != _gen_running_phase},
                     daemon=True,
                 ).start()
+
         except Exception as e:
             log("контроль этапов: ошибка:", str(e)[:150])
         time.sleep(GEN_PHASE_CHECK)
