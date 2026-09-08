@@ -50,6 +50,13 @@
       "when": 1788846199485,
       "tag": "0006_character_negative_prompt",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1788869159900,
+      "tag": "0007_pack_preview_paths",
+      "breakpoints": true
     }
   ]
 }

@@ -1,0 +1,1 @@
+ALTER TABLE public.packs ADD COLUMN IF NOT EXISTS preview_paths text[] NOT NULL DEFAULT '{}';
