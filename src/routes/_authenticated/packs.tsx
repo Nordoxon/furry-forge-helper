@@ -349,7 +349,7 @@ function PacksPage() {
               {charPacks.map((p) => (
 
                 <li key={p.id} className="rounded-xl border border-border/60 bg-card p-3">
-                  <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium">
                         {p.title || "Без названия"}
@@ -359,10 +359,14 @@ function PacksPage() {
                         {packLabel(p)} · {p.status === "zipped" ? "Архив готов" : "Апскейл и архив"}
                       </p>
                     </div>
-                    <div className="flex items-center gap-2">
-                      {p.zip_path && <ZipButton path={p.zip_path} packId={p.id} />}
-                      <PackCover packId={p.id} caption={packLabel(p)} title={p.title} />
-                    </div>
+                    {p.zip_path && (
+                      <div className="flex shrink-0 items-center gap-1.5">
+                        <ZipButton path={p.zip_path} packId={p.id} />
+                      </div>
+                    )}
+                  </div>
+                  <div className="mt-2">
+                    <PackCover packId={p.id} caption={packLabel(p)} title={p.title} />
                   </div>
                   <PackPreviews paths={p.preview_paths ?? []} />
                 </li>
