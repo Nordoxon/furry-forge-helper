@@ -994,6 +994,7 @@ def _gen_ui_worker():
             except Exception:
                 pass
             gen_apply_prompt(page, _gen_prompts.get("prompt") or "")
+            gen_apply_negative_prompt(page, _gen_prompts.get("negative_prompt") or "")
             gen_apply_settings(page, _gen_prompts.get("settings") or {})
             btn = page.locator("#txt2img_generate")
             btn.wait_for(state="visible", timeout=60000)
@@ -1086,6 +1087,20 @@ def gen_apply_prompt(page, prompt):
         log("промпт с сайта подставлен в интерфейс")
     except Exception as e:
         log("не подставил промпт:", str(e)[:150])
+
+def gen_apply_negative_prompt(page, negative_prompt):
+    """Подставляет негативный промпт с сайта в поле txt2img_neg_prompt."""
+    if negative_prompt in (None, ""):
+        return
+    try:
+        box = page.locator("#txt2img_neg_prompt textarea").first
+        if box.count() == 0:
+            return
+        box.wait_for(state="visible", timeout=30000)
+        box.fill(negative_prompt)
+        log("негативный промпт с сайта подставлен в интерфейс")
+    except Exception as e:
+        log("не подставил негативный промпт:", str(e)[:150])
 
 def _ui_set_number(page, selector, value):
     if value in (None, ""):
@@ -1180,12 +1195,14 @@ def gen_pause_and_restart(reason=""):
         plan = site_gen_plan()
         if plan is not None:
             _gen_prompts["prompt"] = plan.get("prompt") or ""
+            _gen_prompts["negative_prompt"] = plan.get("negative_prompt") or ""
             _gen_prompts["phase"] = plan.get("phase") or ""
             _gen_prompts["settings"] = plan.get("settings") or {}
             _s = _gen_prompts["settings"]
             if _s:
                 payload = payload or {}
                 payload["prompt"] = _gen_prompts["prompt"] or payload.get("prompt", "")
+                payload["negative_prompt"] = _gen_prompts.get("negative_prompt") or payload.get("negative_prompt", "")
                 payload["width"] = _s.get("width", payload.get("width"))
                 payload["height"] = _s.get("height", payload.get("height"))
                 payload["cfg_scale"] = _s.get("cfg_scale", payload.get("cfg_scale"))

@@ -41,6 +41,7 @@ const BLANK = {
   is_default: false,
   sfw_prompt: "",
   nsfw_prompt: "",
+  negative_prompt: "",
   prompt_approved: false,
   generation_enabled: true,
   gen_width: "832",
@@ -75,6 +76,7 @@ function CharactersPage() {
       is_default: c.is_default,
       sfw_prompt: c.sfw_prompt,
       nsfw_prompt: c.nsfw_prompt,
+      negative_prompt: c.negative_prompt,
       prompt_approved: c.prompt_approved,
       generation_enabled: c.generation_enabled,
       gen_width: String(c.gen_width),
@@ -107,6 +109,7 @@ function CharactersPage() {
       is_default: form.is_default,
       sfw_prompt: form.sfw_prompt,
       nsfw_prompt: form.nsfw_prompt,
+      negative_prompt: form.negative_prompt,
       prompt_approved: form.prompt_approved,
       generation_enabled: form.generation_enabled,
       gen_width: Number(form.gen_width) || 832,
@@ -237,6 +240,14 @@ function CharactersPage() {
                 rows={4}
                 value={form.nsfw_prompt}
                 onChange={(e) => setForm({ ...form, nsfw_prompt: e.target.value })}
+              />
+            </Field>
+            <Field label="Негативный промпт" hint="один общий для SFW и NSFW">
+              <Textarea
+                rows={3}
+                value={form.negative_prompt}
+                placeholder="lowres, bad anatomy, blurry…"
+                onChange={(e) => setForm({ ...form, negative_prompt: e.target.value })}
               />
             </Field>
             <Field label="Стиль персонажа" hint="имя стиля из styles.csv на компьютере">

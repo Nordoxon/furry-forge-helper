@@ -59,6 +59,7 @@ export type Database = {
           is_default: boolean
           is_mature: boolean
           name: string
+          negative_prompt: string
           notes: string
           nsfw_prompt: string
           nsfw_target: number
@@ -87,6 +88,7 @@ export type Database = {
           is_default?: boolean
           is_mature?: boolean
           name: string
+          negative_prompt?: string
           notes?: string
           nsfw_prompt?: string
           nsfw_target?: number
@@ -115,6 +117,7 @@ export type Database = {
           is_default?: boolean
           is_mature?: boolean
           name?: string
+          negative_prompt?: string
           notes?: string
           nsfw_prompt?: string
           nsfw_target?: number
