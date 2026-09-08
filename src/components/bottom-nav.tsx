@@ -13,7 +13,7 @@ const tabs = [
 export function BottomNav() {
   const path = useRouterState({ select: (r) => r.location.pathname });
   return (
-    <nav className="sticky bottom-0 z-40 border-t border-border/60 bg-background/85 backdrop-blur-xl">
+    <nav className="sticky bottom-0 z-40 border-t border-border/60 bg-background/85 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl">
       <div className="mx-auto flex max-w-2xl">
         {tabs.map((t) => {
           const active = t.to === "/" ? path === "/" : path.startsWith(t.to);

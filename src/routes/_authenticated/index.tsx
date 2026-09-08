@@ -162,11 +162,12 @@ function TriagePage() {
               Осталось {items.length} из {all.length}
             </p>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex shrink-0 items-center gap-1">
             {activeChar && (
               <Button
                 variant="ghost"
                 size="sm"
+                className="px-2 sm:px-3"
                 onClick={async () => {
                   try {
                     if (activeChar.generation_enabled) await pauseGeneration(activeChar.id);
@@ -182,24 +183,28 @@ function TriagePage() {
               >
                 {activeChar.generation_enabled ? (
                   <>
-                    <Pause className="mr-1 h-4 w-4" /> Пауза
+                    <Pause className="h-4 w-4 sm:mr-1" />
+                    <span className="hidden sm:inline">Пауза</span>
                   </>
                 ) : (
                   <>
-                    <Play className="mr-1 h-4 w-4" /> Запустить
+                    <Play className="h-4 w-4 sm:mr-1" />
+                    <span className="hidden sm:inline">Запустить</span>
                   </>
                 )}
               </Button>
             )}
             {last && (
-              <Button variant="ghost" size="sm" onClick={undo}>
-                <Undo2 className="mr-1 h-4 w-4" /> Вернуть
+              <Button variant="ghost" size="sm" className="px-2 sm:px-3" onClick={undo}>
+                <Undo2 className="h-4 w-4 sm:mr-1" />
+                <span className="hidden sm:inline">Вернуть</span>
               </Button>
             )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="text-destructive">
-                  <Trash2 className="mr-1 h-4 w-4" /> Очистить
+                <Button variant="ghost" size="sm" className="px-2 text-destructive sm:px-3">
+                  <Trash2 className="h-4 w-4 sm:mr-1" />
+                  <span className="hidden sm:inline">Очистить</span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
