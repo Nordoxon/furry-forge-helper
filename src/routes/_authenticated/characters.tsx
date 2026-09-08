@@ -262,7 +262,9 @@ function CharactersPage() {
                 value={form.gen_style}
                 options={styleOptions}
                 onChange={(v) => setForm({ ...form, gen_style: v })}
+                onAdd={addStyle}
               />
+
             </Field>
 
             <div className="grid grid-cols-2 gap-3">
