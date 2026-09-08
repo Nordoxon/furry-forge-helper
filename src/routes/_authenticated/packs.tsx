@@ -192,6 +192,24 @@ function PacksPage() {
 
       <main className="mx-auto w-full max-w-2xl flex-1 space-y-6 px-4 py-4">
 
+        {activeChar && (
+          <GenerationControl
+            enabled={activeChar.generation_enabled}
+            onToggle={async (on) => {
+              try {
+                if (on) await startGeneration(activeChar.id);
+                else await pauseGeneration(activeChar.id);
+                toast.success(on ? "Генерация запущена" : "Генерация на паузе");
+                void qc.invalidateQueries({ queryKey: ["characters"] });
+              } catch (e) {
+                toast.error((e as Error).message);
+              }
+            }}
+          />
+        )}
+
+
+
 
         <section className="rounded-2xl border border-border/60 bg-card p-4">
           <div className="flex items-center gap-3">
