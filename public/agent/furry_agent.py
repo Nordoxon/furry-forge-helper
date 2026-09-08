@@ -1387,25 +1387,33 @@ def gen_apply_style(page, style):
 
 
 
-def upload_pack_zip(pack_id, zip_path):
-    """Заливает архив пака в облако, чтобы его можно было скачать с телефона."""
+def upload_pack_file(pack_id, file_path, name=None, content_type="application/zip"):
+    """Заливает файл пака (архив, превью, обложку) в облако — скачивается с телефона."""
+    payload = {"pack_id": pack_id}
+    if name:
+        payload["name"] = name
     r = requests.post(
         f"{API_BASE}/api/public/agent/zip",
         headers=HEADERS,
-        data=json.dumps({"pack_id": pack_id}),
+        data=json.dumps(payload),
         timeout=60,
     )
     r.raise_for_status()
     info = r.json()
-    with open(zip_path, "rb") as fh:
+    with open(file_path, "rb") as fh:
         up = requests.put(
             info["upload_url"],
             data=fh,
-            headers={"content-type": "application/zip"},
+            headers={"content-type": content_type},
             timeout=60 * 60,
         )
     up.raise_for_status()
     return info["path"]
+
+
+def upload_pack_zip(pack_id, zip_path):
+    return upload_pack_file(pack_id, zip_path)
+
 
 
 def gen_interrupt(reason=""):
