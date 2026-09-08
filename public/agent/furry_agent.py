@@ -1181,6 +1181,18 @@ def gen_pause_and_restart(reason=""):
         if plan is not None:
             _gen_prompts["prompt"] = plan.get("prompt") or ""
             _gen_prompts["phase"] = plan.get("phase") or ""
+            _gen_prompts["settings"] = plan.get("settings") or {}
+            _s = _gen_prompts["settings"]
+            if _s:
+                payload = payload or {}
+                payload["prompt"] = _gen_prompts["prompt"] or payload.get("prompt", "")
+                payload["width"] = _s.get("width", payload.get("width"))
+                payload["height"] = _s.get("height", payload.get("height"))
+                payload["cfg_scale"] = _s.get("cfg_scale", payload.get("cfg_scale"))
+                payload["steps"] = _s.get("steps", payload.get("steps"))
+                payload["sampler_name"] = _s.get("sampler_name", payload.get("sampler_name"))
+                if _s.get("style"):
+                    payload["styles"] = [_s["style"]]
             if not plan.get("generate"):
                 log("сайт говорит: генерация не нужна (" + str(plan.get("phase") or "нет задачи") + ")")
                 return False
