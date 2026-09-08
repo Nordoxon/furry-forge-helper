@@ -1223,7 +1223,9 @@ def gen_pause_and_restart(reason=""):
             log("авто-рестарт:", reason)
 
         # пауза перед новым циклом: даём агенту апскейлить и залить отобранное
-        if GEN_PAUSE_SECONDS > 0:
+        if skip_pause:
+            log("авто-рестарт: отобранных кадров нет — паузу пропускаю, запускаю генерацию сразу")
+        elif GEN_PAUSE_SECONDS > 0:
             log(f"авто-рестарт: пауза {GEN_PAUSE_SECONDS // 60} мин на апскейл и загрузку отобранного")
             waited = 0
             while waited < GEN_PAUSE_SECONDS:
