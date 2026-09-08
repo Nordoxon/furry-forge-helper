@@ -1295,8 +1295,23 @@ def gen_pause_and_restart(reason="", force_now=False):
             _gen_prompts["prompt"] = plan.get("prompt") or ""
             _gen_prompts["negative_prompt"] = plan.get("negative_prompt") or ""
             _gen_prompts["phase"] = plan.get("phase") or ""
+            _gen_prompts["character"] = plan.get("character") or ""
             _gen_prompts["settings"] = plan.get("settings") or {}
+            if not plan.get("generate"):
+                log("авто-рестарт: сайт говорит не генерировать —", plan.get("reason") or "этап закрыт")
+                return False
+            if not (_gen_prompts["prompt"] or "").strip():
+                log(
+                    f"авто-рестарт: нет промпта для персонажа {_gen_prompts['character'] or '-'} "
+                    f"на этапе {_gen_prompts['phase'] or '-'} — жду"
+                )
+                return False
+            log(
+                f"промпт с сайта: персонаж {_gen_prompts['character'] or '-'}, "
+                f"этап {_gen_prompts['phase'] or '-'}"
+            )
             _s = _gen_prompts["settings"]
+
             if _s:
                 payload = payload or {}
                 payload["prompt"] = _gen_prompts["prompt"] or payload.get("prompt", "")
