@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { BottomNav } from "@/components/bottom-nav";
 import { fetchCharacters, type CharacterRow } from "@/lib/images";
+import { fetchPromptDefaults, fetchSpeciesTags, tagsForSpecies } from "@/lib/defaults";
 
 export const Route = createFileRoute("/_authenticated/characters")({
   head: () => ({
@@ -60,6 +61,8 @@ function CharactersPage() {
   const [form, setForm] = useState({ ...BLANK });
   const [busy, setBusy] = useState(false);
   const [customStyles, setCustomStyles] = useState<string[]>([]);
+  const defaults = useQuery({ queryKey: ["prompt-defaults"], queryFn: fetchPromptDefaults });
+  const speciesTags = useQuery({ queryKey: ["species-tags"], queryFn: fetchSpeciesTags });
 
   // Стили, уже использованные у персонажей, плюс добавленные вручную из styles.csv
   const styleOptions = useMemo(() => {
@@ -74,8 +77,25 @@ function CharactersPage() {
   }
 
   function openNew() {
-    setForm({ ...BLANK });
+    setForm({
+      ...BLANK,
+      sfw_prompt: defaults.data?.sfw_prompt ?? "",
+      nsfw_prompt: defaults.data?.nsfw_prompt ?? "",
+      negative_prompt: defaults.data?.negative_prompt ?? "",
+    });
     setEditing("new");
+  }
+
+  /** Вид меняется — подставляем теги этого вида, не теряя уже написанные. */
+  function changeSpecies(next: string) {
+    const auto = tagsForSpecies(next, speciesTags.data ?? []);
+    const current = form.base_tags
+      .split(",")
+      .map((t) => t.trim())
+      .filter(Boolean);
+    const merged = [...current];
+    for (const t of auto) if (!merged.includes(t)) merged.push(t);
+    setForm({ ...form, species: next, base_tags: merged.join(", ") });
   }
   function openEdit(c: CharacterRow) {
     setForm({
@@ -211,11 +231,14 @@ function CharactersPage() {
             <Field label="Вид">
               <Input
                 value={form.species}
-                placeholder="fox, wolf…"
-                onChange={(e) => setForm({ ...form, species: e.target.value })}
+                placeholder="pokemon, fox, wolf…"
+                onChange={(e) => changeSpecies(e.target.value)}
               />
             </Field>
-            <Field label="Базовые теги (через запятую)">
+            <Field
+              label="Базовые теги (через запятую)"
+              hint="теги вида подставляются сами — их можно поправить"
+            >
               <Input
                 value={form.base_tags}
                 placeholder="furry, digitalart, aiart"
