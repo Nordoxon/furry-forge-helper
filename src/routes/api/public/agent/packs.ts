@@ -14,7 +14,12 @@ export const Route = createFileRoute("/api/public/agent/packs")({
         if (!auth) return json({ error: "invalid token" }, 401);
         const { supabase, userId } = auth;
 
-        let body: { pack_id?: string; zip_path?: string; preview_paths?: string[] } = {};
+        let body: {
+          pack_id?: string;
+          zip_path?: string;
+          zip_local?: string;
+          preview_paths?: string[];
+        } = {};
         try {
           body = (await request.json()) as typeof body;
         } catch {
@@ -27,6 +32,7 @@ export const Route = createFileRoute("/api/public/agent/packs")({
             .update({
               status: "zipped",
               zip_path: body.zip_path ?? null,
+              zip_url: body.zip_local ?? null,
               ...(Array.isArray(body.preview_paths)
                 ? { preview_paths: body.preview_paths.slice(0, 20) }
                 : {}),
@@ -68,10 +74,15 @@ export const Route = createFileRoute("/api/public/agent/packs")({
             nsfw_count: pack.nsfw_count,
             caption: `${pack.sfw_count} SFW + ${pack.nsfw_count} NSFW images`,
             cover: coverImg
-              ? { asset_name: coverImg.asset_name, filename: coverImg.filename }
+              ? {
+                  asset_name: coverImg.asset_name,
+                  filename: coverImg.filename,
+                  output_name: `${coverImg.asset_name}_${String(coverImg.id).slice(0, 6)}`,
+                }
               : null,
             files: list.map((i) => ({
               asset_name: i.asset_name,
+              output_name: `${i.asset_name}_${String(i.id).slice(0, 6)}`,
               filename: i.filename,
               content_kind: i.content_kind,
               is_preview: i.is_preview,
