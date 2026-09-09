@@ -1744,19 +1744,26 @@ def process_packs():
             zip_path = os.path.join(PACKS_DIR, f"{label}.zip")
             added = 0
             with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
-                for f in pack.get("files", []):
+                for idx, f in enumerate(pack.get("files", []), start=1):
                     asset = f.get("asset_name") or os.path.splitext(f.get("filename", ""))[0]
-                    src = os.path.join(UPSCALED_DIR, asset + ".png")
+                    disk = f.get("output_name") or asset
+                    src = os.path.join(UPSCALED_DIR, str(disk) + ".png")
+                    if not os.path.exists(src):
+                        src = os.path.join(UPSCALED_DIR, str(asset) + ".png")
                     if not os.path.exists(src):
                         continue
-                    zf.write(src, arcname=f"{asset}.png")
+                    # нумерация внутри пака всегда с единицы
+                    zf.write(src, arcname=f"{label}_{idx:03d}.png")
                     added += 1
             log(f"пак «{label}»: {added} изображений -> {zip_path}")
 
             preview_paths = []
             cover = pack.get("cover") or {}
             cover_asset = cover.get("asset_name") or os.path.splitext(cover.get("filename", ""))[0]
-            cover_src = os.path.join(UPSCALED_DIR, str(cover_asset) + ".png") if cover_asset else ""
+            cover_disk = cover.get("output_name") or cover_asset
+            cover_src = os.path.join(UPSCALED_DIR, str(cover_disk) + ".png") if cover_disk else ""
+            if cover_src and not os.path.exists(cover_src):
+                cover_src = os.path.join(UPSCALED_DIR, str(cover_asset) + ".png")
             if cover_src and os.path.exists(cover_src):
                 try:
                     cover_path = make_cover(
@@ -1789,17 +1796,20 @@ def process_packs():
                     log("обложка: ошибка:", str(e)[:200])
 
             # превью пака — рядом с архивом, чтобы скачать их с телефона
-            for f in pack.get("files", []):
-                if not f.get("is_preview"):
-                    continue
+            for pidx, f in enumerate(
+                [x for x in pack.get("files", []) if x.get("is_preview")], start=1
+            ):
                 asset = f.get("asset_name") or os.path.splitext(f.get("filename", ""))[0]
-                src = os.path.join(UPSCALED_DIR, str(asset) + ".png")
+                disk = f.get("output_name") or asset
+                src = os.path.join(UPSCALED_DIR, str(disk) + ".png")
+                if not os.path.exists(src):
+                    src = os.path.join(UPSCALED_DIR, str(asset) + ".png")
                 if not os.path.exists(src):
                     continue
                 try:
                     preview_paths.append(
                         upload_pack_file(
-                            pack["id"], src, name=f"{asset}.png", content_type="image/png"
+                            pack["id"], src, name=f"{label}_preview_{pidx:02d}.png", content_type="image/png"
                         )
                     )
                 except Exception as e:
@@ -1807,17 +1817,18 @@ def process_packs():
             if preview_paths:
                 log(f"превью в облаке: {len(preview_paths)} — можно скачать с телефона")
 
-            stored = zip_path
-            try:
-                stored = upload_pack_zip(pack["id"], zip_path)
-                log("архив залит в облако — можно скачать с телефона")
-            except Exception as e:
-                log("архив не залился в облако:", str(e)[:200])
+            # архив остаётся на компьютере, в облако уходят только превью
+            log("архив сохранён на компьютере:", zip_path)
             requests.post(
                 f"{API_BASE}/api/public/agent/packs",
                 headers=HEADERS,
                 data=json.dumps(
-                    {"pack_id": pack["id"], "zip_path": stored, "preview_paths": preview_paths}
+                    {
+                        "pack_id": pack["id"],
+                        "zip_path": None,
+                        "zip_local": zip_path,
+                        "preview_paths": preview_paths,
+                    }
                 ),
                 timeout=60,
             )
