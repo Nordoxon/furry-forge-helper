@@ -1,10 +1,23 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Copy, Download, KeyRound, LogOut, Loader2 } from "lucide-react";
+import { Copy, Download, KeyRound, LogOut, Loader2, Plus, Trash2, Wand2 } from "lucide-react";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { BottomNav } from "@/components/bottom-nav";
+import {
+  EMPTY_DEFAULTS,
+  deleteSpeciesTags,
+  fetchPromptDefaults,
+  fetchSpeciesTags,
+  savePromptDefaults,
+  saveSpeciesTags,
+  type PromptDefaults,
+} from "@/lib/defaults";
 
 export const Route = createFileRoute("/_authenticated/setup")({
   head: () => ({
@@ -144,10 +157,159 @@ DA_CLIENT_ID / DA_CLIENT_SECRET  # из вашего DeviantArt-приложен
             <li>4. Открывайте этот сайт с телефона и одобряйте кадры.</li>
           </ol>
         </section>
+
+        <DefaultsSection />
+        <SpeciesTagsSection />
       </main>
 
       <BottomNav />
     </div>
+  );
+}
+
+/** Промпты по умолчанию: подставляются при создании персонажа. */
+function DefaultsSection() {
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ["prompt-defaults"], queryFn: fetchPromptDefaults });
+  const [form, setForm] = useState<PromptDefaults | null>(null);
+  const [busy, setBusy] = useState(false);
+  const value = form ?? q.data ?? EMPTY_DEFAULTS;
+
+  return (
+    <section className="rounded-2xl border border-border/60 bg-card p-4">
+      <h2 className="flex items-center gap-2 font-display text-base font-semibold">
+        <Wand2 className="h-4 w-4" /> Промпты по умолчанию
+      </h2>
+      <p className="mt-1 text-xs text-muted-foreground">
+        Эти тексты сами подставятся в нового персонажа — там их можно отредактировать.
+      </p>
+      <div className="mt-3 space-y-3">
+        <div className="space-y-1.5">
+          <Label>Промпт для SFW</Label>
+          <Textarea
+            rows={3}
+            value={value.sfw_prompt}
+            onChange={(e) => setForm({ ...value, sfw_prompt: e.target.value })}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label>Промпт для NSFW</Label>
+          <Textarea
+            rows={3}
+            value={value.nsfw_prompt}
+            onChange={(e) => setForm({ ...value, nsfw_prompt: e.target.value })}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label>Негативный промпт</Label>
+          <Textarea
+            rows={3}
+            value={value.negative_prompt}
+            onChange={(e) => setForm({ ...value, negative_prompt: e.target.value })}
+          />
+        </div>
+        <Button
+          size="sm"
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            try {
+              await savePromptDefaults(value);
+              toast.success("Сохранено");
+              void qc.invalidateQueries({ queryKey: ["prompt-defaults"] });
+              setForm(null);
+            } catch (e) {
+              toast.error((e as Error).message);
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          {busy && <Loader2 className="mr-1 h-4 w-4 animate-spin" />} Сохранить
+        </Button>
+      </div>
+    </section>
+  );
+}
+
+/** Теги по умолчанию для вида: pokemon, digimon и т.д. */
+function SpeciesTagsSection() {
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ["species-tags"], queryFn: fetchSpeciesTags });
+  const [species, setSpecies] = useState("");
+  const [tags, setTags] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function add() {
+    if (!species.trim()) return;
+    setBusy(true);
+    try {
+      await saveSpeciesTags(
+        species,
+        tags
+          .split(",")
+          .map((t) => t.trim())
+          .filter(Boolean),
+      );
+      setSpecies("");
+      setTags("");
+      void qc.invalidateQueries({ queryKey: ["species-tags"] });
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const rows = q.data ?? [];
+
+  return (
+    <section className="rounded-2xl border border-border/60 bg-card p-4">
+      <h2 className="font-display text-base font-semibold">Теги по умолчанию для вида</h2>
+      <p className="mt-1 text-xs text-muted-foreground">
+        Напишете у персонажа вид «pokemon» — эти теги подставятся сами.
+      </p>
+
+      <ul className="mt-3 space-y-2">
+        {rows.map((r) => (
+          <li
+            key={r.id}
+            className="flex items-center justify-between gap-2 rounded-xl border border-border/60 px-3 py-2"
+          >
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium">{r.species}</p>
+              <p className="truncate text-[11px] text-muted-foreground">
+                {r.tags.length ? r.tags.map((t) => `#${t}`).join(" ") : "Без тегов"}
+              </p>
+            </div>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="shrink-0"
+              aria-label="Удалить набор"
+              onClick={async () => {
+                await deleteSpeciesTags(r.id);
+                void qc.invalidateQueries({ queryKey: ["species-tags"] });
+              }}
+            >
+              <Trash2 className="h-4 w-4 text-destructive" />
+            </Button>
+          </li>
+        ))}
+      </ul>
+
+      <div className="mt-3 space-y-2">
+        <Input placeholder="Вид: pokemon" value={species} onChange={(e) => setSpecies(e.target.value)} />
+        <Input
+          placeholder="Теги через запятую: pokemon, anthro, furry"
+          value={tags}
+          onChange={(e) => setTags(e.target.value)}
+        />
+        <Button size="sm" variant="outline" disabled={busy} onClick={add}>
+          <Plus className="mr-1 h-4 w-4" /> Добавить набор
+        </Button>
+      </div>
+    </section>
   );
 }
 
