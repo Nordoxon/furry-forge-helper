@@ -51,28 +51,32 @@ export const Route = createFileRoute("/api/public/agent/claim")({
 
 
 
-        const { data: maxRow } = await supabase
-          .from("images")
-          .select("seq")
-          .eq("user_id", userId)
-          .order("seq", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        let seq = maxRow?.seq ?? 0;
-
-        const { data: usedRows } = await supabase
-          .from("images")
-          .select("asset_name")
-          .eq("user_id", userId)
-          .not("asset_name", "is", null);
-        const used = new Set(
-          (usedRows ?? []).map((r) => String(r.asset_name).toLowerCase()),
+        // Нумерация файлов и seq считается внутри пака и всегда начинается с единицы
+        const packIds = Array.from(
+          new Set(approved.map((i) => i.pack_id).filter((v): v is string => Boolean(v))),
         );
+        const { data: packRows } = await supabase
+          .from("images")
+          .select("pack_id, seq, asset_name")
+          .eq("user_id", userId)
+          .in("pack_id", packIds.length > 0 ? packIds : ["00000000-0000-0000-0000-000000000000"]);
+        const usedByPack = new Map<string, Set<string>>();
+        const seqByPack = new Map<string, number>();
+        for (const row of packRows ?? []) {
+          const key = String(row.pack_id);
+          if (!usedByPack.has(key)) usedByPack.set(key, new Set());
+          if (row.asset_name) usedByPack.get(key)!.add(String(row.asset_name).toLowerCase());
+          seqByPack.set(key, Math.max(seqByPack.get(key) ?? 0, row.seq ?? 0));
+        }
 
         const jobs = [];
         for (const img of approved) {
           const ch = img.character_id ? charById.get(img.character_id) : undefined;
-          seq += 1;
+          const packKey = String(img.pack_id);
+          if (!usedByPack.has(packKey)) usedByPack.set(packKey, new Set());
+          const used = usedByPack.get(packKey)!;
+          const seq = (seqByPack.get(packKey) ?? 0) + 1;
+          seqByPack.set(packKey, seq);
           const assetName = img.asset_name || characterAssetName(ch?.name, used);
           const vars = {
             name: assetName,
@@ -105,7 +109,8 @@ export const Route = createFileRoute("/api/public/agent/claim")({
             asset_name: assetName,
             content_kind: img.content_kind,
             upload_to_da: img.is_cover,
-            output_filename: `${assetName}.png`,
+            // на диске имя уникально, внутри пака — короткое с нумерацией от единицы
+            output_filename: `${assetName}_${String(img.id).slice(0, 6)}.png`,
             title,
             description,
             tags,

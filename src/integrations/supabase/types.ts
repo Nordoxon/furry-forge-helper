@@ -290,6 +290,36 @@ export type Database = {
           },
         ]
       }
+      prompt_defaults: {
+        Row: {
+          created_at: string
+          id: string
+          negative_prompt: string
+          nsfw_prompt: string
+          sfw_prompt: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          negative_prompt?: string
+          nsfw_prompt?: string
+          sfw_prompt?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          negative_prompt?: string
+          nsfw_prompt?: string
+          sfw_prompt?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       publish_templates: {
         Row: {
           add_watermark: boolean
@@ -374,6 +404,33 @@ export type Database = {
           mature_level?: string
           name?: string
           noai?: boolean
+          tags?: string[]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      species_tags: {
+        Row: {
+          created_at: string
+          id: string
+          species: string
+          tags: string[]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          species: string
+          tags?: string[]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          species?: string
           tags?: string[]
           updated_at?: string
           user_id?: string

@@ -366,6 +366,11 @@ function PacksPage() {
                       </div>
                     )}
                   </div>
+                  {!p.zip_path && p.zip_url && (
+                    <p className="mt-1 break-all text-[11px] text-muted-foreground">
+                      Архив на компьютере: {p.zip_url}
+                    </p>
+                  )}
                   <div className="mt-2">
                     <PackCover packId={p.id} caption={packLabel(p)} title={p.title} />
                   </div>
