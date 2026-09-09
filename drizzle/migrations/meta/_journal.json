@@ -57,6 +57,13 @@
       "when": 1788869159900,
       "tag": "0007_pack_preview_paths",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1788930189855,
+      "tag": "0008_prompt_defaults_and_species_tags",
+      "breakpoints": true
     }
   ]
 }
