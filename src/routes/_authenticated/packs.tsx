@@ -484,6 +484,7 @@ function CoverButton({
   title?: string;
 }) {
   const [busy, setBusy] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
   const ids = useMemo(() => items.slice(0, 1), [items]);
 
   async function make() {
