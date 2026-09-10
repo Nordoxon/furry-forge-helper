@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Package, Star, ImageDown, Trash2, Plus, ChevronLeft, Crown, Download, Play, Pause } from "lucide-react";
 
@@ -484,6 +484,7 @@ function CoverButton({
   title?: string;
 }) {
   const [busy, setBusy] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
   const ids = useMemo(() => items.slice(0, 1), [items]);
 
   async function make() {
@@ -509,11 +510,51 @@ function CoverButton({
     }
   }
 
+  async function makeFromFile(file: File) {
+    setBusy(true);
+    const url = URL.createObjectURL(file);
+    try {
+      const blob = await renderCover({ urls: [url], caption, title: title || undefined });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "cover.png";
+      a.click();
+      URL.revokeObjectURL(a.href);
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      URL.revokeObjectURL(url);
+      setBusy(false);
+    }
+  }
+
   return (
-    <Button variant="outline" className="w-full" onClick={make} disabled={busy}>
-      {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ImageDown className="mr-2 h-4 w-4" />}
-      Сделать обложку
-    </Button>
+    <div className="space-y-2">
+      <Button variant="outline" className="w-full" onClick={make} disabled={busy}>
+        {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ImageDown className="mr-2 h-4 w-4" />}
+        Сделать обложку
+      </Button>
+      <Button
+        variant="outline"
+        className="w-full"
+        disabled={busy}
+        onClick={() => fileRef.current?.click()}
+      >
+        <ImageDown className="mr-2 h-4 w-4" />
+        Обложка из своего файла
+      </Button>
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          e.target.value = "";
+          if (f) void makeFromFile(f);
+        }}
+      />
+    </div>
   );
 }
 
