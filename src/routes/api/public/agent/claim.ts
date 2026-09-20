@@ -43,8 +43,7 @@ export const Route = createFileRoute("/api/public/agent/claim")({
         if (packsError) return json({ error: packsError.message }, 500);
 
         const activePackIds = (activePacks ?? []).map((pack) => pack.id);
-        console.log("[claim] user", userId, "packs", JSON.stringify(activePackIds));
-        if (activePackIds.length === 0) return json({ jobs: [], debug: { userId, packs: 0 } });
+        if (activePackIds.length === 0) return json({ jobs: [] });
 
         const { data: approved, error: approvedError } = await supabase
           .from("images")
@@ -57,9 +56,7 @@ export const Route = createFileRoute("/api/public/agent/claim")({
 
         if (approvedError) return json({ error: approvedError.message }, 500);
 
-        console.log("[claim] approved", approved?.length ?? -1, approvedError?.message ?? "");
-        if (!approved || approved.length === 0)
-          return json({ jobs: [], debug: { userId, activePackIds, err: approvedError?.message ?? null } });
+        if (!approved || approved.length === 0) return json({ jobs: [] });
 
         const { data: chars } = await supabase
           .from("characters")
@@ -70,34 +67,40 @@ export const Route = createFileRoute("/api/public/agent/claim")({
 
 
 
-        // Нумерация файлов и seq считается внутри пака и всегда начинается с единицы
+        // seq (нумерация внутри пака) считается по паку и начинается с единицы,
+        // а asset_name должен быть уникален в пределах всего аккаунта
         const packIds = Array.from(
           new Set(approved.map((i) => i.pack_id).filter((v): v is string => Boolean(v))),
         );
         const { data: packRows } = await supabase
           .from("images")
-          .select("pack_id, seq, asset_name")
+          .select("pack_id, seq")
           .eq("user_id", userId)
           .in("pack_id", packIds.length > 0 ? packIds : ["00000000-0000-0000-0000-000000000000"]);
-        const usedByPack = new Map<string, Set<string>>();
         const seqByPack = new Map<string, number>();
         for (const row of packRows ?? []) {
           const key = String(row.pack_id);
-          if (!usedByPack.has(key)) usedByPack.set(key, new Set());
-          if (row.asset_name) usedByPack.get(key)!.add(String(row.asset_name).toLowerCase());
           seqByPack.set(key, Math.max(seqByPack.get(key) ?? 0, row.seq ?? 0));
         }
 
+        const { data: nameRows } = await supabase
+          .from("images")
+          .select("asset_name")
+          .eq("user_id", userId)
+          .not("asset_name", "is", null);
+        const usedNames = new Set(
+          (nameRows ?? [])
+            .map((row) => String(row.asset_name ?? "").toLowerCase())
+            .filter(Boolean),
+        );
+
         const jobs = [];
-        const updateErrors: string[] = [];
         for (const img of approved) {
           const ch = img.character_id ? charById.get(img.character_id) : undefined;
           const packKey = String(img.pack_id);
-          if (!usedByPack.has(packKey)) usedByPack.set(packKey, new Set());
-          const used = usedByPack.get(packKey)!;
           const seq = (seqByPack.get(packKey) ?? 0) + 1;
           seqByPack.set(packKey, seq);
-          const assetName = img.asset_name || characterAssetName(ch?.name, used);
+          const assetName = img.asset_name || characterAssetName(ch?.name, usedNames);
           const vars = {
             name: assetName,
             character: ch?.name ?? "",
@@ -120,7 +123,7 @@ export const Route = createFileRoute("/api/public/agent/claim")({
             .update({ status: "upscaling", seq, title, description, tags, asset_name: assetName })
             .eq("id", img.id)
             .eq("status", "approved");
-          if (error) { updateErrors.push(error.message); continue; }
+          if (error) continue;
 
           jobs.push({
             id: img.id,
@@ -139,7 +142,7 @@ export const Route = createFileRoute("/api/public/agent/claim")({
             template: null,
           });
         }
-        return json({ jobs, debug: { approved: approved.length, updateErrors } });
+        return json({ jobs });
       },
     },
   },
