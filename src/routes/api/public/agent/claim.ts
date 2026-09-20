@@ -67,33 +67,40 @@ export const Route = createFileRoute("/api/public/agent/claim")({
 
 
 
-        // Нумерация файлов и seq считается внутри пака и всегда начинается с единицы
+        // seq (нумерация внутри пака) считается по паку и начинается с единицы,
+        // а asset_name должен быть уникален в пределах всего аккаунта
         const packIds = Array.from(
           new Set(approved.map((i) => i.pack_id).filter((v): v is string => Boolean(v))),
         );
         const { data: packRows } = await supabase
           .from("images")
-          .select("pack_id, seq, asset_name")
+          .select("pack_id, seq")
           .eq("user_id", userId)
           .in("pack_id", packIds.length > 0 ? packIds : ["00000000-0000-0000-0000-000000000000"]);
-        const usedByPack = new Map<string, Set<string>>();
         const seqByPack = new Map<string, number>();
         for (const row of packRows ?? []) {
           const key = String(row.pack_id);
-          if (!usedByPack.has(key)) usedByPack.set(key, new Set());
-          if (row.asset_name) usedByPack.get(key)!.add(String(row.asset_name).toLowerCase());
           seqByPack.set(key, Math.max(seqByPack.get(key) ?? 0, row.seq ?? 0));
         }
+
+        const { data: nameRows } = await supabase
+          .from("images")
+          .select("asset_name")
+          .eq("user_id", userId)
+          .not("asset_name", "is", null);
+        const usedNames = new Set(
+          (nameRows ?? [])
+            .map((row) => String(row.asset_name ?? "").toLowerCase())
+            .filter(Boolean),
+        );
 
         const jobs = [];
         for (const img of approved) {
           const ch = img.character_id ? charById.get(img.character_id) : undefined;
           const packKey = String(img.pack_id);
-          if (!usedByPack.has(packKey)) usedByPack.set(packKey, new Set());
-          const used = usedByPack.get(packKey)!;
           const seq = (seqByPack.get(packKey) ?? 0) + 1;
           seqByPack.set(packKey, seq);
-          const assetName = img.asset_name || characterAssetName(ch?.name, used);
+          const assetName = img.asset_name || characterAssetName(ch?.name, usedNames);
           const vars = {
             name: assetName,
             character: ch?.name ?? "",
