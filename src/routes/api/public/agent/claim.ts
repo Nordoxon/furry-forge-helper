@@ -43,6 +43,7 @@ export const Route = createFileRoute("/api/public/agent/claim")({
         if (packsError) return json({ error: packsError.message }, 500);
 
         const activePackIds = (activePacks ?? []).map((pack) => pack.id);
+        console.log("[claim] user", userId, "packs", JSON.stringify(activePackIds));
         if (activePackIds.length === 0) return json({ jobs: [] });
 
         const { data: approved, error: approvedError } = await supabase
@@ -56,6 +57,7 @@ export const Route = createFileRoute("/api/public/agent/claim")({
 
         if (approvedError) return json({ error: approvedError.message }, 500);
 
+        console.log("[claim] approved", approved?.length ?? -1, approvedError?.message ?? "");
         if (!approved || approved.length === 0) return json({ jobs: [] });
 
         const { data: chars } = await supabase
