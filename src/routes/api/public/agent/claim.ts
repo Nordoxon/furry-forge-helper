@@ -89,6 +89,7 @@ export const Route = createFileRoute("/api/public/agent/claim")({
         }
 
         const jobs = [];
+        const updateErrors: string[] = [];
         for (const img of approved) {
           const ch = img.character_id ? charById.get(img.character_id) : undefined;
           const packKey = String(img.pack_id);
@@ -119,7 +120,7 @@ export const Route = createFileRoute("/api/public/agent/claim")({
             .update({ status: "upscaling", seq, title, description, tags, asset_name: assetName })
             .eq("id", img.id)
             .eq("status", "approved");
-          if (error) continue;
+          if (error) { updateErrors.push(error.message); continue; }
 
           jobs.push({
             id: img.id,
@@ -138,7 +139,7 @@ export const Route = createFileRoute("/api/public/agent/claim")({
             template: null,
           });
         }
-        return json({ jobs });
+        return json({ jobs, debug: { approved: approved.length, updateErrors } });
       },
     },
   },
