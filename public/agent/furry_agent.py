@@ -759,6 +759,7 @@ def process_queue():
 
     if not jobs:
         return False
+    log(f"получено заданий на апскейл: {len(jobs)}")
     _pack_busy.set()  # пока идёт работа по паку — не забираем новые генерации
 
     for job in jobs:

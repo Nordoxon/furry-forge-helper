@@ -30,15 +30,31 @@ export const Route = createFileRoute("/api/public/agent/claim")({
           .in("status", ["upscaling", "uploading"])
           .lt("updated_at", staleBefore);
 
-        // Апскейл начинается только после закрытия пака: берём кадры, уже привязанные к паку
-        const { data: approved } = await supabase
+        // Апскейл начинается только после закрытия пака. Сначала явно находим
+        // активные паки пользователя, затем забираем их кадры. Это надёжнее
+        // косвенной проверки pack_id и не позволяет смешивать старые задания.
+        const { data: activePacks, error: packsError } = await supabase
+          .from("packs")
+          .select("id")
+          .eq("user_id", userId)
+          .eq("status", "building")
+          .order("created_at", { ascending: true })
+          .limit(5);
+        if (packsError) return json({ error: packsError.message }, 500);
+
+        const activePackIds = (activePacks ?? []).map((pack) => pack.id);
+        if (activePackIds.length === 0) return json({ jobs: [] });
+
+        const { data: approved, error: approvedError } = await supabase
           .from("images")
           .select("*")
           .eq("user_id", userId)
           .eq("status", "approved")
-          .not("pack_id", "is", null)
+          .in("pack_id", activePackIds)
           .order("created_at", { ascending: true })
           .limit(5);
+
+        if (approvedError) return json({ error: approvedError.message }, 500);
 
         if (!approved || approved.length === 0) return json({ jobs: [] });
 
