@@ -23,6 +23,7 @@ import { Route as ApiPublicAgentIngestRouteImport } from './routes/api/public/ag
 import { Route as ApiPublicAgentGenRouteImport } from './routes/api/public/agent/gen'
 import { Route as ApiPublicAgentClaimRouteImport } from './routes/api/public/agent/claim'
 import { Route as ApiPublicAgentJobStatusRouteImport } from './routes/api/public/agent/job/status'
+import { Route as ApiPublicAgentJobHeartbeatRouteImport } from './routes/api/public/agent/job/heartbeat'
 import { Route as ApiPublicAgentJobClaimRouteImport } from './routes/api/public/agent/job/claim'
 
 const AuthRoute = AuthRouteImport.update({
@@ -94,6 +95,12 @@ const ApiPublicAgentJobStatusRoute = ApiPublicAgentJobStatusRouteImport.update({
   path: '/api/public/agent/job/status',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicAgentJobHeartbeatRoute =
+  ApiPublicAgentJobHeartbeatRouteImport.update({
+    id: '/api/public/agent/job/heartbeat',
+    path: '/api/public/agent/job/heartbeat',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicAgentJobClaimRoute = ApiPublicAgentJobClaimRouteImport.update({
   id: '/api/public/agent/job/claim',
   path: '/api/public/agent/job/claim',
@@ -114,6 +121,7 @@ export interface FileRoutesByFullPath {
   '/api/public/agent/status': typeof ApiPublicAgentStatusRoute
   '/api/public/agent/zip': typeof ApiPublicAgentZipRoute
   '/api/public/agent/job/claim': typeof ApiPublicAgentJobClaimRoute
+  '/api/public/agent/job/heartbeat': typeof ApiPublicAgentJobHeartbeatRoute
   '/api/public/agent/job/status': typeof ApiPublicAgentJobStatusRoute
 }
 export interface FileRoutesByTo {
@@ -130,6 +138,7 @@ export interface FileRoutesByTo {
   '/api/public/agent/status': typeof ApiPublicAgentStatusRoute
   '/api/public/agent/zip': typeof ApiPublicAgentZipRoute
   '/api/public/agent/job/claim': typeof ApiPublicAgentJobClaimRoute
+  '/api/public/agent/job/heartbeat': typeof ApiPublicAgentJobHeartbeatRoute
   '/api/public/agent/job/status': typeof ApiPublicAgentJobStatusRoute
 }
 export interface FileRoutesById {
@@ -148,6 +157,7 @@ export interface FileRoutesById {
   '/api/public/agent/status': typeof ApiPublicAgentStatusRoute
   '/api/public/agent/zip': typeof ApiPublicAgentZipRoute
   '/api/public/agent/job/claim': typeof ApiPublicAgentJobClaimRoute
+  '/api/public/agent/job/heartbeat': typeof ApiPublicAgentJobHeartbeatRoute
   '/api/public/agent/job/status': typeof ApiPublicAgentJobStatusRoute
 }
 export interface FileRouteTypes {
@@ -166,6 +176,7 @@ export interface FileRouteTypes {
     | '/api/public/agent/status'
     | '/api/public/agent/zip'
     | '/api/public/agent/job/claim'
+    | '/api/public/agent/job/heartbeat'
     | '/api/public/agent/job/status'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -182,6 +193,7 @@ export interface FileRouteTypes {
     | '/api/public/agent/status'
     | '/api/public/agent/zip'
     | '/api/public/agent/job/claim'
+    | '/api/public/agent/job/heartbeat'
     | '/api/public/agent/job/status'
   id:
     | '__root__'
@@ -199,6 +211,7 @@ export interface FileRouteTypes {
     | '/api/public/agent/status'
     | '/api/public/agent/zip'
     | '/api/public/agent/job/claim'
+    | '/api/public/agent/job/heartbeat'
     | '/api/public/agent/job/status'
   fileRoutesById: FileRoutesById
 }
@@ -212,6 +225,7 @@ export interface RootRouteChildren {
   ApiPublicAgentStatusRoute: typeof ApiPublicAgentStatusRoute
   ApiPublicAgentZipRoute: typeof ApiPublicAgentZipRoute
   ApiPublicAgentJobClaimRoute: typeof ApiPublicAgentJobClaimRoute
+  ApiPublicAgentJobHeartbeatRoute: typeof ApiPublicAgentJobHeartbeatRoute
   ApiPublicAgentJobStatusRoute: typeof ApiPublicAgentJobStatusRoute
 }
 
@@ -315,6 +329,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicAgentJobStatusRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/agent/job/heartbeat': {
+      id: '/api/public/agent/job/heartbeat'
+      path: '/api/public/agent/job/heartbeat'
+      fullPath: '/api/public/agent/job/heartbeat'
+      preLoaderRoute: typeof ApiPublicAgentJobHeartbeatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/agent/job/claim': {
       id: '/api/public/agent/job/claim'
       path: '/api/public/agent/job/claim'
@@ -354,6 +375,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicAgentStatusRoute: ApiPublicAgentStatusRoute,
   ApiPublicAgentZipRoute: ApiPublicAgentZipRoute,
   ApiPublicAgentJobClaimRoute: ApiPublicAgentJobClaimRoute,
+  ApiPublicAgentJobHeartbeatRoute: ApiPublicAgentJobHeartbeatRoute,
   ApiPublicAgentJobStatusRoute: ApiPublicAgentJobStatusRoute,
 }
 export const routeTree = rootRouteImport

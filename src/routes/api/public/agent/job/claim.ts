@@ -3,6 +3,8 @@ import { authenticateAgent, json } from "@/lib/agent-auth";
 import { genPlan, genSettings } from "@/lib/agent-phase";
 
 const STALE_MINUTES = 30;
+// задание считается брошенным, если воркер давно не подавал признаков жизни
+const HEARTBEAT_STALE_MINUTES = 5;
 
 /**
  * Очередь на одно изображение: агент берёт ровно одно задание,
@@ -26,12 +28,23 @@ export const Route = createFileRoute("/api/public/agent/job/claim")({
         const worker = String(body.worker || "agent").slice(0, 60);
 
         // 1. восстановление после перезапуска агента
-        const staleBefore = new Date(Date.now() - STALE_MINUTES * 60_000).toISOString();
+        const now = Date.now();
+        const staleBefore = new Date(now - STALE_MINUTES * 60_000).toISOString();
+        const heartbeatStale = new Date(now - HEARTBEAT_STALE_MINUTES * 60_000).toISOString();
+        // брошенные задания (воркер молчит) возвращаем в очередь, а не теряем
         await supabase
           .from("generation_jobs")
-          .update({ status: "FAILED", error: "задание зависло и было снято" })
+          .update({ status: "QUEUED", worker: null, error: "воркер замолчал, задание возвращено" })
+          .eq("user_id", userId)
+          .in("status", ["CLAIMED", "GENERATING"])
+          .not("heartbeat_at", "is", null)
+          .lt("heartbeat_at", heartbeatStale);
+        await supabase
+          .from("generation_jobs")
+          .update({ status: "QUEUED", worker: null, error: "задание зависло и было возвращено" })
           .eq("user_id", userId)
           .in("status", ["CLAIMED", "GENERATING", "UPLOADING"])
+          .is("heartbeat_at", null)
           .lt("updated_at", staleBefore);
 
         // задания, чей кадр уже принят сайтом, закрываем без повторной генерации
@@ -60,10 +73,20 @@ export const Route = createFileRoute("/api/public/agent/job/claim")({
               .eq("id", job.id);
             continue;
           }
+          // задание уже ведёт другой живой воркер — второй его не перехватывает
+          const beat = job.heartbeat_at ? Date.parse(job.heartbeat_at) : 0;
+          if (job.worker && job.worker !== worker && beat > now - HEARTBEAT_STALE_MINUTES * 60_000) {
+            return json({ job: null, reason: `задание ведёт другой воркер: ${job.worker}` });
+          }
           // ровно одно активное задание на воркера: отдаём то же самое
           await supabase
             .from("generation_jobs")
-            .update({ status: "CLAIMED", worker, claimed_at: new Date().toISOString() })
+            .update({
+              status: "CLAIMED",
+              worker,
+              claimed_at: new Date().toISOString(),
+              heartbeat_at: new Date().toISOString(),
+            })
             .eq("id", job.id);
           return json({
             job: {
@@ -106,6 +129,7 @@ export const Route = createFileRoute("/api/public/agent/job/claim")({
             status: "CLAIMED",
             worker,
             claimed_at: new Date().toISOString(),
+            heartbeat_at: new Date().toISOString(),
           })
           .select("id")
           .single();

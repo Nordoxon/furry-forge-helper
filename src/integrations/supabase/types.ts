@@ -160,8 +160,11 @@ export type Database = {
           completed_at: string | null
           created_at: string
           error: string | null
+          failure_kind: string | null
+          heartbeat_at: string | null
           id: string
           image_id: string | null
+          max_attempts: number
           negative_prompt: string
           phase: string
           prompt: string
@@ -180,8 +183,11 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           error?: string | null
+          failure_kind?: string | null
+          heartbeat_at?: string | null
           id?: string
           image_id?: string | null
+          max_attempts?: number
           negative_prompt?: string
           phase?: string
           prompt?: string
@@ -200,8 +206,11 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           error?: string | null
+          failure_kind?: string | null
+          heartbeat_at?: string | null
           id?: string
           image_id?: string | null
+          max_attempts?: number
           negative_prompt?: string
           phase?: string
           prompt?: string

@@ -135,6 +135,7 @@ FORGE_UPLOAD_RETRIES = 12     # попыток отправить готовый
 FORGE_UPLOAD_WAIT = 20        # пауза между попытками отправки (сек)
 FORGE_IDLE_WAIT = 20          # пауза, когда сайт заданий не даёт (сек)
 FORGE_ERROR_WAIT = 30         # пауза после ошибки генерации (сек)
+FORGE_HEARTBEAT = 30          # как часто подтверждать сайту, что задание живо (сек)
 
 
 
@@ -1864,9 +1865,28 @@ def forge_pending():
     return STATE.setdefault("forge_pending", {})
 
 
-def forge_job_status(job_id, status, error=None, seed=None):
+WORKER_NAME = os.environ.get("COMPUTERNAME") or "agent"
+
+
+def forge_heartbeat_loop(job_id, stop_event):
+    """Пока идёт работа, агент подтверждает сайту, что задание живо."""
+    while not stop_event.wait(FORGE_HEARTBEAT):
+        try:
+            requests.post(
+                f"{API_BASE}/api/public/agent/job/heartbeat",
+                headers=HEADERS,
+                data=json.dumps({"generation_job_id": job_id, "worker": WORKER_NAME}),
+                timeout=30,
+            )
+        except Exception:
+            pass
+
+
+def forge_job_status(job_id, status, error=None, seed=None, failure_kind=None):
     """Сообщает сайту текущее состояние задания."""
     body = {"generation_job_id": job_id, "status": status}
+    if failure_kind:
+        body["failure_kind"] = failure_kind
     if error is not None:
         body["error"] = str(error)[:500]
     if seed is not None:
@@ -1891,7 +1911,7 @@ def forge_claim_job():
         r = requests.post(
             f"{API_BASE}/api/public/agent/job/claim",
             headers=HEADERS,
-            data=json.dumps({"worker": os.environ.get("COMPUTERNAME") or "agent"}),
+            data=json.dumps({"worker": WORKER_NAME}),
             timeout=60,
         )
         r.raise_for_status()
@@ -2040,11 +2060,17 @@ def forge_queue_loop():
                 + (" (продолжаю прерванное)" if job.get("resume") else "")
             )
             forge_job_status(job_id, "GENERATING")
+            stop_beat = threading.Event()
+            threading.Thread(
+                target=forge_heartbeat_loop, args=(job_id, stop_beat), daemon=True
+            ).start()
             try:
                 path, seed, settings = forge_txt2img(job)
             except Exception as e:
-                log("генерация не удалась:", str(e)[:200])
-                forge_job_status(job_id, "FAILED", error=e)
+                stop_beat.set()
+                log("ошибка ГЕНЕРАЦИИ:", str(e)[:200])
+                res = forge_job_status(job_id, "FAILED", error=e, failure_kind="generation")
+                log("сайт вернёт задание в очередь" if res else "состояние не доставлено")
                 time.sleep(FORGE_ERROR_WAIT)
                 continue
 
@@ -2073,9 +2099,12 @@ def forge_queue_loop():
                 forge_job_status(job_id, "COMPLETED", seed=seed)
                 forge_pending().pop(job_id, None)
                 save_state(STATE)
+                stop_beat.set()
             else:
                 # кадр сохранён на диске и будет дослан позже, повторная генерация не нужна
-                log("сайт не принял кадр — оставляю его на диске и повторю отправку")
+                log("ошибка ЗАГРУЗКИ: кадр остаётся на диске, повторю отправку")
+                forge_job_status(job_id, "FAILED", error="upload failed", failure_kind="upload")
+                stop_beat.set()
                 time.sleep(FORGE_UPLOAD_WAIT)
         except Exception as e:
             log("очередь: ошибка:", str(e)[:200])
