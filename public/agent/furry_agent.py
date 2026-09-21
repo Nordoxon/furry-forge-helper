@@ -1865,9 +1865,28 @@ def forge_pending():
     return STATE.setdefault("forge_pending", {})
 
 
-def forge_job_status(job_id, status, error=None, seed=None):
+WORKER_NAME = os.environ.get("COMPUTERNAME") or "agent"
+
+
+def forge_heartbeat_loop(job_id, stop_event):
+    """Пока идёт работа, агент подтверждает сайту, что задание живо."""
+    while not stop_event.wait(FORGE_HEARTBEAT):
+        try:
+            requests.post(
+                f"{API_BASE}/api/public/agent/job/heartbeat",
+                headers=HEADERS,
+                data=json.dumps({"generation_job_id": job_id, "worker": WORKER_NAME}),
+                timeout=30,
+            )
+        except Exception:
+            pass
+
+
+def forge_job_status(job_id, status, error=None, seed=None, failure_kind=None):
     """Сообщает сайту текущее состояние задания."""
     body = {"generation_job_id": job_id, "status": status}
+    if failure_kind:
+        body["failure_kind"] = failure_kind
     if error is not None:
         body["error"] = str(error)[:500]
     if seed is not None:
