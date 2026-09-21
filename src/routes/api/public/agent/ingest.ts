@@ -70,6 +70,16 @@ export const Route = createFileRoute("/api/public/agent/ingest")({
           (jobImages ?? []).map((r) => [String(r.generation_job_id), r.id]),
         );
 
+        // поза и фон известны сайту: берём их из задания, агент их присылать не обязан
+        const { data: jobRows } = jobIds.length
+          ? await supabase
+              .from("generation_jobs")
+              .select("id, pose_id, pose_text, background_id, background_text")
+              .eq("user_id", userId)
+              .in("id", jobIds)
+          : { data: [] as { id: string; pose_id: string | null; pose_text: string | null; background_id: string | null; background_text: string | null }[] };
+        const sceneByJob = new Map((jobRows ?? []).map((r) => [String(r.id), r]));
+
         const completeJob = async (jobId: string, imageId: string) => {
           await supabase
             .from("generation_jobs")
