@@ -12,6 +12,8 @@ type IncomingFile = {
   negative_prompt?: string | null;
   pose_id?: string | null;
   background_id?: string | null;
+  generation_job_id?: string | null;
+  generation_settings?: Record<string, unknown> | null;
 };
 
 function toSeed(v: unknown): number | null {
