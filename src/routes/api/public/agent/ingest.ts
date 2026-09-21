@@ -7,7 +7,18 @@ type IncomingFile = {
   width?: number;
   height?: number;
   preview_b64: string;
+  seed?: number | string | null;
+  prompt?: string | null;
+  negative_prompt?: string | null;
+  pose_id?: string | null;
+  background_id?: string | null;
 };
+
+function toSeed(v: unknown): number | null {
+  if (v === null || v === undefined || v === "") return null;
+  const n = typeof v === "number" ? v : Number(String(v));
+  return Number.isFinite(n) ? Math.trunc(n) : null;
+}
 
 function decodeBase64(b64: string): Uint8Array {
   const clean = b64.includes(",") ? b64.slice(b64.indexOf(",") + 1) : b64;
@@ -64,6 +75,11 @@ export const Route = createFileRoute("/api/public/agent/ingest")({
             width: f.width ?? null,
             height: f.height ?? null,
             status: "new",
+            generation_seed: toSeed(f.seed),
+            generation_prompt: f.prompt ?? null,
+            generation_negative_prompt: f.negative_prompt ?? null,
+            pose_id: f.pose_id ?? null,
+            background_id: f.background_id ?? null,
           });
           if (error) {
             await supabase.storage.from("previews").remove([previewPath]);

@@ -54,17 +54,44 @@ export async function fetchPipeline() {
   return data;
 }
 
+export const REJECT_REASONS = [
+  { value: "anatomy", label: "Анатомия" },
+  { value: "face", label: "Лицо" },
+  { value: "pose", label: "Поза" },
+  { value: "background", label: "Фон" },
+  { value: "composition", label: "Композиция" },
+  { value: "duplicate", label: "Слишком похоже" },
+  { value: "character", label: "Не тот персонаж" },
+  { value: "other", label: "Другое" },
+] as const;
+
+export type RejectReason = (typeof REJECT_REASONS)[number]["value"];
+
 export async function decide(
   id: string,
   status: ImageStatus,
   characterId: string | null,
-  extra?: { contentKind?: "sfw" | "nsfw"; isPreview?: boolean },
+  extra?: { contentKind?: "sfw" | "nsfw"; isPreview?: boolean; rejectReason?: RejectReason | null },
 ) {
+  const review =
+    status === "new"
+      ? { reviewed_at: null, reject_reason: null, decision_source: null }
+      : status === "approved"
+        ? { reviewed_at: new Date().toISOString(), reject_reason: null, decision_source: "human" }
+        : status === "rejected"
+          ? {
+              reviewed_at: new Date().toISOString(),
+              reject_reason: extra?.rejectReason ?? null,
+              decision_source: "human",
+            }
+          : {};
+
   const { error } = await supabase
     .from("images")
     .update({
       status,
       character_id: characterId,
+      ...review,
       ...(extra?.contentKind ? { content_kind: extra.contentKind } : {}),
       ...(extra?.isPreview !== undefined ? { is_preview: extra.isPreview } : {}),
     })

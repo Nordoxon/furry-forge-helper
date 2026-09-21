@@ -154,22 +154,33 @@ export type Database = {
       }
       images: {
         Row: {
+          ai_decision: string | null
+          ai_details: Json | null
+          ai_score: number | null
           asset_name: string | null
+          background_id: string | null
           character_id: string | null
           content_kind: string
           created_at: string
+          decision_source: string | null
           description: string
           deviation_url: string | null
           error: string | null
           filename: string
           gallery_folder: string | null
+          generation_negative_prompt: string | null
+          generation_prompt: string | null
+          generation_seed: number | null
           height: number | null
           id: string
           is_cover: boolean
           is_preview: boolean
           local_path: string
           pack_id: string | null
+          pose_id: string | null
           preview_path: string | null
+          reject_reason: string | null
+          reviewed_at: string | null
           seq: number
           status: Database["public"]["Enums"]["image_status"]
           tags: string[]
@@ -180,22 +191,33 @@ export type Database = {
           width: number | null
         }
         Insert: {
+          ai_decision?: string | null
+          ai_details?: Json | null
+          ai_score?: number | null
           asset_name?: string | null
+          background_id?: string | null
           character_id?: string | null
           content_kind?: string
           created_at?: string
+          decision_source?: string | null
           description?: string
           deviation_url?: string | null
           error?: string | null
           filename: string
           gallery_folder?: string | null
+          generation_negative_prompt?: string | null
+          generation_prompt?: string | null
+          generation_seed?: number | null
           height?: number | null
           id?: string
           is_cover?: boolean
           is_preview?: boolean
           local_path: string
           pack_id?: string | null
+          pose_id?: string | null
           preview_path?: string | null
+          reject_reason?: string | null
+          reviewed_at?: string | null
           seq?: number
           status?: Database["public"]["Enums"]["image_status"]
           tags?: string[]
@@ -206,22 +228,33 @@ export type Database = {
           width?: number | null
         }
         Update: {
+          ai_decision?: string | null
+          ai_details?: Json | null
+          ai_score?: number | null
           asset_name?: string | null
+          background_id?: string | null
           character_id?: string | null
           content_kind?: string
           created_at?: string
+          decision_source?: string | null
           description?: string
           deviation_url?: string | null
           error?: string | null
           filename?: string
           gallery_folder?: string | null
+          generation_negative_prompt?: string | null
+          generation_prompt?: string | null
+          generation_seed?: number | null
           height?: number | null
           id?: string
           is_cover?: boolean
           is_preview?: boolean
           local_path?: string
           pack_id?: string | null
+          pose_id?: string | null
           preview_path?: string | null
+          reject_reason?: string | null
+          reviewed_at?: string | null
           seq?: number
           status?: Database["public"]["Enums"]["image_status"]
           tags?: string[]
