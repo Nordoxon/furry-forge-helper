@@ -26,6 +26,9 @@ import {
 import { renderCover } from "@/lib/cover";
 import { batchState, packItems } from "@/lib/batch";
 import { pauseGeneration, startGeneration } from "@/lib/generation";
+import { recallCharacter, rememberCharacter } from "@/lib/styles";
+import { SearchableSelect } from "@/components/searchable-select";
+
 
 function GenerationControl({
   enabled,
