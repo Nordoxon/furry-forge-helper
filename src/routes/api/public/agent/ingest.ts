@@ -70,6 +70,16 @@ export const Route = createFileRoute("/api/public/agent/ingest")({
           (jobImages ?? []).map((r) => [String(r.generation_job_id), r.id]),
         );
 
+        // поза и фон известны сайту: берём их из задания, агент их присылать не обязан
+        const { data: jobRows } = jobIds.length
+          ? await supabase
+              .from("generation_jobs")
+              .select("id, pose_id, pose_text, background_id, background_text")
+              .eq("user_id", userId)
+              .in("id", jobIds)
+          : { data: [] as { id: string; pose_id: string | null; pose_text: string | null; background_id: string | null; background_text: string | null }[] };
+        const sceneByJob = new Map((jobRows ?? []).map((r) => [String(r.id), r]));
+
         const completeJob = async (jobId: string, imageId: string) => {
           await supabase
             .from("generation_jobs")
@@ -117,8 +127,10 @@ export const Route = createFileRoute("/api/public/agent/ingest")({
             generation_seed: toSeed(f.seed),
             generation_prompt: f.prompt ?? null,
             generation_negative_prompt: f.negative_prompt ?? null,
-            pose_id: f.pose_id ?? null,
-            background_id: f.background_id ?? null,
+            pose_id: f.pose_id ?? sceneByJob.get(jobId)?.pose_id ?? null,
+            pose_text: sceneByJob.get(jobId)?.pose_text ?? null,
+            background_id: f.background_id ?? sceneByJob.get(jobId)?.background_id ?? null,
+            background_text: sceneByJob.get(jobId)?.background_text ?? null,
             generation_job_id: jobId || null,
             generation_settings: (f.generation_settings ?? null) as never,
           });

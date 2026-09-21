@@ -41,6 +41,42 @@ export type Database = {
         }
         Relationships: []
       }
+      backgrounds: {
+        Row: {
+          category: string
+          code: string
+          created_at: string
+          enabled: boolean
+          id: string
+          name: string
+          prompt: string
+          tags: string[]
+          user_id: string
+        }
+        Insert: {
+          category?: string
+          code: string
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          name: string
+          prompt?: string
+          tags?: string[]
+          user_id: string
+        }
+        Update: {
+          category?: string
+          code?: string
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          name?: string
+          prompt?: string
+          tags?: string[]
+          user_id?: string
+        }
+        Relationships: []
+      }
       characters: {
         Row: {
           base_tags: string[]
@@ -155,6 +191,8 @@ export type Database = {
       generation_jobs: {
         Row: {
           attempts: number
+          background_id: string | null
+          background_text: string | null
           character_id: string | null
           claimed_at: string | null
           completed_at: string | null
@@ -167,6 +205,8 @@ export type Database = {
           max_attempts: number
           negative_prompt: string
           phase: string
+          pose_id: string | null
+          pose_text: string | null
           prompt: string
           seed: number | null
           settings: Json
@@ -178,6 +218,8 @@ export type Database = {
         }
         Insert: {
           attempts?: number
+          background_id?: string | null
+          background_text?: string | null
           character_id?: string | null
           claimed_at?: string | null
           completed_at?: string | null
@@ -190,6 +232,8 @@ export type Database = {
           max_attempts?: number
           negative_prompt?: string
           phase?: string
+          pose_id?: string | null
+          pose_text?: string | null
           prompt?: string
           seed?: number | null
           settings?: Json
@@ -201,6 +245,8 @@ export type Database = {
         }
         Update: {
           attempts?: number
+          background_id?: string | null
+          background_text?: string | null
           character_id?: string | null
           claimed_at?: string | null
           completed_at?: string | null
@@ -213,6 +259,8 @@ export type Database = {
           max_attempts?: number
           negative_prompt?: string
           phase?: string
+          pose_id?: string | null
+          pose_text?: string | null
           prompt?: string
           seed?: number | null
           settings?: Json
@@ -239,6 +287,7 @@ export type Database = {
           ai_score: number | null
           asset_name: string | null
           background_id: string | null
+          background_text: string | null
           character_id: string | null
           content_kind: string
           created_at: string
@@ -260,6 +309,7 @@ export type Database = {
           local_path: string
           pack_id: string | null
           pose_id: string | null
+          pose_text: string | null
           preview_path: string | null
           reject_note: string | null
           reject_reason: string | null
@@ -280,6 +330,7 @@ export type Database = {
           ai_score?: number | null
           asset_name?: string | null
           background_id?: string | null
+          background_text?: string | null
           character_id?: string | null
           content_kind?: string
           created_at?: string
@@ -301,6 +352,7 @@ export type Database = {
           local_path: string
           pack_id?: string | null
           pose_id?: string | null
+          pose_text?: string | null
           preview_path?: string | null
           reject_note?: string | null
           reject_reason?: string | null
@@ -321,6 +373,7 @@ export type Database = {
           ai_score?: number | null
           asset_name?: string | null
           background_id?: string | null
+          background_text?: string | null
           character_id?: string | null
           content_kind?: string
           created_at?: string
@@ -342,6 +395,7 @@ export type Database = {
           local_path?: string
           pack_id?: string | null
           pose_id?: string | null
+          pose_text?: string | null
           preview_path?: string | null
           reject_note?: string | null
           reject_reason?: string | null
@@ -435,6 +489,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      poses: {
+        Row: {
+          category: string
+          code: string
+          created_at: string
+          enabled: boolean
+          id: string
+          name: string
+          prompt: string
+          tags: string[]
+          user_id: string
+        }
+        Insert: {
+          category?: string
+          code: string
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          name: string
+          prompt?: string
+          tags?: string[]
+          user_id: string
+        }
+        Update: {
+          category?: string
+          code?: string
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          name?: string
+          prompt?: string
+          tags?: string[]
+          user_id?: string
+        }
+        Relationships: []
       }
       prompt_defaults: {
         Row: {
