@@ -99,8 +99,21 @@ function PacksPage() {
   const chars = useQuery({ queryKey: ["characters"], queryFn: fetchCharacters });
   const charId = character ?? null;
 
-  const selectChar = (id: string | null) =>
+  const selectChar = (id: string | null) => {
+    rememberCharacter(id);
     navigate({ to: "/packs", search: { character: id ?? undefined }, replace: true });
+  };
+
+  // после обновления страницы возвращаемся к последнему выбранному персонажу
+  useEffect(() => {
+    if (character) return;
+    const saved = recallCharacter();
+    if (saved && chars.data?.some((c) => c.id === saved)) {
+      navigate({ to: "/packs", search: { character: saved }, replace: true });
+    }
+  }, [character, chars.data, navigate]);
+
+
 
 
   const selection = useQuery({
