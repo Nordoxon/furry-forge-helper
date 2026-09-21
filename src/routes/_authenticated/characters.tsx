@@ -495,5 +495,3 @@ function StylePicker({
     </div>
   );
 }
-
-}
