@@ -120,7 +120,7 @@ export const Route = createFileRoute("/api/public/agent/ingest")({
             pose_id: f.pose_id ?? null,
             background_id: f.background_id ?? null,
             generation_job_id: jobId || null,
-            generation_settings: f.generation_settings ?? null,
+            generation_settings: (f.generation_settings ?? null) as never,
           });
           if (error) {
             await supabase.storage.from("previews").remove([previewPath]);

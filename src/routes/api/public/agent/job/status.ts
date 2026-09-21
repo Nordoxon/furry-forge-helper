@@ -57,7 +57,7 @@ export const Route = createFileRoute("/api/public/agent/job/status")({
 
         const { error } = await supabase
           .from("generation_jobs")
-          .update(patch)
+          .update(patch as never)
           .eq("id", jobId)
           .eq("user_id", userId);
         if (error) return json({ error: error.message }, 500);
