@@ -152,6 +152,77 @@ export type Database = {
         }
         Relationships: []
       }
+      generation_jobs: {
+        Row: {
+          attempts: number
+          character_id: string | null
+          claimed_at: string | null
+          completed_at: string | null
+          created_at: string
+          error: string | null
+          id: string
+          image_id: string | null
+          negative_prompt: string
+          phase: string
+          prompt: string
+          seed: number | null
+          settings: Json
+          started_at: string | null
+          status: string
+          updated_at: string
+          user_id: string
+          worker: string | null
+        }
+        Insert: {
+          attempts?: number
+          character_id?: string | null
+          claimed_at?: string | null
+          completed_at?: string | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          image_id?: string | null
+          negative_prompt?: string
+          phase?: string
+          prompt?: string
+          seed?: number | null
+          settings?: Json
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+          worker?: string | null
+        }
+        Update: {
+          attempts?: number
+          character_id?: string | null
+          claimed_at?: string | null
+          completed_at?: string | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          image_id?: string | null
+          negative_prompt?: string
+          phase?: string
+          prompt?: string
+          seed?: number | null
+          settings?: Json
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+          worker?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "generation_jobs_character_id_fkey"
+            columns: ["character_id"]
+            isOneToOne: false
+            referencedRelation: "characters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       images: {
         Row: {
           ai_decision: string | null
@@ -168,6 +239,7 @@ export type Database = {
           error: string | null
           filename: string
           gallery_folder: string | null
+          generation_job_id: string | null
           generation_negative_prompt: string | null
           generation_prompt: string | null
           generation_seed: number | null
@@ -205,6 +277,7 @@ export type Database = {
           error?: string | null
           filename: string
           gallery_folder?: string | null
+          generation_job_id?: string | null
           generation_negative_prompt?: string | null
           generation_prompt?: string | null
           generation_seed?: number | null
@@ -242,6 +315,7 @@ export type Database = {
           error?: string | null
           filename?: string
           gallery_folder?: string | null
+          generation_job_id?: string | null
           generation_negative_prompt?: string | null
           generation_prompt?: string | null
           generation_seed?: number | null
