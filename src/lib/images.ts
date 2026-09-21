@@ -60,28 +60,52 @@ export const REJECT_REASONS = [
   { value: "pose", label: "Поза" },
   { value: "background", label: "Фон" },
   { value: "composition", label: "Композиция" },
-  { value: "duplicate", label: "Слишком похоже" },
-  { value: "character", label: "Не тот персонаж" },
+  { value: "cropping", label: "Кадрирование" },
+  { value: "duplicate", label: "Дубликат" },
+  { value: "character", label: "Персонаж" },
   { value: "other", label: "Другое" },
 ] as const;
 
 export type RejectReason = (typeof REJECT_REASONS)[number]["value"];
 
+/** Больше этого количества неразобранных кадров агент не генерирует. */
+export const PENDING_LIMIT = 6;
+
 export async function decide(
   id: string,
   status: ImageStatus,
   characterId: string | null,
-  extra?: { contentKind?: "sfw" | "nsfw"; isPreview?: boolean; rejectReason?: RejectReason | null },
+  extra?: {
+    contentKind?: "sfw" | "nsfw";
+    isPreview?: boolean;
+    rejectReasons?: RejectReason[];
+    rejectNote?: string | null;
+  },
 ) {
+  const reasons = extra?.rejectReasons ?? [];
   const review =
     status === "new"
-      ? { reviewed_at: null, reject_reason: null, decision_source: null }
+      ? {
+          reviewed_at: null,
+          reject_reason: null,
+          reject_reasons: null,
+          reject_note: null,
+          decision_source: null,
+        }
       : status === "approved"
-        ? { reviewed_at: new Date().toISOString(), reject_reason: null, decision_source: "human" }
+        ? {
+            reviewed_at: new Date().toISOString(),
+            reject_reason: null,
+            reject_reasons: null,
+            reject_note: null,
+            decision_source: "human",
+          }
         : status === "rejected"
           ? {
               reviewed_at: new Date().toISOString(),
-              reject_reason: extra?.rejectReason ?? null,
+              reject_reason: reasons[0] ?? null,
+              reject_reasons: reasons.length > 0 ? reasons : null,
+              reject_note: extra?.rejectNote?.trim() ? extra.rejectNote.trim().slice(0, 200) : null,
               decision_source: "human",
             }
           : {};
@@ -98,4 +122,5 @@ export async function decide(
     .eq("id", id);
   if (error) throw error;
 }
+
 

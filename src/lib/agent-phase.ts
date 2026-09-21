@@ -61,6 +61,27 @@ export async function genPlan(
   let phase: "sfw" | "nsfw" | "done" = "sfw";
   if (sfw >= character.sfw_target) phase = nsfw >= character.nsfw_target ? "done" : "nsfw";
 
+  // пока в очереди лежит лимит неразобранных кадров, новые задания не выдаём
+  const { count: pendingCount } = await supabase
+    .from("images")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .eq("status", "new");
+  const pending = pendingCount ?? 0;
+  if (phase !== "done" && pending >= PENDING_LIMIT) {
+    return {
+      generate: false,
+      phase,
+      prompt: "",
+      negative_prompt: character.negative_prompt,
+      character,
+      sfw,
+      nsfw,
+      reason: `Достигнут лимит ${PENDING_LIMIT} необработанных изображений — отберите кадры`,
+    };
+  }
+
+
   const prompt = phase === "sfw" ? character.sfw_prompt : phase === "nsfw" ? character.nsfw_prompt : "";
 
   return {
