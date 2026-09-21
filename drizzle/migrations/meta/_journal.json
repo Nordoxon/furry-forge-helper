@@ -64,6 +64,13 @@
       "when": 1788930189855,
       "tag": "0008_prompt_defaults_and_species_tags",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1789968581814,
+      "tag": "0009_create_gen_styles",
+      "breakpoints": true
     }
   ]
 }
