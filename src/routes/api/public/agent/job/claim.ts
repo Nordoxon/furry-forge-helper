@@ -28,12 +28,23 @@ export const Route = createFileRoute("/api/public/agent/job/claim")({
         const worker = String(body.worker || "agent").slice(0, 60);
 
         // 1. восстановление после перезапуска агента
-        const staleBefore = new Date(Date.now() - STALE_MINUTES * 60_000).toISOString();
+        const now = Date.now();
+        const staleBefore = new Date(now - STALE_MINUTES * 60_000).toISOString();
+        const heartbeatStale = new Date(now - HEARTBEAT_STALE_MINUTES * 60_000).toISOString();
+        // брошенные задания (воркер молчит) возвращаем в очередь, а не теряем
         await supabase
           .from("generation_jobs")
-          .update({ status: "FAILED", error: "задание зависло и было снято" })
+          .update({ status: "QUEUED", worker: null, error: "воркер замолчал, задание возвращено" })
+          .eq("user_id", userId)
+          .in("status", ["CLAIMED", "GENERATING"])
+          .not("heartbeat_at", "is", null)
+          .lt("heartbeat_at", heartbeatStale);
+        await supabase
+          .from("generation_jobs")
+          .update({ status: "QUEUED", worker: null, error: "задание зависло и было возвращено" })
           .eq("user_id", userId)
           .in("status", ["CLAIMED", "GENERATING", "UPLOADING"])
+          .is("heartbeat_at", null)
           .lt("updated_at", staleBefore);
 
         // задания, чей кадр уже принят сайтом, закрываем без повторной генерации
