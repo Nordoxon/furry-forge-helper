@@ -92,6 +92,13 @@
       "when": 1789971116563,
       "tag": "0012_images_generation_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1789972177443,
+      "tag": "0013_generation_jobs_retry_heartbeat",
+      "breakpoints": true
     }
   ]
 }
