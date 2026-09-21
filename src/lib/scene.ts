@@ -64,8 +64,51 @@ export async function pickScene(
   };
 }
 
-/** Поза и фон дописываются к текущему промпту, структура промпта не меняется. */
-export function applyScene(prompt: string, scene: SceneChoice): string {
-  const parts = [prompt.trim().replace(/,\s*$/, ""), scene.pose_text.trim(), scene.background_text.trim()];
-  return parts.filter(Boolean).join(", ");
+/** Плейсхолдеры в шаблонах промпта, которые заменяются текстом из библиотеки сцен. */
+export const POSE_PLACEHOLDERS = ["__new_poses__", "__deepposes__"] as const;
+export const BACKGROUND_PLACEHOLDERS = ["__new_backgrounds__"] as const;
+
+function replaceAll(prompt: string, tokens: readonly string[], text: string) {
+  let out = prompt;
+  let found = false;
+  for (const token of tokens) {
+    if (!out.includes(token)) continue;
+    found = true;
+    out = out.split(token).join(text);
+  }
+  return { out, found };
 }
+
+/**
+ * Поза и фон ЗАМЕНЯЮТ соответствующие плейсхолдеры в шаблоне промпта.
+ * Ничего не дописывается в конец: если плейсхолдера нет, возвращается
+ * предупреждение, а остальная часть промпта остаётся без изменений.
+ */
+export function applyScene(
+  prompt: string,
+  scene: SceneChoice,
+): { prompt: string; warnings: string[] } {
+  const warnings: string[] = [];
+  let out = prompt;
+
+  if (scene.pose_text.trim()) {
+    const res = replaceAll(out, POSE_PLACEHOLDERS, scene.pose_text.trim());
+    out = res.out;
+    if (!res.found)
+      warnings.push(
+        `в шаблоне промпта нет плейсхолдера позы (${POSE_PLACEHOLDERS.join(" или ")}) — поза ${scene.pose_id ?? ""} не подставлена`,
+      );
+  }
+
+  if (scene.background_text.trim()) {
+    const res = replaceAll(out, BACKGROUND_PLACEHOLDERS, scene.background_text.trim());
+    out = res.out;
+    if (!res.found)
+      warnings.push(
+        `в шаблоне промпта нет плейсхолдера фона (${BACKGROUND_PLACEHOLDERS.join(" или ")}) — фон ${scene.background_id ?? ""} не подставлен`,
+      );
+  }
+
+  return { prompt: out, warnings };
+}
+
