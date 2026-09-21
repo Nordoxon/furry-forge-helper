@@ -2104,12 +2104,16 @@ def main():
         raise SystemExit(1)
 
     log("агент запущен, папка:", WATCH_DIR)
-    if GEN_ENABLED:
-        # генерацией управляет сайт: старт/пауза/смена этапа
-        threading.Thread(target=phase_watch_loop, daemon=True).start()
+    if FORGE_QUEUE:
+        # новый режим: генерация напрямую через Forge API, по одному заданию
+        threading.Thread(target=forge_queue_loop, daemon=True).start()
+    else:
+        if GEN_ENABLED:
+            # генерацией управляет сайт: старт/пауза/смена этапа
+            threading.Thread(target=phase_watch_loop, daemon=True).start()
 
-    # сканирование папки идёт своим потоком, чтобы долгий апскейл/загрузка его не тормозили
-    threading.Thread(target=scan_loop, daemon=True).start()
+        # сканирование папки идёт своим потоком, чтобы долгий апскейл/загрузка его не тормозили
+        threading.Thread(target=scan_loop, daemon=True).start()
     while True:
         try:
             busy = process_queue()
