@@ -94,7 +94,7 @@ function TriagePage() {
   const current = items[0];
   const kind = kindOverride ?? batch.activeKind;
 
-  async function act(status: "approved" | "rejected") {
+  async function act(status: "approved" | "rejected", rejectReason?: RejectReason) {
     if (!current) return;
     if (status === "approved") {
       const limit = kind === "sfw" ? batch.sfwTarget : batch.nsfwTarget;
@@ -106,7 +106,11 @@ function TriagePage() {
     }
     const id = current.id;
     try {
-      await decide(id, status, charId, { contentKind: kind, isPreview: false });
+      await decide(id, status, charId, {
+        contentKind: kind,
+        isPreview: false,
+        rejectReason: rejectReason ?? null,
+      });
       setDone((d) => (d.includes(id) ? d : [...d, id]));
       setLast({ id });
       setKindOverride(null);
