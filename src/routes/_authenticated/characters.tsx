@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Trash2, Loader2, Package } from "lucide-react";
 
@@ -12,7 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { BottomNav } from "@/components/bottom-nav";
 import { fetchCharacters, type CharacterRow } from "@/lib/images";
 import { fetchPromptDefaults, fetchSpeciesTags, tagsForSpecies } from "@/lib/defaults";
-import { addGenStyle, deleteGenStyle, fetchGenStyles } from "@/lib/styles";
+import { addGenStyle, deleteGenStyle, fetchGenStyles, rememberCharacter, recallCharacter } from "@/lib/styles";
 import { SearchableSelect } from "@/components/searchable-select";
 import { toast } from "sonner";
 
@@ -188,6 +188,16 @@ function CharactersPage() {
   }
 
   const list = q.data ?? [];
+  const selectedId = editing && editing !== "new" ? editing : null;
+
+  // после обновления страницы открываем последнего выбранного персонажа
+  useEffect(() => {
+    if (editing !== null || !list.length) return;
+    const saved = recallCharacter();
+    const c = saved ? list.find((x) => x.id === saved) : undefined;
+    if (c) openEdit(c);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q.data]);
 
   return (
     <div className="flex min-h-screen flex-col">
