@@ -268,14 +268,35 @@ function TriagePage() {
                 <Card item={current} />
 
                 <div className="mt-4 grid grid-cols-2 gap-3">
-                  <Button
-                    size="lg"
-                    variant="outline"
-                    className="h-16 text-base"
-                    onClick={() => act("rejected")}
-                  >
-                    <X className="mr-2 h-5 w-5" /> Мимо
-                  </Button>
+                  <div className="flex gap-1">
+                    <Button
+                      size="lg"
+                      variant="outline"
+                      className="h-16 flex-1 text-base"
+                      onClick={() => act("rejected")}
+                    >
+                      <X className="mr-2 h-5 w-5" /> Мимо
+                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          size="lg"
+                          variant="outline"
+                          className="h-16 w-10 px-0"
+                          aria-label="Отклонить с причиной"
+                        >
+                          <ChevronDown className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="w-52">
+                        {REJECT_REASONS.map((r) => (
+                          <DropdownMenuItem key={r.value} onSelect={() => void act("rejected", r.value)}>
+                            {r.label}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                   <Button size="lg" className="h-16 text-base" onClick={() => act("approved")}>
                     <Check className="mr-2 h-5 w-5" /> Годится ({kind.toUpperCase()})
                   </Button>
