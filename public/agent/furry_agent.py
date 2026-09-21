@@ -2060,11 +2060,17 @@ def forge_queue_loop():
                 + (" (продолжаю прерванное)" if job.get("resume") else "")
             )
             forge_job_status(job_id, "GENERATING")
+            stop_beat = threading.Event()
+            threading.Thread(
+                target=forge_heartbeat_loop, args=(job_id, stop_beat), daemon=True
+            ).start()
             try:
                 path, seed, settings = forge_txt2img(job)
             except Exception as e:
-                log("генерация не удалась:", str(e)[:200])
-                forge_job_status(job_id, "FAILED", error=e)
+                stop_beat.set()
+                log("ошибка ГЕНЕРАЦИИ:", str(e)[:200])
+                res = forge_job_status(job_id, "FAILED", error=e, failure_kind="generation")
+                log("сайт вернёт задание в очередь" if res else "состояние не доставлено")
                 time.sleep(FORGE_ERROR_WAIT)
                 continue
 
