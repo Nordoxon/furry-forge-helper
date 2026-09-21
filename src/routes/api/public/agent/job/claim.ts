@@ -73,10 +73,20 @@ export const Route = createFileRoute("/api/public/agent/job/claim")({
               .eq("id", job.id);
             continue;
           }
+          // задание уже ведёт другой живой воркер — второй его не перехватывает
+          const beat = job.heartbeat_at ? Date.parse(job.heartbeat_at) : 0;
+          if (job.worker && job.worker !== worker && beat > now - HEARTBEAT_STALE_MINUTES * 60_000) {
+            return json({ job: null, reason: `задание ведёт другой воркер: ${job.worker}` });
+          }
           // ровно одно активное задание на воркера: отдаём то же самое
           await supabase
             .from("generation_jobs")
-            .update({ status: "CLAIMED", worker, claimed_at: new Date().toISOString() })
+            .update({
+              status: "CLAIMED",
+              worker,
+              claimed_at: new Date().toISOString(),
+              heartbeat_at: new Date().toISOString(),
+            })
             .eq("id", job.id);
           return json({
             job: {
