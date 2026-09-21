@@ -567,6 +567,13 @@ function Card({ item }: { item: ImageRow }) {
             {item.width}×{item.height}
           </p>
         )}
+        {(item.pose_id || item.background_id) && (
+          <p className="mt-0.5 break-words text-[11px] text-muted-foreground">
+            {item.pose_id ? `Поза: ${item.pose_id}` : ""}
+            {item.pose_id && item.background_id ? " · " : ""}
+            {item.background_id ? `Фон: ${item.background_id}` : ""}
+          </p>
+        )}
       </div>
     </div>
   );
