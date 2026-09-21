@@ -123,7 +123,19 @@ export const Route = createFileRoute("/api/public/agent/job/claim")({
 
         const settings = genSettings(plan.character);
         const scene = await pickScene(supabase, userId, plan.character.id);
-        const finalPrompt = applyScene(plan.prompt, scene);
+        const applied = applyScene(plan.prompt, scene);
+        const finalPrompt = applied.prompt;
+        if (applied.warnings.length > 0) {
+          return json(
+            {
+              job: null,
+              phase: plan.phase,
+              reason: applied.warnings.join("; "),
+              scene_error: true,
+            },
+            409,
+          );
+        }
         const { data: created, error } = await supabase
           .from("generation_jobs")
           .insert({
