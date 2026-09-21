@@ -51,6 +51,7 @@ function TriagePage() {
   const [charId, setCharId] = useState<string | null>(null);
   const [last, setLast] = useState<{ id: string } | null>(null);
   const [kindOverride, setKindOverride] = useState<"sfw" | "nsfw" | null>(null);
+  const [reasonsOpen, setReasonsOpen] = useState(false);
 
   const inbox = useQuery({ queryKey: ["inbox"], queryFn: fetchInbox, refetchInterval: 20000 });
   const chars = useQuery({ queryKey: ["characters"], queryFn: fetchCharacters });
@@ -273,6 +274,13 @@ function TriagePage() {
 
                 <Card item={current} />
 
+                {reasonsOpen && (
+                  <ReasonPanel
+                    onClose={() => setReasonsOpen(false)}
+                    onSave={(reasons, note) => void act("rejected", { reasons, note })}
+                  />
+                )}
+
                 <div className="mt-4 grid grid-cols-2 gap-3">
                   <div className="flex gap-1">
                     <Button
@@ -283,30 +291,21 @@ function TriagePage() {
                     >
                       <X className="mr-2 h-5 w-5" /> Мимо
                     </Button>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          size="lg"
-                          variant="outline"
-                          className="h-16 w-10 px-0"
-                          aria-label="Отклонить с причиной"
-                        >
-                          <ChevronDown className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start" className="w-52">
-                        {REJECT_REASONS.map((r) => (
-                          <DropdownMenuItem key={r.value} onSelect={() => void act("rejected", r.value)}>
-                            {r.label}
-                          </DropdownMenuItem>
-                        ))}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <Button
+                      size="lg"
+                      variant="outline"
+                      className="h-16 w-10 px-0"
+                      aria-label="Указать причины отказа"
+                      onClick={() => setReasonsOpen((v) => !v)}
+                    >
+                      <ChevronDown className="h-4 w-4" />
+                    </Button>
                   </div>
                   <Button size="lg" className="h-16 text-base" onClick={() => act("approved")}>
                     <Check className="mr-2 h-5 w-5" /> Годится ({kind.toUpperCase()})
                   </Button>
                 </div>
+
                 <p className="mt-3 text-center text-xs text-muted-foreground">
                   Апскейл и архив запускаются только после того, как пак будет собран.
                 </p>
