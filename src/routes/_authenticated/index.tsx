@@ -21,6 +21,9 @@ import {
 import { clearInbox, fetchSelection } from "@/lib/packs";
 import { batchState, resetBatch, type BatchState } from "@/lib/batch";
 import { pauseGeneration, startGeneration } from "@/lib/generation";
+import { recallCharacter, rememberCharacter } from "@/lib/styles";
+import { SearchableSelect } from "@/components/searchable-select";
+
 
 export const Route = createFileRoute("/_authenticated/")({
   head: () => ({
@@ -241,7 +244,7 @@ function TriagePage() {
           <NoCharacter />
         ) : (
           <>
-            <CharacterPicker chars={chars.data ?? []} value={charId} onChange={setCharId} />
+            <CharacterPicker chars={chars.data ?? []} value={charId} onChange={selectCharacter} />
             <BatchProgress batch={batch} />
 
             {batch.done ? (
@@ -421,23 +424,18 @@ function CharacterPicker({
     );
   }
   return (
-    <div className="mb-3 flex gap-2 overflow-x-auto pb-1">
-      {chars.map((c) => (
-        <button
-          key={c.id}
-          onClick={() => onChange(c.id)}
-          className={`shrink-0 rounded-full border px-3 py-1.5 text-xs transition ${
-            value === c.id
-              ? "border-primary bg-primary text-primary-foreground"
-              : "border-border text-muted-foreground"
-          }`}
-        >
-          {c.name}
-        </button>
-      ))}
+    <div className="mb-3">
+      <SearchableSelect
+        value={value}
+        placeholder="Выберите персонажа"
+        emptyText="Персонаж не найден"
+        options={chars.map((c) => ({ value: c.id, label: c.name }))}
+        onChange={onChange}
+      />
     </div>
   );
 }
+
 
 
 function Card({ item }: { item: ImageRow }) {
