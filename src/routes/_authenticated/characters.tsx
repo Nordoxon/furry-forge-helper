@@ -12,6 +12,10 @@ import { Switch } from "@/components/ui/switch";
 import { BottomNav } from "@/components/bottom-nav";
 import { fetchCharacters, type CharacterRow } from "@/lib/images";
 import { fetchPromptDefaults, fetchSpeciesTags, tagsForSpecies } from "@/lib/defaults";
+import { addGenStyle, deleteGenStyle, fetchGenStyles } from "@/lib/styles";
+import { SearchableSelect } from "@/components/searchable-select";
+import { toast } from "sonner";
+
 
 export const Route = createFileRoute("/_authenticated/characters")({
   head: () => ({
@@ -60,21 +64,38 @@ function CharactersPage() {
   const [editing, setEditing] = useState<string | "new" | null>(null);
   const [form, setForm] = useState({ ...BLANK });
   const [busy, setBusy] = useState(false);
-  const [customStyles, setCustomStyles] = useState<string[]>([]);
   const defaults = useQuery({ queryKey: ["prompt-defaults"], queryFn: fetchPromptDefaults });
   const speciesTags = useQuery({ queryKey: ["species-tags"], queryFn: fetchSpeciesTags });
+  const styles = useQuery({ queryKey: ["gen-styles"], queryFn: fetchGenStyles });
 
-  // Стили, уже использованные у персонажей, плюс добавленные вручную из styles.csv
+  // Сохранённые на сайте имена стилей + те, что уже стоят у персонажей
   const styleOptions = useMemo(() => {
     const set = new Set<string>();
+    for (const s of styles.data ?? []) set.add(s.name);
     for (const c of q.data ?? []) if (c.gen_style) set.add(c.gen_style);
-    for (const s of customStyles) set.add(s);
     return Array.from(set).sort((a, b) => a.localeCompare(b));
-  }, [q.data, customStyles]);
+  }, [q.data, styles.data]);
 
-  function addStyle(name: string) {
-    setCustomStyles((s) => (s.includes(name) ? s : [...s, name]));
+  async function addStyle(name: string) {
+    try {
+      await addGenStyle(name);
+      void qc.invalidateQueries({ queryKey: ["gen-styles"] });
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
   }
+
+  async function removeStyle(name: string) {
+    try {
+      await deleteGenStyle(name);
+      if (form.gen_style === name) setForm((f) => ({ ...f, gen_style: "" }));
+      void qc.invalidateQueries({ queryKey: ["gen-styles"] });
+      toast.success(`Стиль «${name}» удалён`);
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  }
+
 
   function openNew() {
     setForm({
@@ -286,8 +307,10 @@ function CharactersPage() {
                 value={form.gen_style}
                 options={styleOptions}
                 onChange={(v) => setForm({ ...form, gen_style: v })}
-                onAdd={addStyle}
+                onAdd={(v) => void addStyle(v)}
+                onDelete={(v) => void removeStyle(v)}
               />
+
 
             </Field>
 
@@ -404,17 +427,19 @@ function Field({
   );
 }
 
-/** Выбор стиля: селектор из уже известных + ручной ввод имени из styles.csv. */
+/** Выбор стиля: выпадающий список с поиском, удалением и добавлением имени из styles.csv. */
 function StylePicker({
   value,
   options,
   onChange,
   onAdd,
+  onDelete,
 }: {
   value: string;
   options: string[];
   onChange: (v: string) => void;
   onAdd: (v: string) => void;
+  onDelete: (v: string) => void;
 }) {
   const [manual, setManual] = useState(false);
   const [draft, setDraft] = useState("");
@@ -430,41 +455,21 @@ function StylePicker({
 
   return (
     <div className="space-y-2">
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={() => onChange("")}
-          className={`rounded-full border px-3 py-1.5 text-xs transition ${
-            value === ""
-              ? "border-primary bg-primary text-primary-foreground"
-              : "border-border text-muted-foreground"
-          }`}
-        >
-          Без стиля
-        </button>
-        {options.map((o) => (
-          <button
-            key={o}
-            type="button"
-            onClick={() => onChange(o)}
-            className={`rounded-full border px-3 py-1.5 text-xs transition ${
-              value === o
-                ? "border-primary bg-primary text-primary-foreground"
-                : "border-border text-muted-foreground"
-            }`}
-          >
-            {o}
-          </button>
-        ))}
-        <button
-          type="button"
-          onClick={() => setManual((m) => !m)}
-          className="rounded-full border border-dashed border-border px-3 py-1.5 text-xs text-muted-foreground"
-        >
-          + Своё имя
-        </button>
-      </div>
-      {manual && (
+      <SearchableSelect
+        value={value || "__none__"}
+        placeholder="Без стиля"
+        emptyText="Стиль не найден"
+        options={[
+          { value: "__none__", label: "Без стиля" },
+          ...options.map((o) => ({ value: o, label: o })),
+        ]}
+        onChange={(v) => onChange(v === "__none__" ? "" : v)}
+        onDelete={(v) => {
+          if (v === "__none__") return;
+          if (window.confirm(`Удалить стиль «${v}» из списка?`)) onDelete(v);
+        }}
+      />
+      {manual ? (
         <div className="flex gap-2">
           <Input
             autoFocus
@@ -482,6 +487,10 @@ function StylePicker({
             Добавить
           </Button>
         </div>
+      ) : (
+        <Button type="button" variant="ghost" size="sm" onClick={() => setManual(true)}>
+          <Plus className="mr-1 h-4 w-4" /> Добавить имя из styles.csv
+        </Button>
       )}
     </div>
   );

@@ -139,7 +139,22 @@ export const Route = createFileRoute("/api/public/agent/claim")({
             tags,
             gallery_folder: "",
             is_mature: ch?.is_mature ?? false,
-            template: null,
+            // Явно передаём опции DeviantArt, иначе сайт применяет свои
+            // умолчания (например включённый NoAI) к загруженной обложке.
+            template: {
+              name: "default",
+              is_ai_generated: true,
+              noai: false,
+              allow_comments: true,
+              allow_free_download: false,
+              add_watermark: false,
+              display_resolution: 0,
+              is_mature: ch?.is_mature ?? false,
+              mature_level: ch?.is_mature ? "moderate" : "",
+              mature_classification: [],
+              auto_publish: false,
+            },
+
           });
         }
         return json({ jobs });

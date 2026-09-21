@@ -26,6 +26,9 @@ import {
 import { renderCover } from "@/lib/cover";
 import { batchState, packItems } from "@/lib/batch";
 import { pauseGeneration, startGeneration } from "@/lib/generation";
+import { recallCharacter, rememberCharacter } from "@/lib/styles";
+import { SearchableSelect } from "@/components/searchable-select";
+
 
 function GenerationControl({
   enabled,
@@ -99,8 +102,21 @@ function PacksPage() {
   const chars = useQuery({ queryKey: ["characters"], queryFn: fetchCharacters });
   const charId = character ?? null;
 
-  const selectChar = (id: string | null) =>
+  const selectChar = (id: string | null) => {
+    rememberCharacter(id);
     navigate({ to: "/packs", search: { character: id ?? undefined }, replace: true });
+  };
+
+  // после обновления страницы возвращаемся к последнему выбранному персонажу
+  useEffect(() => {
+    if (character) return;
+    const saved = recallCharacter();
+    if (saved && chars.data?.some((c) => c.id === saved)) {
+      navigate({ to: "/packs", search: { character: saved }, replace: true });
+    }
+  }, [character, chars.data, navigate]);
+
+
 
 
   const selection = useQuery({
@@ -183,21 +199,13 @@ function PacksPage() {
             </div>
           ) : (
             <>
-              {list.map((c) => (
-                <button
-                  key={c.id}
-                  onClick={() => selectChar(c.id)}
-                  className="flex w-full items-center justify-between gap-3 rounded-xl border border-border/60 bg-card px-4 py-3 text-left"
-                >
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">{c.name}</p>
-                    <p className="truncate text-[11px] text-muted-foreground">
-                      {c.species || "Собрать пак этого персонажа"}
-                    </p>
-                  </div>
-                  <Package className="h-4 w-4 shrink-0 text-muted-foreground" />
-                </button>
-              ))}
+              <SearchableSelect
+                value={null}
+                placeholder="Выберите персонажа"
+                emptyText="Персонаж не найден"
+                options={list.map((c) => ({ value: c.id, label: c.name, hint: c.species }))}
+                onChange={(id) => selectChar(id)}
+              />
               <Button variant="outline" className="w-full" asChild>
                 <Link to="/characters">
                   <Plus className="mr-1 h-4 w-4" /> Новый персонаж
@@ -205,6 +213,7 @@ function PacksPage() {
               </Button>
             </>
           )}
+
         </main>
 
         <BottomNav />
