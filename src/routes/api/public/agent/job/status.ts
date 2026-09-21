@@ -25,6 +25,7 @@ export const Route = createFileRoute("/api/public/agent/job/status")({
           status?: string;
           error?: string | null;
           seed?: number | string | null;
+          failure_kind?: string | null;
         };
         try {
           body = (await request.json()) as typeof body;
@@ -38,7 +39,7 @@ export const Route = createFileRoute("/api/public/agent/job/status")({
 
         const { data: job } = await supabase
           .from("generation_jobs")
-          .select("id, status")
+          .select("id, status, attempts, max_attempts")
           .eq("user_id", userId)
           .eq("id", jobId)
           .maybeSingle();
@@ -47,13 +48,31 @@ export const Route = createFileRoute("/api/public/agent/job/status")({
         if (job.status === "COMPLETED") return json({ ok: true, status: "COMPLETED" });
 
         const seedNum = Number(body.seed);
-        const patch: Record<string, unknown> = { status };
+        const now = new Date().toISOString();
+        const failureKind = String(body.failure_kind || "").toLowerCase();
+        const patch: Record<string, unknown> = { status, heartbeat_at: now };
         if (body.error !== undefined) patch["error"] = body.error;
         if (Number.isFinite(seedNum)) patch["seed"] = Math.trunc(seedNum);
-        if (status === "GENERATING") patch["started_at"] = new Date().toISOString();
-        if (status === "COMPLETED" || status === "FAILED" || status === "CANCELLED") {
-          patch["completed_at"] = new Date().toISOString();
+        if (status === "GENERATING") patch["started_at"] = now;
+
+        let retry = false;
+        let attempts = job.attempts ?? 0;
+        if (status === "FAILED") {
+          patch["failure_kind"] = failureKind || "generation";
+          if (failureKind === "upload") {
+            // кадр уже сгенерирован: задание остаётся в загрузке, агент дошлёт файл
+            patch["status"] = "UPLOADING";
+          } else {
+            attempts += 1;
+            patch["attempts"] = attempts;
+            const limit = job.max_attempts ?? 3;
+            retry = attempts < limit;
+            // пока лимит попыток не исчерпан — задание возвращается в очередь
+            patch["status"] = retry ? "QUEUED" : "FAILED";
+            if (!retry) patch["completed_at"] = now;
+          }
         }
+        if (status === "COMPLETED" || status === "CANCELLED") patch["completed_at"] = now;
 
         const { error } = await supabase
           .from("generation_jobs")
@@ -61,7 +80,7 @@ export const Route = createFileRoute("/api/public/agent/job/status")({
           .eq("id", jobId)
           .eq("user_id", userId);
         if (error) return json({ error: error.message }, 500);
-        return json({ ok: true, status });
+        return json({ ok: true, status: patch["status"], attempts, retry });
       },
     },
   },
