@@ -2099,9 +2099,12 @@ def forge_queue_loop():
                 forge_job_status(job_id, "COMPLETED", seed=seed)
                 forge_pending().pop(job_id, None)
                 save_state(STATE)
+                stop_beat.set()
             else:
                 # кадр сохранён на диске и будет дослан позже, повторная генерация не нужна
-                log("сайт не принял кадр — оставляю его на диске и повторю отправку")
+                log("ошибка ЗАГРУЗКИ: кадр остаётся на диске, повторю отправку")
+                forge_job_status(job_id, "FAILED", error="upload failed", failure_kind="upload")
+                stop_beat.set()
                 time.sleep(FORGE_UPLOAD_WAIT)
         except Exception as e:
             log("очередь: ошибка:", str(e)[:200])
