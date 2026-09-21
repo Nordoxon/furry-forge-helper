@@ -3,6 +3,9 @@ import type { Database } from "@/integrations/supabase/types";
 
 type Character = Database["public"]["Tables"]["characters"]["Row"];
 
+/** Больше этого количества неразобранных кадров агент не генерирует. */
+export const PENDING_LIMIT = 6;
+
 export type GenPlan = {
   generate: boolean;
   phase: "sfw" | "nsfw" | "done" | "idle";
