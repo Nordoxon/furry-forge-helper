@@ -99,6 +99,13 @@
       "when": 1789972177443,
       "tag": "0013_generation_jobs_retry_heartbeat",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1789983047533,
+      "tag": "0014_image_reject_reasons_multi",
+      "breakpoints": true
     }
   ]
 }

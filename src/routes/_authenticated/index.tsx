@@ -17,6 +17,7 @@ import {
   fetchInbox,
   signedPreview,
   REJECT_REASONS,
+  PENDING_LIMIT,
   type RejectReason,
   type ImageRow,
 } from "@/lib/images";
@@ -51,6 +52,7 @@ function TriagePage() {
   const [charId, setCharId] = useState<string | null>(null);
   const [last, setLast] = useState<{ id: string } | null>(null);
   const [kindOverride, setKindOverride] = useState<"sfw" | "nsfw" | null>(null);
+  const [reasonsOpen, setReasonsOpen] = useState(false);
 
   const inbox = useQuery({ queryKey: ["inbox"], queryFn: fetchInbox, refetchInterval: 20000 });
   const chars = useQuery({ queryKey: ["characters"], queryFn: fetchCharacters });
@@ -96,7 +98,10 @@ function TriagePage() {
   const current = items[0];
   const kind = kindOverride ?? batch.activeKind;
 
-  async function act(status: "approved" | "rejected", rejectReason?: RejectReason) {
+  async function act(
+    status: "approved" | "rejected",
+    reject?: { reasons: RejectReason[]; note: string },
+  ) {
     if (!current) return;
     if (status === "approved") {
       const limit = kind === "sfw" ? batch.sfwTarget : batch.nsfwTarget;
@@ -111,17 +116,20 @@ function TriagePage() {
       await decide(id, status, charId, {
         contentKind: kind,
         isPreview: false,
-        rejectReason: rejectReason ?? null,
+        rejectReasons: reject?.reasons ?? [],
+        rejectNote: reject?.note ?? null,
       });
       setDone((d) => (d.includes(id) ? d : [...d, id]));
       setLast({ id });
       setKindOverride(null);
+      setReasonsOpen(false);
       void qc.invalidateQueries({ queryKey: ["selection"] });
       void qc.invalidateQueries({ queryKey: ["pipeline"] });
     } catch (e) {
       toast.error(`Не удалось сохранить: ${(e as Error).message}`);
     }
   }
+
 
   async function undo() {
     if (!last) return;
@@ -251,7 +259,7 @@ function TriagePage() {
         ) : (
           <>
             <CharacterPicker chars={chars.data ?? []} value={charId} onChange={selectCharacter} />
-            <BatchProgress batch={batch} />
+            <BatchProgress batch={batch} pending={all.length} />
 
             {batch.done ? (
               <PackReady charId={charId} />
@@ -267,6 +275,13 @@ function TriagePage() {
 
                 <Card item={current} />
 
+                {reasonsOpen && (
+                  <ReasonPanel
+                    onClose={() => setReasonsOpen(false)}
+                    onSave={(reasons, note) => void act("rejected", { reasons, note })}
+                  />
+                )}
+
                 <div className="mt-4 grid grid-cols-2 gap-3">
                   <div className="flex gap-1">
                     <Button
@@ -277,30 +292,21 @@ function TriagePage() {
                     >
                       <X className="mr-2 h-5 w-5" /> Мимо
                     </Button>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          size="lg"
-                          variant="outline"
-                          className="h-16 w-10 px-0"
-                          aria-label="Отклонить с причиной"
-                        >
-                          <ChevronDown className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start" className="w-52">
-                        {REJECT_REASONS.map((r) => (
-                          <DropdownMenuItem key={r.value} onSelect={() => void act("rejected", r.value)}>
-                            {r.label}
-                          </DropdownMenuItem>
-                        ))}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <Button
+                      size="lg"
+                      variant="outline"
+                      className="h-16 w-10 px-0"
+                      aria-label="Указать причины отказа"
+                      onClick={() => setReasonsOpen((v) => !v)}
+                    >
+                      <ChevronDown className="h-4 w-4" />
+                    </Button>
                   </div>
                   <Button size="lg" className="h-16 text-base" onClick={() => act("approved")}>
                     <Check className="mr-2 h-5 w-5" /> Годится ({kind.toUpperCase()})
                   </Button>
                 </div>
+
                 <p className="mt-3 text-center text-xs text-muted-foreground">
                   Апскейл и архив запускаются только после того, как пак будет собран.
                 </p>
@@ -315,7 +321,7 @@ function TriagePage() {
   );
 }
 
-function BatchProgress({ batch }: { batch: BatchState }) {
+function BatchProgress({ batch, pending }: { batch: BatchState; pending: number }) {
   const stage =
     batch.phase === "sfw"
       ? "Этап 1: отбираем SFW"
@@ -325,6 +331,7 @@ function BatchProgress({ batch }: { batch: BatchState }) {
           ? "Отбор завершён — отметьте превью"
           : "Пак готов к сборке";
   const pct = Math.min(100, Math.round((batch.total / Math.max(1, batch.targetTotal)) * 100));
+  const blocked = pending >= PENDING_LIMIT && !batch.done;
   return (
     <div className="mb-3 rounded-xl border border-border/60 bg-card px-3 py-2.5">
       <div className="flex items-center justify-between text-xs">
@@ -336,7 +343,7 @@ function BatchProgress({ batch }: { batch: BatchState }) {
       <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
         <div className="h-full bg-primary transition-all" style={{ width: `${pct}%` }} />
       </div>
-      <div className="mt-2 flex gap-2 text-[11px] text-muted-foreground">
+      <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-muted-foreground">
         <span className={batch.phase === "sfw" ? "text-primary" : undefined}>
           SFW {batch.sfw.length}/{batch.sfwTarget}
         </span>
@@ -346,10 +353,79 @@ function BatchProgress({ batch }: { batch: BatchState }) {
         <span>
           Превью {batch.previews.length}/{batch.previewTarget}
         </span>
+        <span className={blocked ? "font-medium text-destructive" : undefined}>
+          Ожидают решения {pending}/{PENDING_LIMIT}
+        </span>
       </div>
+      {blocked && (
+        <div className="mt-2 flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/10 px-2.5 py-2">
+          <Pause className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+          <p className="text-[11px] leading-snug">
+            <span className="font-medium">Генерация приостановлена.</span> Достигнут лимит{" "}
+            {PENDING_LIMIT} необработанных изображений — отберите текущие кадры, чтобы продолжить.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
+
+function ReasonPanel({
+  onClose,
+  onSave,
+}: {
+  onClose: () => void;
+  onSave: (reasons: RejectReason[], note: string) => void;
+}) {
+  const [picked, setPicked] = useState<RejectReason[]>([]);
+  const [note, setNote] = useState("");
+  return (
+    <div className="mt-4 rounded-2xl border border-border/60 bg-card p-3">
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-medium">
+          Почему не подошло?{" "}
+          <span className="text-xs font-normal text-muted-foreground">(можно несколько)</span>
+        </p>
+        <button aria-label="Закрыть" onClick={onClose} className="text-muted-foreground">
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {REJECT_REASONS.map((r) => {
+          const on = picked.includes(r.value);
+          return (
+            <button
+              key={r.value}
+              onClick={() =>
+                setPicked((p) => (on ? p.filter((x) => x !== r.value) : [...p, r.value]))
+              }
+              className={`rounded-lg border px-3 py-1.5 text-xs transition ${
+                on
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border text-muted-foreground"
+              }`}
+            >
+              {r.label}
+            </button>
+          );
+        })}
+      </div>
+      <textarea
+        value={note}
+        maxLength={200}
+        onChange={(e) => setNote(e.target.value)}
+        placeholder="Дополнительно (необязательно)…"
+        className="mt-3 w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none"
+        rows={2}
+      />
+      <p className="mt-1 text-right text-[11px] text-muted-foreground">{note.length}/200</p>
+      <Button className="mt-2 w-full" onClick={() => onSave(picked, note)}>
+        Сохранить причину
+      </Button>
+    </div>
+  );
+}
+
 
 function PackReady({ charId }: { charId: string | null }) {
   return (

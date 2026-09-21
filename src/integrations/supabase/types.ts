@@ -261,7 +261,9 @@ export type Database = {
           pack_id: string | null
           pose_id: string | null
           preview_path: string | null
+          reject_note: string | null
           reject_reason: string | null
+          reject_reasons: string[] | null
           reviewed_at: string | null
           seq: number
           status: Database["public"]["Enums"]["image_status"]
@@ -300,7 +302,9 @@ export type Database = {
           pack_id?: string | null
           pose_id?: string | null
           preview_path?: string | null
+          reject_note?: string | null
           reject_reason?: string | null
+          reject_reasons?: string[] | null
           reviewed_at?: string | null
           seq?: number
           status?: Database["public"]["Enums"]["image_status"]
@@ -339,7 +343,9 @@ export type Database = {
           pack_id?: string | null
           pose_id?: string | null
           preview_path?: string | null
+          reject_note?: string | null
           reject_reason?: string | null
+          reject_reasons?: string[] | null
           reviewed_at?: string | null
           seq?: number
           status?: Database["public"]["Enums"]["image_status"]
