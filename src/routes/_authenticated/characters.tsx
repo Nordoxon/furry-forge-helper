@@ -12,6 +12,10 @@ import { Switch } from "@/components/ui/switch";
 import { BottomNav } from "@/components/bottom-nav";
 import { fetchCharacters, type CharacterRow } from "@/lib/images";
 import { fetchPromptDefaults, fetchSpeciesTags, tagsForSpecies } from "@/lib/defaults";
+import { addGenStyle, deleteGenStyle, fetchGenStyles } from "@/lib/styles";
+import { SearchableSelect } from "@/components/searchable-select";
+import { toast } from "sonner";
+
 
 export const Route = createFileRoute("/_authenticated/characters")({
   head: () => ({
@@ -60,21 +64,38 @@ function CharactersPage() {
   const [editing, setEditing] = useState<string | "new" | null>(null);
   const [form, setForm] = useState({ ...BLANK });
   const [busy, setBusy] = useState(false);
-  const [customStyles, setCustomStyles] = useState<string[]>([]);
   const defaults = useQuery({ queryKey: ["prompt-defaults"], queryFn: fetchPromptDefaults });
   const speciesTags = useQuery({ queryKey: ["species-tags"], queryFn: fetchSpeciesTags });
+  const styles = useQuery({ queryKey: ["gen-styles"], queryFn: fetchGenStyles });
 
-  // Стили, уже использованные у персонажей, плюс добавленные вручную из styles.csv
+  // Сохранённые на сайте имена стилей + те, что уже стоят у персонажей
   const styleOptions = useMemo(() => {
     const set = new Set<string>();
+    for (const s of styles.data ?? []) set.add(s.name);
     for (const c of q.data ?? []) if (c.gen_style) set.add(c.gen_style);
-    for (const s of customStyles) set.add(s);
     return Array.from(set).sort((a, b) => a.localeCompare(b));
-  }, [q.data, customStyles]);
+  }, [q.data, styles.data]);
 
-  function addStyle(name: string) {
-    setCustomStyles((s) => (s.includes(name) ? s : [...s, name]));
+  async function addStyle(name: string) {
+    try {
+      await addGenStyle(name);
+      void qc.invalidateQueries({ queryKey: ["gen-styles"] });
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
   }
+
+  async function removeStyle(name: string) {
+    try {
+      await deleteGenStyle(name);
+      if (form.gen_style === name) setForm((f) => ({ ...f, gen_style: "" }));
+      void qc.invalidateQueries({ queryKey: ["gen-styles"] });
+      toast.success(`Стиль «${name}» удалён`);
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  }
+
 
   function openNew() {
     setForm({
