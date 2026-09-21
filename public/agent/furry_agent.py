@@ -1911,7 +1911,7 @@ def forge_claim_job():
         r = requests.post(
             f"{API_BASE}/api/public/agent/job/claim",
             headers=HEADERS,
-            data=json.dumps({"worker": os.environ.get("COMPUTERNAME") or "agent"}),
+            data=json.dumps({"worker": WORKER_NAME}),
             timeout=60,
         )
         r.raise_for_status()
