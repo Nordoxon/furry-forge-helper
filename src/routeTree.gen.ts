@@ -17,6 +17,7 @@ import { Route as AuthenticatedQueueRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedPacksRouteImport } from './routes/_authenticated/packs'
 import { Route as AuthenticatedLibraryRouteImport } from './routes/_authenticated/library'
 import { Route as AuthenticatedCharactersRouteImport } from './routes/_authenticated/characters'
+import { Route as ApiPublicEvaluatorDatasetRouteImport } from './routes/api/public/evaluator/dataset'
 import { Route as ApiPublicAgentZipRouteImport } from './routes/api/public/agent/zip'
 import { Route as ApiPublicAgentStatusRouteImport } from './routes/api/public/agent/status'
 import { Route as ApiPublicAgentPacksRouteImport } from './routes/api/public/agent/packs'
@@ -66,6 +67,12 @@ const AuthenticatedCharactersRoute = AuthenticatedCharactersRouteImport.update({
   path: '/characters',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const ApiPublicEvaluatorDatasetRoute =
+  ApiPublicEvaluatorDatasetRouteImport.update({
+    id: '/api/public/evaluator/dataset',
+    path: '/api/public/evaluator/dataset',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicAgentZipRoute = ApiPublicAgentZipRouteImport.update({
   id: '/api/public/agent/zip',
   path: '/api/public/agent/zip',
@@ -127,6 +134,7 @@ export interface FileRoutesByFullPath {
   '/api/public/agent/packs': typeof ApiPublicAgentPacksRoute
   '/api/public/agent/status': typeof ApiPublicAgentStatusRoute
   '/api/public/agent/zip': typeof ApiPublicAgentZipRoute
+  '/api/public/evaluator/dataset': typeof ApiPublicEvaluatorDatasetRoute
   '/api/public/agent/job/claim': typeof ApiPublicAgentJobClaimRoute
   '/api/public/agent/job/heartbeat': typeof ApiPublicAgentJobHeartbeatRoute
   '/api/public/agent/job/status': typeof ApiPublicAgentJobStatusRoute
@@ -145,6 +153,7 @@ export interface FileRoutesByTo {
   '/api/public/agent/packs': typeof ApiPublicAgentPacksRoute
   '/api/public/agent/status': typeof ApiPublicAgentStatusRoute
   '/api/public/agent/zip': typeof ApiPublicAgentZipRoute
+  '/api/public/evaluator/dataset': typeof ApiPublicEvaluatorDatasetRoute
   '/api/public/agent/job/claim': typeof ApiPublicAgentJobClaimRoute
   '/api/public/agent/job/heartbeat': typeof ApiPublicAgentJobHeartbeatRoute
   '/api/public/agent/job/status': typeof ApiPublicAgentJobStatusRoute
@@ -165,6 +174,7 @@ export interface FileRoutesById {
   '/api/public/agent/packs': typeof ApiPublicAgentPacksRoute
   '/api/public/agent/status': typeof ApiPublicAgentStatusRoute
   '/api/public/agent/zip': typeof ApiPublicAgentZipRoute
+  '/api/public/evaluator/dataset': typeof ApiPublicEvaluatorDatasetRoute
   '/api/public/agent/job/claim': typeof ApiPublicAgentJobClaimRoute
   '/api/public/agent/job/heartbeat': typeof ApiPublicAgentJobHeartbeatRoute
   '/api/public/agent/job/status': typeof ApiPublicAgentJobStatusRoute
@@ -185,6 +195,7 @@ export interface FileRouteTypes {
     | '/api/public/agent/packs'
     | '/api/public/agent/status'
     | '/api/public/agent/zip'
+    | '/api/public/evaluator/dataset'
     | '/api/public/agent/job/claim'
     | '/api/public/agent/job/heartbeat'
     | '/api/public/agent/job/status'
@@ -203,6 +214,7 @@ export interface FileRouteTypes {
     | '/api/public/agent/packs'
     | '/api/public/agent/status'
     | '/api/public/agent/zip'
+    | '/api/public/evaluator/dataset'
     | '/api/public/agent/job/claim'
     | '/api/public/agent/job/heartbeat'
     | '/api/public/agent/job/status'
@@ -222,6 +234,7 @@ export interface FileRouteTypes {
     | '/api/public/agent/packs'
     | '/api/public/agent/status'
     | '/api/public/agent/zip'
+    | '/api/public/evaluator/dataset'
     | '/api/public/agent/job/claim'
     | '/api/public/agent/job/heartbeat'
     | '/api/public/agent/job/status'
@@ -236,6 +249,7 @@ export interface RootRouteChildren {
   ApiPublicAgentPacksRoute: typeof ApiPublicAgentPacksRoute
   ApiPublicAgentStatusRoute: typeof ApiPublicAgentStatusRoute
   ApiPublicAgentZipRoute: typeof ApiPublicAgentZipRoute
+  ApiPublicEvaluatorDatasetRoute: typeof ApiPublicEvaluatorDatasetRoute
   ApiPublicAgentJobClaimRoute: typeof ApiPublicAgentJobClaimRoute
   ApiPublicAgentJobHeartbeatRoute: typeof ApiPublicAgentJobHeartbeatRoute
   ApiPublicAgentJobStatusRoute: typeof ApiPublicAgentJobStatusRoute
@@ -298,6 +312,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/characters'
       preLoaderRoute: typeof AuthenticatedCharactersRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/api/public/evaluator/dataset': {
+      id: '/api/public/evaluator/dataset'
+      path: '/api/public/evaluator/dataset'
+      fullPath: '/api/public/evaluator/dataset'
+      preLoaderRoute: typeof ApiPublicEvaluatorDatasetRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/public/agent/zip': {
       id: '/api/public/agent/zip'
@@ -395,6 +416,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicAgentPacksRoute: ApiPublicAgentPacksRoute,
   ApiPublicAgentStatusRoute: ApiPublicAgentStatusRoute,
   ApiPublicAgentZipRoute: ApiPublicAgentZipRoute,
+  ApiPublicEvaluatorDatasetRoute: ApiPublicEvaluatorDatasetRoute,
   ApiPublicAgentJobClaimRoute: ApiPublicAgentJobClaimRoute,
   ApiPublicAgentJobHeartbeatRoute: ApiPublicAgentJobHeartbeatRoute,
   ApiPublicAgentJobStatusRoute: ApiPublicAgentJobStatusRoute,
