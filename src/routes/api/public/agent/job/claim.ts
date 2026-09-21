@@ -129,6 +129,7 @@ export const Route = createFileRoute("/api/public/agent/job/claim")({
             status: "CLAIMED",
             worker,
             claimed_at: new Date().toISOString(),
+            heartbeat_at: new Date().toISOString(),
           })
           .select("id")
           .single();
