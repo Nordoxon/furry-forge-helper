@@ -307,8 +307,10 @@ function CharactersPage() {
                 value={form.gen_style}
                 options={styleOptions}
                 onChange={(v) => setForm({ ...form, gen_style: v })}
-                onAdd={addStyle}
+                onAdd={(v) => void addStyle(v)}
+                onDelete={(v) => void removeStyle(v)}
               />
+
 
             </Field>
 
