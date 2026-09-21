@@ -3,6 +3,8 @@ import { authenticateAgent, json } from "@/lib/agent-auth";
 import { genPlan, genSettings } from "@/lib/agent-phase";
 
 const STALE_MINUTES = 30;
+// задание считается брошенным, если воркер давно не подавал признаков жизни
+const HEARTBEAT_STALE_MINUTES = 5;
 
 /**
  * Очередь на одно изображение: агент берёт ровно одно задание,
