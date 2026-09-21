@@ -127,8 +127,10 @@ export const Route = createFileRoute("/api/public/agent/ingest")({
             generation_seed: toSeed(f.seed),
             generation_prompt: f.prompt ?? null,
             generation_negative_prompt: f.negative_prompt ?? null,
-            pose_id: f.pose_id ?? null,
-            background_id: f.background_id ?? null,
+            pose_id: f.pose_id ?? sceneByJob.get(jobId)?.pose_id ?? null,
+            pose_text: sceneByJob.get(jobId)?.pose_text ?? null,
+            background_id: f.background_id ?? sceneByJob.get(jobId)?.background_id ?? null,
+            background_text: sceneByJob.get(jobId)?.background_text ?? null,
             generation_job_id: jobId || null,
             generation_settings: (f.generation_settings ?? null) as never,
           });
