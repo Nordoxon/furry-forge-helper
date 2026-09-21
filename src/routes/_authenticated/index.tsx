@@ -96,7 +96,10 @@ function TriagePage() {
   const current = items[0];
   const kind = kindOverride ?? batch.activeKind;
 
-  async function act(status: "approved" | "rejected", rejectReason?: RejectReason) {
+  async function act(
+    status: "approved" | "rejected",
+    reject?: { reasons: RejectReason[]; note: string },
+  ) {
     if (!current) return;
     if (status === "approved") {
       const limit = kind === "sfw" ? batch.sfwTarget : batch.nsfwTarget;
@@ -111,17 +114,20 @@ function TriagePage() {
       await decide(id, status, charId, {
         contentKind: kind,
         isPreview: false,
-        rejectReason: rejectReason ?? null,
+        rejectReasons: reject?.reasons ?? [],
+        rejectNote: reject?.note ?? null,
       });
       setDone((d) => (d.includes(id) ? d : [...d, id]));
       setLast({ id });
       setKindOverride(null);
+      setReasonsOpen(false);
       void qc.invalidateQueries({ queryKey: ["selection"] });
       void qc.invalidateQueries({ queryKey: ["pipeline"] });
     } catch (e) {
       toast.error(`Не удалось сохранить: ${(e as Error).message}`);
     }
   }
+
 
   async function undo() {
     if (!last) return;
