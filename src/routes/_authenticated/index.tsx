@@ -258,7 +258,7 @@ function TriagePage() {
         ) : (
           <>
             <CharacterPicker chars={chars.data ?? []} value={charId} onChange={selectCharacter} />
-            <BatchProgress batch={batch} />
+            <BatchProgress batch={batch} pending={all.length} />
 
             {batch.done ? (
               <PackReady charId={charId} />
