@@ -219,29 +219,33 @@ function CharactersPage() {
             </Button>
           </div>
         ) : (
-          list.map((c) => (
-            <div
-              key={c.id}
-              className="flex w-full items-center justify-between gap-3 rounded-xl border border-border/60 bg-card px-4 py-3"
-            >
-              <button onClick={() => openEdit(c)} className="min-w-0 flex-1 text-left">
-                <p className="truncate text-sm font-medium">
-                  {c.name}
-                  {c.is_default && <span className="ml-2 text-[10px] text-primary">по умолчанию</span>}
-                </p>
-                <p className="truncate text-[11px] text-muted-foreground">
-                  {c.base_tags.length > 0 ? c.base_tags.map((t) => `#${t}`).join(" ") : "Без базовых тегов"}
-                </p>
-              </button>
-              <Button size="sm" variant="outline" className="shrink-0" asChild>
-                <Link to="/packs" search={{ character: c.id }}>
-                  <Package className="h-4 w-4 sm:mr-1" />
-                  <span className="hidden sm:inline">Паки</span>
-                </Link>
-              </Button>
+          <div className="flex items-center gap-2">
+            <div className="min-w-0 flex-1">
+              <SearchableSelect
+                value={selectedId}
+                placeholder="Выберите персонажа"
+                emptyText="Ничего не найдено"
+                options={list.map((c) => ({
+                  value: c.id,
+                  label: c.name,
+                  hint: c.is_default ? "по умолчанию" : undefined,
+                }))}
+                onChange={(id) => {
+                  const c = list.find((x) => x.id === id);
+                  if (c) {
+                    rememberCharacter(c.id);
+                    openEdit(c);
+                  }
+                }}
+              />
             </div>
-          ))
-
+            <Button size="sm" variant="outline" className="shrink-0" asChild disabled={!selectedId}>
+              <Link to="/packs" search={{ character: selectedId ?? undefined }}>
+                <Package className="h-4 w-4 sm:mr-1" />
+                <span className="hidden sm:inline">Паки</span>
+              </Link>
+            </Button>
+          </div>
         )}
 
         {editing !== null && (
