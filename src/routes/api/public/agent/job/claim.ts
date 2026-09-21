@@ -122,15 +122,21 @@ export const Route = createFileRoute("/api/public/agent/job/claim")({
         }
 
         const settings = genSettings(plan.character);
+        const scene = await pickScene(supabase, userId, plan.character.id);
+        const finalPrompt = applyScene(plan.prompt, scene);
         const { data: created, error } = await supabase
           .from("generation_jobs")
           .insert({
             user_id: userId,
             character_id: plan.character.id,
             phase: plan.phase,
-            prompt: plan.prompt,
+            prompt: finalPrompt,
             negative_prompt: plan.negative_prompt,
             settings,
+            pose_id: scene.pose_id,
+            pose_text: scene.pose_text,
+            background_id: scene.background_id,
+            background_text: scene.background_text,
             status: "CLAIMED",
             worker,
             claimed_at: new Date().toISOString(),
@@ -144,9 +150,13 @@ export const Route = createFileRoute("/api/public/agent/job/claim")({
           job: {
             generation_job_id: created.id,
             phase: plan.phase,
-            prompt: plan.prompt,
+            prompt: finalPrompt,
             negative_prompt: plan.negative_prompt,
             settings,
+            pose_id: scene.pose_id,
+            pose_text: scene.pose_text,
+            background_id: scene.background_id,
+            background_text: scene.background_text,
             character: plan.character.name,
             resume: false,
           },
