@@ -427,17 +427,19 @@ function Field({
   );
 }
 
-/** Выбор стиля: селектор из уже известных + ручной ввод имени из styles.csv. */
+/** Выбор стиля: выпадающий список с поиском, удалением и добавлением имени из styles.csv. */
 function StylePicker({
   value,
   options,
   onChange,
   onAdd,
+  onDelete,
 }: {
   value: string;
   options: string[];
   onChange: (v: string) => void;
   onAdd: (v: string) => void;
+  onDelete: (v: string) => void;
 }) {
   const [manual, setManual] = useState(false);
   const [draft, setDraft] = useState("");
@@ -453,41 +455,21 @@ function StylePicker({
 
   return (
     <div className="space-y-2">
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={() => onChange("")}
-          className={`rounded-full border px-3 py-1.5 text-xs transition ${
-            value === ""
-              ? "border-primary bg-primary text-primary-foreground"
-              : "border-border text-muted-foreground"
-          }`}
-        >
-          Без стиля
-        </button>
-        {options.map((o) => (
-          <button
-            key={o}
-            type="button"
-            onClick={() => onChange(o)}
-            className={`rounded-full border px-3 py-1.5 text-xs transition ${
-              value === o
-                ? "border-primary bg-primary text-primary-foreground"
-                : "border-border text-muted-foreground"
-            }`}
-          >
-            {o}
-          </button>
-        ))}
-        <button
-          type="button"
-          onClick={() => setManual((m) => !m)}
-          className="rounded-full border border-dashed border-border px-3 py-1.5 text-xs text-muted-foreground"
-        >
-          + Своё имя
-        </button>
-      </div>
-      {manual && (
+      <SearchableSelect
+        value={value || "__none__"}
+        placeholder="Без стиля"
+        emptyText="Стиль не найден"
+        options={[
+          { value: "__none__", label: "Без стиля" },
+          ...options.map((o) => ({ value: o, label: o })),
+        ]}
+        onChange={(v) => onChange(v === "__none__" ? "" : v)}
+        onDelete={(v) => {
+          if (v === "__none__") return;
+          if (window.confirm(`Удалить стиль «${v}» из списка?`)) onDelete(v);
+        }}
+      />
+      {manual ? (
         <div className="flex gap-2">
           <Input
             autoFocus
@@ -505,7 +487,13 @@ function StylePicker({
             Добавить
           </Button>
         </div>
+      ) : (
+        <Button type="button" variant="ghost" size="sm" onClick={() => setManual(true)}>
+          <Plus className="mr-1 h-4 w-4" /> Добавить имя из styles.csv
+        </Button>
       )}
     </div>
   );
+}
+
 }
