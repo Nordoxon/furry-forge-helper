@@ -243,6 +243,7 @@ export type Database = {
           generation_negative_prompt: string | null
           generation_prompt: string | null
           generation_seed: number | null
+          generation_settings: Json | null
           height: number | null
           id: string
           is_cover: boolean
@@ -281,6 +282,7 @@ export type Database = {
           generation_negative_prompt?: string | null
           generation_prompt?: string | null
           generation_seed?: number | null
+          generation_settings?: Json | null
           height?: number | null
           id?: string
           is_cover?: boolean
@@ -319,6 +321,7 @@ export type Database = {
           generation_negative_prompt?: string | null
           generation_prompt?: string | null
           generation_seed?: number | null
+          generation_settings?: Json | null
           height?: number | null
           id?: string
           is_cover?: boolean

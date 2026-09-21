@@ -22,6 +22,8 @@ import { Route as ApiPublicAgentPacksRouteImport } from './routes/api/public/age
 import { Route as ApiPublicAgentIngestRouteImport } from './routes/api/public/agent/ingest'
 import { Route as ApiPublicAgentGenRouteImport } from './routes/api/public/agent/gen'
 import { Route as ApiPublicAgentClaimRouteImport } from './routes/api/public/agent/claim'
+import { Route as ApiPublicAgentJobStatusRouteImport } from './routes/api/public/agent/job/status'
+import { Route as ApiPublicAgentJobClaimRouteImport } from './routes/api/public/agent/job/claim'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -87,6 +89,16 @@ const ApiPublicAgentClaimRoute = ApiPublicAgentClaimRouteImport.update({
   path: '/api/public/agent/claim',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicAgentJobStatusRoute = ApiPublicAgentJobStatusRouteImport.update({
+  id: '/api/public/agent/job/status',
+  path: '/api/public/agent/job/status',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicAgentJobClaimRoute = ApiPublicAgentJobClaimRouteImport.update({
+  id: '/api/public/agent/job/claim',
+  path: '/api/public/agent/job/claim',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
@@ -101,6 +113,8 @@ export interface FileRoutesByFullPath {
   '/api/public/agent/packs': typeof ApiPublicAgentPacksRoute
   '/api/public/agent/status': typeof ApiPublicAgentStatusRoute
   '/api/public/agent/zip': typeof ApiPublicAgentZipRoute
+  '/api/public/agent/job/claim': typeof ApiPublicAgentJobClaimRoute
+  '/api/public/agent/job/status': typeof ApiPublicAgentJobStatusRoute
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
@@ -115,6 +129,8 @@ export interface FileRoutesByTo {
   '/api/public/agent/packs': typeof ApiPublicAgentPacksRoute
   '/api/public/agent/status': typeof ApiPublicAgentStatusRoute
   '/api/public/agent/zip': typeof ApiPublicAgentZipRoute
+  '/api/public/agent/job/claim': typeof ApiPublicAgentJobClaimRoute
+  '/api/public/agent/job/status': typeof ApiPublicAgentJobStatusRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -131,6 +147,8 @@ export interface FileRoutesById {
   '/api/public/agent/packs': typeof ApiPublicAgentPacksRoute
   '/api/public/agent/status': typeof ApiPublicAgentStatusRoute
   '/api/public/agent/zip': typeof ApiPublicAgentZipRoute
+  '/api/public/agent/job/claim': typeof ApiPublicAgentJobClaimRoute
+  '/api/public/agent/job/status': typeof ApiPublicAgentJobStatusRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -147,6 +165,8 @@ export interface FileRouteTypes {
     | '/api/public/agent/packs'
     | '/api/public/agent/status'
     | '/api/public/agent/zip'
+    | '/api/public/agent/job/claim'
+    | '/api/public/agent/job/status'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth'
@@ -161,6 +181,8 @@ export interface FileRouteTypes {
     | '/api/public/agent/packs'
     | '/api/public/agent/status'
     | '/api/public/agent/zip'
+    | '/api/public/agent/job/claim'
+    | '/api/public/agent/job/status'
   id:
     | '__root__'
     | '/_authenticated'
@@ -176,6 +198,8 @@ export interface FileRouteTypes {
     | '/api/public/agent/packs'
     | '/api/public/agent/status'
     | '/api/public/agent/zip'
+    | '/api/public/agent/job/claim'
+    | '/api/public/agent/job/status'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -187,6 +211,8 @@ export interface RootRouteChildren {
   ApiPublicAgentPacksRoute: typeof ApiPublicAgentPacksRoute
   ApiPublicAgentStatusRoute: typeof ApiPublicAgentStatusRoute
   ApiPublicAgentZipRoute: typeof ApiPublicAgentZipRoute
+  ApiPublicAgentJobClaimRoute: typeof ApiPublicAgentJobClaimRoute
+  ApiPublicAgentJobStatusRoute: typeof ApiPublicAgentJobStatusRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -282,6 +308,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicAgentClaimRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/agent/job/status': {
+      id: '/api/public/agent/job/status'
+      path: '/api/public/agent/job/status'
+      fullPath: '/api/public/agent/job/status'
+      preLoaderRoute: typeof ApiPublicAgentJobStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/agent/job/claim': {
+      id: '/api/public/agent/job/claim'
+      path: '/api/public/agent/job/claim'
+      fullPath: '/api/public/agent/job/claim'
+      preLoaderRoute: typeof ApiPublicAgentJobClaimRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -313,6 +353,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicAgentPacksRoute: ApiPublicAgentPacksRoute,
   ApiPublicAgentStatusRoute: ApiPublicAgentStatusRoute,
   ApiPublicAgentZipRoute: ApiPublicAgentZipRoute,
+  ApiPublicAgentJobClaimRoute: ApiPublicAgentJobClaimRoute,
+  ApiPublicAgentJobStatusRoute: ApiPublicAgentJobStatusRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
