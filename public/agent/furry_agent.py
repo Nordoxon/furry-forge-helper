@@ -124,6 +124,18 @@ GEN_MAX_ERRORS = 5            # после скольких ошибок под�
 GEN_PAUSE_SECONDS = 0         # паузы больше нет: генерацией управляет сайт (кнопки «Пауза»/«Начать»)
 GEN_PHASE_CHECK = 30          # как часто (сек) спрашивать сайт про этап отбора
 
+# ── НОВЫЙ РЕЖИМ: ОЧЕРЕДЬ ЧЕРЕЗ FORGE API (одно изображение = одно задание) ──
+# Агент не трогает браузер: берёт с сайта задание, вызывает txt2img напрямую
+# и просит следующее только после успешной загрузки результата.
+# Старые режимы (attach/hotkey/ui/api) остаются как запасной вариант.
+FORGE_QUEUE = False           # True — включить надёжный режим очереди
+FORGE_API_URL = ""            # пусто = A1111_URL (Forge нужно запускать с --api)
+FORGE_JOB_TIMEOUT = 1800      # максимум ожидания ответа txt2img (сек)
+FORGE_UPLOAD_RETRIES = 12     # попыток отправить готовый кадр на сайт
+FORGE_UPLOAD_WAIT = 20        # пауза между попытками отправки (сек)
+FORGE_IDLE_WAIT = 20          # пауза, когда сайт заданий не даёт (сек)
+FORGE_ERROR_WAIT = 30         # пауза после ошибки генерации (сек)
+
 
 
 
@@ -1840,6 +1852,236 @@ def process_packs():
     return True
 
 
+# ───────── очередь через Forge API: одно задание = одно изображение ─────────
+FORGE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "generated")
+
+
+def forge_base():
+    return (FORGE_API_URL or A1111_URL).rstrip("/")
+
+
+def forge_pending():
+    return STATE.setdefault("forge_pending", {})
+
+
+def forge_job_status(job_id, status, error=None, seed=None):
+    """Сообщает сайту текущее состояние задания."""
+    body = {"generation_job_id": job_id, "status": status}
+    if error is not None:
+        body["error"] = str(error)[:500]
+    if seed is not None:
+        body["seed"] = seed
+    try:
+        r = requests.post(
+            f"{API_BASE}/api/public/agent/job/status",
+            headers=HEADERS,
+            data=json.dumps(body),
+            timeout=60,
+        )
+        r.raise_for_status()
+        return True
+    except Exception as e:
+        log("не сообщил состояние задания:", str(e)[:150])
+        return False
+
+
+def forge_claim_job():
+    """Берёт с сайта ровно одно задание (или то же самое, если оно не доведено до конца)."""
+    try:
+        r = requests.post(
+            f"{API_BASE}/api/public/agent/job/claim",
+            headers=HEADERS,
+            data=json.dumps({"worker": os.environ.get("COMPUTERNAME") or "agent"}),
+            timeout=60,
+        )
+        r.raise_for_status()
+        return r.json()
+    except Exception as e:
+        log("очередь недоступна:", str(e)[:150])
+        return None
+
+
+def forge_txt2img(job):
+    """Одна генерация через Forge API. Возвращает (путь к файлу, фактический seed, настройки)."""
+    s = job.get("settings") or {}
+    payload = {
+        "prompt": job.get("prompt") or "",
+        "negative_prompt": job.get("negative_prompt") or "",
+        "width": int(s.get("width") or 832),
+        "height": int(s.get("height") or 1216),
+        "steps": int(s.get("steps") or 28),
+        "cfg_scale": float(s.get("cfg_scale") or 5),
+        "sampler_name": s.get("sampler_name") or "Euler a",
+        # в режиме очереди всегда ровно одно изображение за запрос
+        "batch_size": 1,
+        "n_iter": 1,
+        "send_images": True,
+        "save_images": False,
+    }
+    if s.get("seed") not in (None, ""):
+        payload["seed"] = int(s["seed"])
+    if s.get("style"):
+        payload["styles"] = [s["style"]]
+
+    r = requests.post(f"{forge_base()}/sdapi/v1/txt2img", json=payload, timeout=FORGE_JOB_TIMEOUT)
+    r.raise_for_status()
+    data = r.json()
+    images = data.get("images") or []
+    if not images:
+        raise RuntimeError("Forge вернул пустой ответ без изображения")
+
+    # фактический seed берём из ответа, а не из запроса (-1 означал «случайный»)
+    seed = None
+    info = {}
+    try:
+        info = json.loads(data.get("info") or "{}")
+        seeds = info.get("all_seeds") or []
+        seed = int(seeds[0]) if seeds else int(info.get("seed"))
+    except Exception:
+        seed = None
+
+    os.makedirs(FORGE_DIR, exist_ok=True)
+    path = os.path.join(FORGE_DIR, f"{job['generation_job_id']}.png")
+    with open(path, "wb") as f:
+        f.write(base64.b64decode(images[0].split(",", 1)[-1]))
+
+    settings = dict(payload)
+    settings.pop("send_images", None)
+    settings.pop("save_images", None)
+    settings["seed"] = seed
+    settings["phase"] = job.get("phase")
+    if info.get("infotexts"):
+        settings["infotext"] = str(info["infotexts"][0])[:2000]
+    return path, seed, settings
+
+
+def forge_send_result(job_id, entry):
+    """Отправляет готовый кадр на сайт. Повторяется, пока не получит подтверждение."""
+    path = entry.get("path")
+    if not path or not os.path.exists(path):
+        return False
+    b64, w, h = make_preview(path)
+    payload = {
+        "files": [
+            {
+                "filename": os.path.basename(path),
+                "local_path": path,
+                "width": w,
+                "height": h,
+                "preview_b64": b64,
+                "seed": entry.get("seed"),
+                "prompt": entry.get("prompt"),
+                "negative_prompt": entry.get("negative_prompt"),
+                "generation_job_id": job_id,
+                "generation_settings": entry.get("settings"),
+            }
+        ]
+    }
+    r = requests.post(
+        f"{API_BASE}/api/public/agent/ingest",
+        headers=HEADERS,
+        data=json.dumps(payload),
+        timeout=300,
+    )
+    r.raise_for_status()
+    res = r.json()
+    acks = res.get("acks") or []
+    ok = any(a.get("generation_job_id") == job_id for a in acks)
+    if ok:
+        log("кадр принят сайтом" + (" (повтор, дубликат не создан)" if acks[0].get("duplicate") else ""))
+    return ok
+
+
+def forge_flush_pending():
+    """Досылает кадры, которые уже сгенерированы, но не были приняты сайтом."""
+    pending = forge_pending()
+    for job_id in list(pending.keys()):
+        entry = pending[job_id]
+        try:
+            if forge_send_result(job_id, entry):
+                forge_job_status(job_id, "COMPLETED", seed=entry.get("seed"))
+                pending.pop(job_id, None)
+                save_state(STATE)
+            else:
+                return False
+        except Exception as e:
+            log("повторная отправка кадра не удалась:", str(e)[:150])
+            return False
+    return True
+
+
+def forge_queue_loop():
+    """Строго последовательный цикл: задание → генерация → загрузка → подтверждение → следующее."""
+    log("режим очереди Forge API включён:", forge_base())
+    idle_logged = False
+    while True:
+        try:
+            # незавершённые загрузки важнее новых заданий — заново не генерируем
+            if not forge_flush_pending():
+                time.sleep(FORGE_UPLOAD_WAIT)
+                continue
+
+            res = forge_claim_job()
+            if not res:
+                time.sleep(FORGE_ERROR_WAIT)
+                continue
+            job = res.get("job")
+            if not job:
+                if not idle_logged:
+                    log("заданий нет:", res.get("reason") or res.get("phase") or "этап закрыт")
+                    idle_logged = True
+                time.sleep(FORGE_IDLE_WAIT)
+                continue
+            idle_logged = False
+
+            job_id = job["generation_job_id"]
+            log(
+                f"задание {job_id[:8]} — этап {job.get('phase')}"
+                + (" (продолжаю прерванное)" if job.get("resume") else "")
+            )
+            forge_job_status(job_id, "GENERATING")
+            try:
+                path, seed, settings = forge_txt2img(job)
+            except Exception as e:
+                log("генерация не удалась:", str(e)[:200])
+                forge_job_status(job_id, "FAILED", error=e)
+                time.sleep(FORGE_ERROR_WAIT)
+                continue
+
+            entry = {
+                "path": path,
+                "seed": seed,
+                "prompt": job.get("prompt"),
+                "negative_prompt": job.get("negative_prompt"),
+                "settings": settings,
+            }
+            forge_pending()[job_id] = entry
+            save_state(STATE)
+            forge_job_status(job_id, "UPLOADING", seed=seed)
+
+            sent = False
+            for attempt in range(1, FORGE_UPLOAD_RETRIES + 1):
+                try:
+                    sent = forge_send_result(job_id, entry)
+                except Exception as e:
+                    log(f"отправка кадра, попытка {attempt}:", str(e)[:150])
+                if sent:
+                    break
+                time.sleep(FORGE_UPLOAD_WAIT)
+
+            if sent:
+                forge_job_status(job_id, "COMPLETED", seed=seed)
+                forge_pending().pop(job_id, None)
+                save_state(STATE)
+            else:
+                # кадр сохранён на диске и будет дослан позже, повторная генерация не нужна
+                log("сайт не принял кадр — оставляю его на диске и повторю отправку")
+                time.sleep(FORGE_UPLOAD_WAIT)
+        except Exception as e:
+            log("очередь: ошибка:", str(e)[:200])
+            time.sleep(FORGE_ERROR_WAIT)
+
+
 def preflight():
     """Понятные сообщения вместо мгновенного закрытия окна."""
     problems = []
@@ -1862,12 +2104,16 @@ def main():
         raise SystemExit(1)
 
     log("агент запущен, папка:", WATCH_DIR)
-    if GEN_ENABLED:
-        # генерацией управляет сайт: старт/пауза/смена этапа
-        threading.Thread(target=phase_watch_loop, daemon=True).start()
+    if FORGE_QUEUE:
+        # новый режим: генерация напрямую через Forge API, по одному заданию
+        threading.Thread(target=forge_queue_loop, daemon=True).start()
+    else:
+        if GEN_ENABLED:
+            # генерацией управляет сайт: старт/пауза/смена этапа
+            threading.Thread(target=phase_watch_loop, daemon=True).start()
 
-    # сканирование папки идёт своим потоком, чтобы долгий апскейл/загрузка его не тормозили
-    threading.Thread(target=scan_loop, daemon=True).start()
+        # сканирование папки идёт своим потоком, чтобы долгий апскейл/загрузка его не тормозили
+        threading.Thread(target=scan_loop, daemon=True).start()
     while True:
         try:
             busy = process_queue()

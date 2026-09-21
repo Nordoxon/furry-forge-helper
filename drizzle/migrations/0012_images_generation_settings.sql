@@ -1,0 +1,1 @@
+ALTER TABLE public.images ADD COLUMN generation_settings jsonb;

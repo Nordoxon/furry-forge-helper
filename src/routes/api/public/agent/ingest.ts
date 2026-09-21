@@ -12,6 +12,8 @@ type IncomingFile = {
   negative_prompt?: string | null;
   pose_id?: string | null;
   background_id?: string | null;
+  generation_job_id?: string | null;
+  generation_settings?: Record<string, unknown> | null;
 };
 
 function toSeed(v: unknown): number | null {
@@ -53,9 +55,46 @@ export const Route = createFileRoute("/api/public/agent/ingest")({
           .in("local_path", paths);
         const known = new Set((existing ?? []).map((r) => r.local_path));
 
+        // повторная отправка того же задания не создаёт второй кадр
+        const jobIds = files
+          .map((f) => String(f.generation_job_id || ""))
+          .filter(Boolean);
+        const { data: jobImages } = jobIds.length
+          ? await supabase
+              .from("images")
+              .select("id, generation_job_id")
+              .eq("user_id", userId)
+              .in("generation_job_id", jobIds)
+          : { data: [] as { id: string; generation_job_id: string | null }[] };
+        const imageByJob = new Map(
+          (jobImages ?? []).map((r) => [String(r.generation_job_id), r.id]),
+        );
+
+        const completeJob = async (jobId: string, imageId: string) => {
+          await supabase
+            .from("generation_jobs")
+            .update({
+              status: "COMPLETED",
+              image_id: imageId,
+              completed_at: new Date().toISOString(),
+            })
+            .eq("user_id", userId)
+            .eq("id", jobId);
+        };
+
         let accepted = 0;
+        let duplicates = 0;
+        const acks: { generation_job_id: string; image_id: string; duplicate: boolean }[] = [];
         for (const f of files) {
           if (!f.local_path || !f.preview_b64) continue;
+          const jobId = String(f.generation_job_id || "");
+          if (jobId && imageByJob.has(jobId)) {
+            const imageId = imageByJob.get(jobId)!;
+            await completeJob(jobId, imageId);
+            acks.push({ generation_job_id: jobId, image_id: imageId, duplicate: true });
+            duplicates++;
+            continue;
+          }
           if (known.has(f.local_path)) continue;
           const id = crypto.randomUUID();
           const previewPath = `${userId}/${id}.jpg`;
@@ -80,14 +119,26 @@ export const Route = createFileRoute("/api/public/agent/ingest")({
             generation_negative_prompt: f.negative_prompt ?? null,
             pose_id: f.pose_id ?? null,
             background_id: f.background_id ?? null,
+            generation_job_id: jobId || null,
+            generation_settings: (f.generation_settings ?? null) as never,
           });
           if (error) {
             await supabase.storage.from("previews").remove([previewPath]);
             continue;
           }
+          if (jobId) {
+            imageByJob.set(jobId, id);
+            await completeJob(jobId, id);
+            acks.push({ generation_job_id: jobId, image_id: id, duplicate: false });
+          }
           accepted++;
         }
-        return json({ accepted, skipped: files.length - accepted });
+        return json({
+          accepted,
+          duplicates,
+          skipped: files.length - accepted - duplicates,
+          acks,
+        });
       },
     },
   },

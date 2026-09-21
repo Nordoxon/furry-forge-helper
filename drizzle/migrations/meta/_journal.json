@@ -78,6 +78,20 @@
       "when": 1789969174407,
       "tag": "0010_image_review_metadata",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1789971055279,
+      "tag": "0011_generation_jobs_queue",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1789971116563,
+      "tag": "0012_images_generation_settings",
+      "breakpoints": true
     }
   ]
 }
