@@ -50,11 +50,20 @@ function TriagePage() {
   const inbox = useQuery({ queryKey: ["inbox"], queryFn: fetchInbox, refetchInterval: 20000 });
   const chars = useQuery({ queryKey: ["characters"], queryFn: fetchCharacters });
 
+  // после обновления страницы открываем последнего выбранного персонажа
   useEffect(() => {
     if (charId === null && chars.data?.length) {
-      setCharId((chars.data.find((c) => c.is_default) ?? chars.data[0]).id);
+      const saved = recallCharacter();
+      const remembered = saved ? chars.data.find((c) => c.id === saved) : undefined;
+      setCharId((remembered ?? chars.data.find((c) => c.is_default) ?? chars.data[0]).id);
     }
   }, [chars.data, charId]);
+
+  function selectCharacter(id: string) {
+    setCharId(id);
+    rememberCharacter(id);
+  }
+
 
   const activeChar = useMemo(
     () => chars.data?.find((c) => c.id === charId) ?? null,
