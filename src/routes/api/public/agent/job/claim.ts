@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { authenticateAgent, json } from "@/lib/agent-auth";
 import { genPlan, genSettings } from "@/lib/agent-phase";
+import { applyScene, pickScene } from "@/lib/scene";
 
 const STALE_MINUTES = 30;
 // задание считается брошенным, если воркер давно не подавал признаков жизни
@@ -95,6 +96,10 @@ export const Route = createFileRoute("/api/public/agent/job/claim")({
               prompt: job.prompt,
               negative_prompt: job.negative_prompt,
               settings: job.settings,
+              pose_id: job.pose_id,
+              pose_text: job.pose_text,
+              background_id: job.background_id,
+              background_text: job.background_text,
               resume: true,
             },
           });
