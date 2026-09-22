@@ -8,10 +8,9 @@ import { authenticateAgent, json } from "@/lib/agent-auth";
  */
 const STALE_MS = 10 * 60 * 1000;
 
-export const Route = createFileRoute("/api/public/observer/next")({
-  server: {
-    handlers: {
-      GET: async ({ request }) => {
+const handler = (() => {
+  return {
+    run: async ({ request }: { request: Request }) => {
         const auth = await authenticateAgent(request);
         if (!auth) return json({ error: "invalid token" }, 401);
         const { supabase, userId } = auth;
