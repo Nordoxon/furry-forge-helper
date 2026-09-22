@@ -7,6 +7,8 @@ import { authenticateAgent, json } from "@/lib/agent-auth";
  */
 type Body = {
   id?: string;
+  image_id?: string;
+  filename?: string;
   ai_score?: number | null;
   ai_decision?: string | null;
   ai_details?: Record<string, unknown> | null;
