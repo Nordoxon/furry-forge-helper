@@ -84,7 +84,16 @@ const handler = (() => {
           character: characterName,
           stage: candidate.content_kind ?? null,
         });
-      },
+    },
+  };
+})();
+
+export const Route = createFileRoute("/api/public/observer/next")({
+  server: {
+    handlers: {
+      GET: handler.run,
+      POST: handler.run,
+      HEAD: handler.run,
     },
   },
 });
