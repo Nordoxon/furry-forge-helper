@@ -17,6 +17,9 @@ import { Route as AuthenticatedQueueRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedPacksRouteImport } from './routes/_authenticated/packs'
 import { Route as AuthenticatedLibraryRouteImport } from './routes/_authenticated/library'
 import { Route as AuthenticatedCharactersRouteImport } from './routes/_authenticated/characters'
+import { Route as ApiPublicObserverResultRouteImport } from './routes/api/public/observer/result'
+import { Route as ApiPublicObserverNextRouteImport } from './routes/api/public/observer/next'
+import { Route as ApiPublicObserverHeartbeatRouteImport } from './routes/api/public/observer/heartbeat'
 import { Route as ApiPublicEvaluatorDatasetRouteImport } from './routes/api/public/evaluator/dataset'
 import { Route as ApiPublicAgentZipRouteImport } from './routes/api/public/agent/zip'
 import { Route as ApiPublicAgentStatusRouteImport } from './routes/api/public/agent/status'
@@ -67,6 +70,22 @@ const AuthenticatedCharactersRoute = AuthenticatedCharactersRouteImport.update({
   path: '/characters',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const ApiPublicObserverResultRoute = ApiPublicObserverResultRouteImport.update({
+  id: '/api/public/observer/result',
+  path: '/api/public/observer/result',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicObserverNextRoute = ApiPublicObserverNextRouteImport.update({
+  id: '/api/public/observer/next',
+  path: '/api/public/observer/next',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicObserverHeartbeatRoute =
+  ApiPublicObserverHeartbeatRouteImport.update({
+    id: '/api/public/observer/heartbeat',
+    path: '/api/public/observer/heartbeat',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicEvaluatorDatasetRoute =
   ApiPublicEvaluatorDatasetRouteImport.update({
     id: '/api/public/evaluator/dataset',
@@ -135,6 +154,9 @@ export interface FileRoutesByFullPath {
   '/api/public/agent/status': typeof ApiPublicAgentStatusRoute
   '/api/public/agent/zip': typeof ApiPublicAgentZipRoute
   '/api/public/evaluator/dataset': typeof ApiPublicEvaluatorDatasetRoute
+  '/api/public/observer/heartbeat': typeof ApiPublicObserverHeartbeatRoute
+  '/api/public/observer/next': typeof ApiPublicObserverNextRoute
+  '/api/public/observer/result': typeof ApiPublicObserverResultRoute
   '/api/public/agent/job/claim': typeof ApiPublicAgentJobClaimRoute
   '/api/public/agent/job/heartbeat': typeof ApiPublicAgentJobHeartbeatRoute
   '/api/public/agent/job/status': typeof ApiPublicAgentJobStatusRoute
@@ -154,6 +176,9 @@ export interface FileRoutesByTo {
   '/api/public/agent/status': typeof ApiPublicAgentStatusRoute
   '/api/public/agent/zip': typeof ApiPublicAgentZipRoute
   '/api/public/evaluator/dataset': typeof ApiPublicEvaluatorDatasetRoute
+  '/api/public/observer/heartbeat': typeof ApiPublicObserverHeartbeatRoute
+  '/api/public/observer/next': typeof ApiPublicObserverNextRoute
+  '/api/public/observer/result': typeof ApiPublicObserverResultRoute
   '/api/public/agent/job/claim': typeof ApiPublicAgentJobClaimRoute
   '/api/public/agent/job/heartbeat': typeof ApiPublicAgentJobHeartbeatRoute
   '/api/public/agent/job/status': typeof ApiPublicAgentJobStatusRoute
@@ -175,6 +200,9 @@ export interface FileRoutesById {
   '/api/public/agent/status': typeof ApiPublicAgentStatusRoute
   '/api/public/agent/zip': typeof ApiPublicAgentZipRoute
   '/api/public/evaluator/dataset': typeof ApiPublicEvaluatorDatasetRoute
+  '/api/public/observer/heartbeat': typeof ApiPublicObserverHeartbeatRoute
+  '/api/public/observer/next': typeof ApiPublicObserverNextRoute
+  '/api/public/observer/result': typeof ApiPublicObserverResultRoute
   '/api/public/agent/job/claim': typeof ApiPublicAgentJobClaimRoute
   '/api/public/agent/job/heartbeat': typeof ApiPublicAgentJobHeartbeatRoute
   '/api/public/agent/job/status': typeof ApiPublicAgentJobStatusRoute
@@ -196,6 +224,9 @@ export interface FileRouteTypes {
     | '/api/public/agent/status'
     | '/api/public/agent/zip'
     | '/api/public/evaluator/dataset'
+    | '/api/public/observer/heartbeat'
+    | '/api/public/observer/next'
+    | '/api/public/observer/result'
     | '/api/public/agent/job/claim'
     | '/api/public/agent/job/heartbeat'
     | '/api/public/agent/job/status'
@@ -215,6 +246,9 @@ export interface FileRouteTypes {
     | '/api/public/agent/status'
     | '/api/public/agent/zip'
     | '/api/public/evaluator/dataset'
+    | '/api/public/observer/heartbeat'
+    | '/api/public/observer/next'
+    | '/api/public/observer/result'
     | '/api/public/agent/job/claim'
     | '/api/public/agent/job/heartbeat'
     | '/api/public/agent/job/status'
@@ -235,6 +269,9 @@ export interface FileRouteTypes {
     | '/api/public/agent/status'
     | '/api/public/agent/zip'
     | '/api/public/evaluator/dataset'
+    | '/api/public/observer/heartbeat'
+    | '/api/public/observer/next'
+    | '/api/public/observer/result'
     | '/api/public/agent/job/claim'
     | '/api/public/agent/job/heartbeat'
     | '/api/public/agent/job/status'
@@ -250,6 +287,9 @@ export interface RootRouteChildren {
   ApiPublicAgentStatusRoute: typeof ApiPublicAgentStatusRoute
   ApiPublicAgentZipRoute: typeof ApiPublicAgentZipRoute
   ApiPublicEvaluatorDatasetRoute: typeof ApiPublicEvaluatorDatasetRoute
+  ApiPublicObserverHeartbeatRoute: typeof ApiPublicObserverHeartbeatRoute
+  ApiPublicObserverNextRoute: typeof ApiPublicObserverNextRoute
+  ApiPublicObserverResultRoute: typeof ApiPublicObserverResultRoute
   ApiPublicAgentJobClaimRoute: typeof ApiPublicAgentJobClaimRoute
   ApiPublicAgentJobHeartbeatRoute: typeof ApiPublicAgentJobHeartbeatRoute
   ApiPublicAgentJobStatusRoute: typeof ApiPublicAgentJobStatusRoute
@@ -312,6 +352,27 @@ declare module '@tanstack/react-router' {
       fullPath: '/characters'
       preLoaderRoute: typeof AuthenticatedCharactersRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/api/public/observer/result': {
+      id: '/api/public/observer/result'
+      path: '/api/public/observer/result'
+      fullPath: '/api/public/observer/result'
+      preLoaderRoute: typeof ApiPublicObserverResultRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/observer/next': {
+      id: '/api/public/observer/next'
+      path: '/api/public/observer/next'
+      fullPath: '/api/public/observer/next'
+      preLoaderRoute: typeof ApiPublicObserverNextRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/observer/heartbeat': {
+      id: '/api/public/observer/heartbeat'
+      path: '/api/public/observer/heartbeat'
+      fullPath: '/api/public/observer/heartbeat'
+      preLoaderRoute: typeof ApiPublicObserverHeartbeatRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/public/evaluator/dataset': {
       id: '/api/public/evaluator/dataset'
@@ -417,6 +478,9 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicAgentStatusRoute: ApiPublicAgentStatusRoute,
   ApiPublicAgentZipRoute: ApiPublicAgentZipRoute,
   ApiPublicEvaluatorDatasetRoute: ApiPublicEvaluatorDatasetRoute,
+  ApiPublicObserverHeartbeatRoute: ApiPublicObserverHeartbeatRoute,
+  ApiPublicObserverNextRoute: ApiPublicObserverNextRoute,
+  ApiPublicObserverResultRoute: ApiPublicObserverResultRoute,
   ApiPublicAgentJobClaimRoute: ApiPublicAgentJobClaimRoute,
   ApiPublicAgentJobHeartbeatRoute: ApiPublicAgentJobHeartbeatRoute,
   ApiPublicAgentJobStatusRoute: ApiPublicAgentJobStatusRoute,
