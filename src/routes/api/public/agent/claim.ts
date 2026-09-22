@@ -131,7 +131,9 @@ export const Route = createFileRoute("/api/public/agent/claim")({
             filename: img.filename,
             asset_name: assetName,
             content_kind: img.content_kind,
-            upload_to_da: img.is_cover,
+            // На DeviantArt уходит только готовая обложка с подписью «8 SFW + 23 NSFW»,
+            // которая собирается на этапе упаковки пака. Чистый кадр не публикуем.
+            upload_to_da: false,
             // на диске имя уникально, внутри пака — короткое с нумерацией от единицы
             output_filename: `${assetName}_${String(img.id).slice(0, 6)}.png`,
             title,

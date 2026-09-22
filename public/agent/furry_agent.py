@@ -784,7 +784,9 @@ def process_queue():
                 continue
             asset = job.get("asset_name") or os.path.splitext(job["filename"])[0]
             big = upscale(src, asset, heartbeat=lambda: report(job["id"], "upscaling"))
-            if not job.get("upload_to_da"):
+            # Чистый кадр обложки на DeviantArt не публикуем: туда идёт только
+            # собранная обложка с подписью «8 SFW + 23 NSFW».
+            if True:
                 # обычное изображение пака: только апскейл, дальше пойдёт в zip
                 report(job["id"], "ready")
                 log("готово (в архив):", os.path.basename(big))
