@@ -32,8 +32,9 @@ export const Route = createFileRoute("/api/public/observer/result")({
         } catch {
           return json({ error: "invalid json" }, 400);
         }
-        const id = String(body.id ?? "").trim();
-        if (!id) return json({ error: "id is required" }, 400);
+        const id = String(body.id ?? body.image_id ?? "").trim();
+        const filename = String(body.filename ?? "").trim();
+        if (!id && !filename) return json({ error: "id is required" }, 400);
 
         const score =
           body.ai_score === null || body.ai_score === undefined ? null : Number(body.ai_score);
