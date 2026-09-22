@@ -55,7 +55,8 @@ export const Route = createFileRoute("/api/public/evaluator/dataset")({
         const rows = (data ?? []).map((img) => ({
           image_id: img.id,
           filename: img.filename,
-          status: img.status,
+          status: img.status === "rejected" ? "rejected" : "approved",
+          pipeline_status: img.status,
           reviewed_at: img.reviewed_at,
           reject_reasons: img.reject_reasons ?? (img.reject_reason ? [img.reject_reason] : []),
           comment: img.reject_note ?? null,
