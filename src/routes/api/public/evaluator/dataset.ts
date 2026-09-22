@@ -34,8 +34,11 @@ export const Route = createFileRoute("/api/public/evaluator/dataset")({
           .order("reviewed_at", { ascending: false })
           .limit(limit);
 
-        if (status === "approved" || status === "rejected") query = query.eq("status", status);
-        else query = query.in("status", ["approved", "rejected"]);
+        // Человек решает только «годится/мимо». Дальше кадр живёт своей жизнью
+        // (upscaling → uploading → ready → published, иногда error), поэтому
+        // «одобрено» = любой просмотренный кадр, кроме отклонённого.
+        if (status === "rejected") query = query.eq("status", "rejected");
+        else if (status === "approved") query = query.neq("status", "rejected");
         if (from) query = query.gte("reviewed_at", from);
         if (to) query = query.lte("reviewed_at", to);
         if (character) {
@@ -52,7 +55,8 @@ export const Route = createFileRoute("/api/public/evaluator/dataset")({
         const rows = (data ?? []).map((img) => ({
           image_id: img.id,
           filename: img.filename,
-          status: img.status,
+          status: img.status === "rejected" ? "rejected" : "approved",
+          pipeline_status: img.status,
           reviewed_at: img.reviewed_at,
           reject_reasons: img.reject_reasons ?? (img.reject_reason ? [img.reject_reason] : []),
           comment: img.reject_note ?? null,
