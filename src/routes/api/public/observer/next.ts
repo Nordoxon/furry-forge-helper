@@ -7,6 +7,8 @@ import { authenticateAgent, json } from "@/lib/agent-auth";
  * через ai_details, чтобы два воркера не взяли один и тот же кадр.
  */
 const STALE_MS = 10 * 60 * 1000;
+/** Observer оценивает только кадры, созданные после запуска новой системы. */
+const OBSERVER_START = "2026-09-22T14:30:00Z";
 
 const handler = (() => {
   return {
@@ -25,6 +27,7 @@ const handler = (() => {
           )
           .eq("user_id", userId)
           .is("ai_score", null)
+          .gte("created_at", OBSERVER_START)
           .order("created_at", { ascending: true })
           .limit(50);
         if (error) return json({ error: error.message }, 500);
