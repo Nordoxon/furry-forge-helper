@@ -65,6 +65,9 @@ export const Route = createFileRoute("/api/public/evaluator/dataset")({
           background_text: img.background_text ?? null,
           stage: img.content_kind ?? null,
           character: img.character_id ? (nameById.get(img.character_id) ?? null) : null,
+          ai_decision: img.ai_decision ?? null,
+          ai_score: img.ai_score ?? null,
+          ai_details: img.ai_details ?? null,
         }));
 
         return json(rows);
