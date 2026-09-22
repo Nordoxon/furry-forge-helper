@@ -21,7 +21,9 @@ export const Route = createFileRoute("/api/public/observer/next")({
 
         const { data: rows, error } = await supabase
           .from("images")
-          .select("id, filename, local_path, preview_path, ai_details, ai_score, status")
+          .select(
+            "id, filename, local_path, preview_path, ai_details, ai_score, status, content_kind, character_id",
+          )
           .eq("user_id", userId)
           .is("ai_score", null)
           .order("created_at", { ascending: true })
