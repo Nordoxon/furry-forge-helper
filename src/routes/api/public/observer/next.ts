@@ -21,7 +21,9 @@ export const Route = createFileRoute("/api/public/observer/next")({
 
         const { data: rows, error } = await supabase
           .from("images")
-          .select("id, filename, local_path, preview_path, ai_details, ai_score, status")
+          .select(
+            "id, filename, local_path, preview_path, ai_details, ai_score, status, content_kind, character_id",
+          )
           .eq("user_id", userId)
           .is("ai_score", null)
           .order("created_at", { ascending: true })
@@ -63,12 +65,25 @@ export const Route = createFileRoute("/api/public/observer/next")({
           previewUrl = signed?.signedUrl ?? null;
         }
 
+        let characterName: string | null = null;
+        if (candidate.character_id) {
+          const { data: character } = await supabase
+            .from("characters")
+            .select("name")
+            .eq("id", candidate.character_id)
+            .eq("user_id", userId)
+            .maybeSingle();
+          characterName = character?.name ?? null;
+        }
+
         return json({
           id: candidate.id,
           filename: candidate.filename,
           url: previewUrl,
           local_path: candidate.local_path,
           status: candidate.status,
+          character: characterName,
+          stage: candidate.content_kind ?? null,
         });
       },
     },
