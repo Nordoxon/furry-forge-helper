@@ -209,6 +209,7 @@ export type Database = {
           pose_text: string | null
           prompt: string
           seed: number | null
+          series_item_id: string | null
           settings: Json
           started_at: string | null
           status: string
@@ -236,6 +237,7 @@ export type Database = {
           pose_text?: string | null
           prompt?: string
           seed?: number | null
+          series_item_id?: string | null
           settings?: Json
           started_at?: string | null
           status?: string
@@ -263,6 +265,7 @@ export type Database = {
           pose_text?: string | null
           prompt?: string
           seed?: number | null
+          series_item_id?: string | null
           settings?: Json
           started_at?: string | null
           status?: string
@@ -316,6 +319,7 @@ export type Database = {
           reject_reasons: string[] | null
           reviewed_at: string | null
           seq: number
+          series_item_id: string | null
           status: Database["public"]["Enums"]["image_status"]
           tags: string[]
           template_id: string | null
@@ -359,6 +363,7 @@ export type Database = {
           reject_reasons?: string[] | null
           reviewed_at?: string | null
           seq?: number
+          series_item_id?: string | null
           status?: Database["public"]["Enums"]["image_status"]
           tags?: string[]
           template_id?: string | null
@@ -402,6 +407,7 @@ export type Database = {
           reject_reasons?: string[] | null
           reviewed_at?: string | null
           seq?: number
+          series_item_id?: string | null
           status?: Database["public"]["Enums"]["image_status"]
           tags?: string[]
           template_id?: string | null
@@ -646,6 +652,144 @@ export type Database = {
         }
         Relationships: []
       }
+      series: {
+        Row: {
+          auto_upscale: boolean
+          created_at: string
+          id: string
+          negative_prompt: string
+          prompt: string
+          scene_background: string
+          scene_composition: string
+          scene_name: string
+          settings: Json
+          shrink_preview: boolean
+          status: string
+          title: string
+          updated_at: string
+          upscale_factor: number
+          user_id: string
+          variants: number
+          watermark: boolean
+        }
+        Insert: {
+          auto_upscale?: boolean
+          created_at?: string
+          id?: string
+          negative_prompt?: string
+          prompt?: string
+          scene_background?: string
+          scene_composition?: string
+          scene_name?: string
+          settings?: Json
+          shrink_preview?: boolean
+          status?: string
+          title?: string
+          updated_at?: string
+          upscale_factor?: number
+          user_id: string
+          variants?: number
+          watermark?: boolean
+        }
+        Update: {
+          auto_upscale?: boolean
+          created_at?: string
+          id?: string
+          negative_prompt?: string
+          prompt?: string
+          scene_background?: string
+          scene_composition?: string
+          scene_name?: string
+          settings?: Json
+          shrink_preview?: boolean
+          status?: string
+          title?: string
+          updated_at?: string
+          upscale_factor?: number
+          user_id?: string
+          variants?: number
+          watermark?: boolean
+        }
+        Relationships: []
+      }
+      series_items: {
+        Row: {
+          censored_preview_path: string | null
+          character_id: string | null
+          created_at: string
+          deviation_url: string | null
+          error: string | null
+          exclusive_number: number | null
+          id: string
+          name: string
+          original_local_path: string | null
+          position: number
+          requested_variants: number
+          selected_image_id: string | null
+          series_id: string
+          status: string
+          tags: string[]
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          censored_preview_path?: string | null
+          character_id?: string | null
+          created_at?: string
+          deviation_url?: string | null
+          error?: string | null
+          exclusive_number?: number | null
+          id?: string
+          name: string
+          original_local_path?: string | null
+          position?: number
+          requested_variants?: number
+          selected_image_id?: string | null
+          series_id: string
+          status?: string
+          tags?: string[]
+          title?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          censored_preview_path?: string | null
+          character_id?: string | null
+          created_at?: string
+          deviation_url?: string | null
+          error?: string | null
+          exclusive_number?: number | null
+          id?: string
+          name?: string
+          original_local_path?: string | null
+          position?: number
+          requested_variants?: number
+          selected_image_id?: string | null
+          series_id?: string
+          status?: string
+          tags?: string[]
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "series_items_character_id_fkey"
+            columns: ["character_id"]
+            isOneToOne: false
+            referencedRelation: "characters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "series_items_series_id_fkey"
+            columns: ["series_id"]
+            isOneToOne: false
+            referencedRelation: "series"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       species_tags: {
         Row: {
           created_at: string
@@ -668,6 +812,33 @@ export type Database = {
           id?: string
           species?: string
           tags?: string[]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_settings: {
+        Row: {
+          default_tags: string[]
+          mode: string
+          next_exclusive_number: number
+          title_template: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          default_tags?: string[]
+          mode?: string
+          next_exclusive_number?: number
+          title_template?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          default_tags?: string[]
+          mode?: string
+          next_exclusive_number?: number
+          title_template?: string
           updated_at?: string
           user_id?: string
         }
