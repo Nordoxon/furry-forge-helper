@@ -444,6 +444,7 @@ export type Database = {
         Row: {
           character_id: string | null
           created_at: string
+          description: string
           id: string
           nsfw_count: number
           pack_number: number | null
@@ -459,6 +460,7 @@ export type Database = {
         Insert: {
           character_id?: string | null
           created_at?: string
+          description?: string
           id?: string
           nsfw_count?: number
           pack_number?: number | null
@@ -474,6 +476,7 @@ export type Database = {
         Update: {
           character_id?: string | null
           created_at?: string
+          description?: string
           id?: string
           nsfw_count?: number
           pack_number?: number | null
@@ -717,6 +720,7 @@ export type Database = {
           censored_preview_path: string | null
           character_id: string | null
           created_at: string
+          description: string
           deviation_url: string | null
           error: string | null
           exclusive_number: number | null
@@ -737,6 +741,7 @@ export type Database = {
           censored_preview_path?: string | null
           character_id?: string | null
           created_at?: string
+          description?: string
           deviation_url?: string | null
           error?: string | null
           exclusive_number?: number | null
@@ -757,6 +762,7 @@ export type Database = {
           censored_preview_path?: string | null
           character_id?: string | null
           created_at?: string
+          description?: string
           deviation_url?: string | null
           error?: string | null
           exclusive_number?: number | null

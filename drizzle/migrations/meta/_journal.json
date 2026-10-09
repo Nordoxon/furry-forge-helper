@@ -120,6 +120,13 @@
       "when": 1791524711157,
       "tag": "0016_single_exclusive_series",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1791559744847,
+      "tag": "0017_add_descriptions",
+      "breakpoints": true
     }
   ]
 }
