@@ -74,10 +74,10 @@ export const Route = createFileRoute("/api/public/agent/ingest")({
         const { data: jobRows } = jobIds.length
           ? await supabase
               .from("generation_jobs")
-              .select("id, pose_id, pose_text, background_id, background_text")
+              .select("id, pose_id, pose_text, background_id, background_text, series_item_id, character_id")
               .eq("user_id", userId)
               .in("id", jobIds)
-          : { data: [] as { id: string; pose_id: string | null; pose_text: string | null; background_id: string | null; background_text: string | null }[] };
+          : { data: [] as { id: string; pose_id: string | null; pose_text: string | null; background_id: string | null; background_text: string | null; series_item_id: string | null; character_id: string | null }[] };
         const sceneByJob = new Map((jobRows ?? []).map((r) => [String(r.id), r]));
 
         const completeJob = async (jobId: string, imageId: string) => {
@@ -132,6 +132,10 @@ export const Route = createFileRoute("/api/public/agent/ingest")({
             background_id: f.background_id ?? sceneByJob.get(jobId)?.background_id ?? null,
             background_text: sceneByJob.get(jobId)?.background_text ?? null,
             generation_job_id: jobId || null,
+            series_item_id: sceneByJob.get(jobId)?.series_item_id ?? null,
+            ...(sceneByJob.get(jobId)?.series_item_id
+              ? { character_id: sceneByJob.get(jobId)?.character_id ?? null }
+              : {}),
             generation_settings: (f.generation_settings ?? null) as never,
           });
           if (error) {

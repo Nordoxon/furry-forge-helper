@@ -69,7 +69,7 @@ export async function genPlan(
     .from("images")
     .select("id", { count: "exact", head: true })
     .eq("user_id", userId)
-    .eq("status", "new");
+    .eq("status", "new").is("series_item_id", null);
   const pending = pendingCount ?? 0;
   if (phase !== "done" && pending >= PENDING_LIMIT) {
     return {

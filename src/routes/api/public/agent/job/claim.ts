@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { authenticateAgent, json } from "@/lib/agent-auth";
 import { genPlan, genSettings } from "@/lib/agent-phase";
 import { applyScene, pickScene } from "@/lib/scene";
+import { seriesPlan, userMode } from "@/lib/series-plan";
 
 const STALE_MINUTES = 30;
 // задание считается брошенным, если воркер давно не подавал признаков жизни
@@ -102,6 +103,48 @@ export const Route = createFileRoute("/api/public/agent/job/claim")({
               background_text: job.background_text,
               resume: true,
             },
+          });
+        }
+
+        // 2а. режим «Отдельные изображения»: задания по очереди персонажей серии
+        if ((await userMode(supabase, userId)) === "series") {
+          const sp = await seriesPlan(supabase, userId);
+          if (!sp.job) return json({ job: null, phase: "series", reason: sp.reason });
+          const j = sp.job;
+          const { data: created, error } = await supabase
+            .from("generation_jobs")
+            .insert({
+              user_id: userId,
+              character_id: j.item.character_id,
+              series_item_id: j.item.id,
+              phase: "single",
+              prompt: j.prompt,
+              negative_prompt: j.negative_prompt,
+              settings: j.settings as never,
+              background_text: j.series.scene_background || null,
+              status: "CLAIMED",
+              worker,
+              claimed_at: new Date().toISOString(),
+              heartbeat_at: new Date().toISOString(),
+            })
+            .select("id")
+            .single();
+          if (error || !created) return json({ error: error?.message ?? "insert failed" }, 500);
+          return json({
+            job: {
+              generation_job_id: created.id,
+              phase: "single",
+              prompt: j.prompt,
+              negative_prompt: j.negative_prompt,
+              settings: j.settings,
+              pose_id: null,
+              pose_text: null,
+              background_id: null,
+              background_text: j.series.scene_background || null,
+              character: j.item.name,
+              resume: false,
+            },
+            progress: { variant: j.variant, target: j.target },
           });
         }
 

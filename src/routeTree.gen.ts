@@ -16,11 +16,13 @@ import { Route as AuthenticatedCharactersRouteImport } from './routes/_authentic
 import { Route as AuthenticatedLibraryRouteImport } from './routes/_authenticated/library'
 import { Route as AuthenticatedPacksRouteImport } from './routes/_authenticated/packs'
 import { Route as AuthenticatedQueueRouteImport } from './routes/_authenticated/queue'
+import { Route as AuthenticatedSeriesRouteImport } from './routes/_authenticated/series'
 import { Route as AuthenticatedSetupRouteImport } from './routes/_authenticated/setup'
 import { Route as ApiPublicAgentClaimRouteImport } from './routes/api/public/agent/claim'
 import { Route as ApiPublicAgentGenRouteImport } from './routes/api/public/agent/gen'
 import { Route as ApiPublicAgentIngestRouteImport } from './routes/api/public/agent/ingest'
 import { Route as ApiPublicAgentPacksRouteImport } from './routes/api/public/agent/packs'
+import { Route as ApiPublicAgentSeriesRouteImport } from './routes/api/public/agent/series'
 import { Route as ApiPublicAgentStatusRouteImport } from './routes/api/public/agent/status'
 import { Route as ApiPublicAgentZipRouteImport } from './routes/api/public/agent/zip'
 import { Route as ApiPublicEvaluatorDatasetRouteImport } from './routes/api/public/evaluator/dataset'
@@ -65,6 +67,11 @@ const AuthenticatedQueueRoute = AuthenticatedQueueRouteImport.update({
   path: '/queue',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedSeriesRoute = AuthenticatedSeriesRouteImport.update({
+  id: '/series',
+  path: '/series',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedSetupRoute = AuthenticatedSetupRouteImport.update({
   id: '/setup',
   path: '/setup',
@@ -88,6 +95,11 @@ const ApiPublicAgentIngestRoute = ApiPublicAgentIngestRouteImport.update({
 const ApiPublicAgentPacksRoute = ApiPublicAgentPacksRouteImport.update({
   id: '/api/public/agent/packs',
   path: '/api/public/agent/packs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicAgentSeriesRoute = ApiPublicAgentSeriesRouteImport.update({
+  id: '/api/public/agent/series',
+  path: '/api/public/agent/series',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicAgentStatusRoute = ApiPublicAgentStatusRouteImport.update({
@@ -146,11 +158,13 @@ export interface FileRoutesByFullPath {
   '/library': typeof AuthenticatedLibraryRoute
   '/packs': typeof AuthenticatedPacksRoute
   '/queue': typeof AuthenticatedQueueRoute
+  '/series': typeof AuthenticatedSeriesRoute
   '/setup': typeof AuthenticatedSetupRoute
   '/api/public/agent/claim': typeof ApiPublicAgentClaimRoute
   '/api/public/agent/gen': typeof ApiPublicAgentGenRoute
   '/api/public/agent/ingest': typeof ApiPublicAgentIngestRoute
   '/api/public/agent/packs': typeof ApiPublicAgentPacksRoute
+  '/api/public/agent/series': typeof ApiPublicAgentSeriesRoute
   '/api/public/agent/status': typeof ApiPublicAgentStatusRoute
   '/api/public/agent/zip': typeof ApiPublicAgentZipRoute
   '/api/public/evaluator/dataset': typeof ApiPublicEvaluatorDatasetRoute
@@ -167,12 +181,14 @@ export interface FileRoutesByTo {
   '/library': typeof AuthenticatedLibraryRoute
   '/packs': typeof AuthenticatedPacksRoute
   '/queue': typeof AuthenticatedQueueRoute
+  '/series': typeof AuthenticatedSeriesRoute
   '/setup': typeof AuthenticatedSetupRoute
   '/': typeof AuthenticatedIndexRoute
   '/api/public/agent/claim': typeof ApiPublicAgentClaimRoute
   '/api/public/agent/gen': typeof ApiPublicAgentGenRoute
   '/api/public/agent/ingest': typeof ApiPublicAgentIngestRoute
   '/api/public/agent/packs': typeof ApiPublicAgentPacksRoute
+  '/api/public/agent/series': typeof ApiPublicAgentSeriesRoute
   '/api/public/agent/status': typeof ApiPublicAgentStatusRoute
   '/api/public/agent/zip': typeof ApiPublicAgentZipRoute
   '/api/public/evaluator/dataset': typeof ApiPublicEvaluatorDatasetRoute
@@ -191,12 +207,14 @@ export interface FileRoutesById {
   '/_authenticated/library': typeof AuthenticatedLibraryRoute
   '/_authenticated/packs': typeof AuthenticatedPacksRoute
   '/_authenticated/queue': typeof AuthenticatedQueueRoute
+  '/_authenticated/series': typeof AuthenticatedSeriesRoute
   '/_authenticated/setup': typeof AuthenticatedSetupRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/api/public/agent/claim': typeof ApiPublicAgentClaimRoute
   '/api/public/agent/gen': typeof ApiPublicAgentGenRoute
   '/api/public/agent/ingest': typeof ApiPublicAgentIngestRoute
   '/api/public/agent/packs': typeof ApiPublicAgentPacksRoute
+  '/api/public/agent/series': typeof ApiPublicAgentSeriesRoute
   '/api/public/agent/status': typeof ApiPublicAgentStatusRoute
   '/api/public/agent/zip': typeof ApiPublicAgentZipRoute
   '/api/public/evaluator/dataset': typeof ApiPublicEvaluatorDatasetRoute
@@ -216,11 +234,13 @@ export interface FileRouteTypes {
     | '/library'
     | '/packs'
     | '/queue'
+    | '/series'
     | '/setup'
     | '/api/public/agent/claim'
     | '/api/public/agent/gen'
     | '/api/public/agent/ingest'
     | '/api/public/agent/packs'
+    | '/api/public/agent/series'
     | '/api/public/agent/status'
     | '/api/public/agent/zip'
     | '/api/public/evaluator/dataset'
@@ -237,12 +257,14 @@ export interface FileRouteTypes {
     | '/library'
     | '/packs'
     | '/queue'
+    | '/series'
     | '/setup'
     | '/'
     | '/api/public/agent/claim'
     | '/api/public/agent/gen'
     | '/api/public/agent/ingest'
     | '/api/public/agent/packs'
+    | '/api/public/agent/series'
     | '/api/public/agent/status'
     | '/api/public/agent/zip'
     | '/api/public/evaluator/dataset'
@@ -260,12 +282,14 @@ export interface FileRouteTypes {
     | '/_authenticated/library'
     | '/_authenticated/packs'
     | '/_authenticated/queue'
+    | '/_authenticated/series'
     | '/_authenticated/setup'
     | '/_authenticated/'
     | '/api/public/agent/claim'
     | '/api/public/agent/gen'
     | '/api/public/agent/ingest'
     | '/api/public/agent/packs'
+    | '/api/public/agent/series'
     | '/api/public/agent/status'
     | '/api/public/agent/zip'
     | '/api/public/evaluator/dataset'
@@ -284,6 +308,7 @@ export interface RootRouteChildren {
   ApiPublicAgentGenRoute: typeof ApiPublicAgentGenRoute
   ApiPublicAgentIngestRoute: typeof ApiPublicAgentIngestRoute
   ApiPublicAgentPacksRoute: typeof ApiPublicAgentPacksRoute
+  ApiPublicAgentSeriesRoute: typeof ApiPublicAgentSeriesRoute
   ApiPublicAgentStatusRoute: typeof ApiPublicAgentStatusRoute
   ApiPublicAgentZipRoute: typeof ApiPublicAgentZipRoute
   ApiPublicEvaluatorDatasetRoute: typeof ApiPublicEvaluatorDatasetRoute
@@ -346,6 +371,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedQueueRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/series': {
+      id: '/_authenticated/series'
+      path: '/series'
+      fullPath: '/series'
+      preLoaderRoute: typeof AuthenticatedSeriesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/setup': {
       id: '/_authenticated/setup'
       path: '/setup'
@@ -379,6 +411,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/agent/packs'
       fullPath: '/api/public/agent/packs'
       preLoaderRoute: typeof ApiPublicAgentPacksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/agent/series': {
+      id: '/api/public/agent/series'
+      path: '/api/public/agent/series'
+      fullPath: '/api/public/agent/series'
+      preLoaderRoute: typeof ApiPublicAgentSeriesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/agent/status': {
@@ -452,6 +491,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedLibraryRoute: typeof AuthenticatedLibraryRoute
   AuthenticatedPacksRoute: typeof AuthenticatedPacksRoute
   AuthenticatedQueueRoute: typeof AuthenticatedQueueRoute
+  AuthenticatedSeriesRoute: typeof AuthenticatedSeriesRoute
   AuthenticatedSetupRoute: typeof AuthenticatedSetupRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
 }
@@ -461,6 +501,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedLibraryRoute: AuthenticatedLibraryRoute,
   AuthenticatedPacksRoute: AuthenticatedPacksRoute,
   AuthenticatedQueueRoute: AuthenticatedQueueRoute,
+  AuthenticatedSeriesRoute: AuthenticatedSeriesRoute,
   AuthenticatedSetupRoute: AuthenticatedSetupRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
 }
@@ -475,6 +516,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicAgentGenRoute: ApiPublicAgentGenRoute,
   ApiPublicAgentIngestRoute: ApiPublicAgentIngestRoute,
   ApiPublicAgentPacksRoute: ApiPublicAgentPacksRoute,
+  ApiPublicAgentSeriesRoute: ApiPublicAgentSeriesRoute,
   ApiPublicAgentStatusRoute: ApiPublicAgentStatusRoute,
   ApiPublicAgentZipRoute: ApiPublicAgentZipRoute,
   ApiPublicEvaluatorDatasetRoute: ApiPublicEvaluatorDatasetRoute,

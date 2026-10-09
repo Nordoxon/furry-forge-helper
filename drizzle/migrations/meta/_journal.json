@@ -113,6 +113,13 @@
       "when": 1789991873082,
       "tag": "0015_pose_background_library",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1791524711157,
+      "tag": "0016_single_exclusive_series",
+      "breakpoints": true
     }
   ]
 }
