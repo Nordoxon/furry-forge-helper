@@ -2113,6 +2113,59 @@ def forge_queue_loop():
             time.sleep(FORGE_ERROR_WAIT)
 
 
+# ============ РЕЖИМ «ОТДЕЛЬНЫЕ ЭКСКЛЮЗИВЫ» ============
+EXCLUSIVES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "exclusives")
+
+
+def series_report(item_id, status, **extra):
+    body = {"item_id": item_id, "status": status, **extra}
+    try:
+        requests.post(f"{API_BASE}/api/public/agent/series", headers=HEADERS, json=body, timeout=30)
+    except Exception as e:
+        log("серия: не удалось отправить отчёт:", e)
+
+
+def process_series():
+    """Апскейл выбранного варианта (оригинал остаётся на ПК) и загрузка цензурного превью на DA."""
+    try:
+        r = requests.get(f"{API_BASE}/api/public/agent/series", headers=HEADERS, timeout=30)
+        if r.status_code == 404:
+            return False
+        r.raise_for_status()
+        tasks = r.json().get("tasks") or []
+    except Exception as e:
+        log("серия: ошибка запроса задач:", e)
+        return False
+    for t in tasks:
+        item_id = t["item_id"]
+        try:
+            if t["type"] == "upscale":
+                log("серия: апскейл", t.get("out_name"))
+                up = upscale(t["local_path"], t.get("out_name"))
+                os.makedirs(EXCLUSIVES_DIR, exist_ok=True)
+                dst = os.path.join(EXCLUSIVES_DIR, os.path.basename(up))
+                shutil.move(up, dst)
+                series_report(item_id, "upscaled", original_local_path=dst)
+                log("серия: оригинал сохранён ->", dst)
+            elif t["type"] == "publish":
+                tmp = os.path.join(EXCLUSIVES_DIR, f"preview_{item_id}.jpg")
+                os.makedirs(EXCLUSIVES_DIR, exist_ok=True)
+                resp = requests.get(t["preview_url"], timeout=120)
+                resp.raise_for_status()
+                with open(tmp, "wb") as f:
+                    f.write(resp.content)
+                url = da_publish(tmp, {"title": t.get("title"), "tags": t.get("tags") or [], "is_mature": False})
+                series_report(item_id, "published", deviation_url=url)
+                try:
+                    os.remove(tmp)
+                except OSError:
+                    pass
+        except Exception as e:
+            log("серия: ошибка", e)
+            series_report(item_id, "error", error=str(e)[:300])
+    return bool(tasks)
+
+
 def preflight():
     """Понятные сообщения вместо мгновенного закрытия окна."""
     problems = []
@@ -2149,6 +2202,7 @@ def main():
         try:
             busy = process_queue()
             busy = process_packs() or busy
+            busy = process_series() or busy
             if not busy:
                 _pack_busy.clear()
         except Exception as e:
