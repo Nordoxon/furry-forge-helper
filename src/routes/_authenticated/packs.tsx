@@ -1,3 +1,4 @@
+import { Textarea } from "@/components/ui/textarea";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -96,6 +97,7 @@ function PacksPage() {
   const navigate = useNavigate();
   const { character } = Route.useSearch();
   const [title, setTitle] = useState("");
+  const [desc, setDesc] = useState("");
   const [busy, setBusy] = useState(false);
   const [number, setNumber] = useState("");
 
@@ -157,7 +159,7 @@ function PacksPage() {
     if (packSet.length === 0) return;
     setBusy(true);
     try {
-      await buildPack(title.trim() || autoTitle, packSet, charId, Number(number) || null);
+      await buildPack(title.trim() || autoTitle, packSet, charId, Number(number) || null, desc);
       setTitle("");
       toast.success("Пак собран");
       void qc.invalidateQueries({ queryKey: ["selection"] });
@@ -281,6 +283,12 @@ function PacksPage() {
               placeholder={autoTitle || "Название пака (необязательно)"}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
+            />
+            <Textarea
+              rows={3}
+              placeholder="Описание для DeviantArt (передаётся без изменений)"
+              value={desc}
+              onChange={(e) => setDesc(e.target.value)}
             />
             <p className="text-[11px] text-muted-foreground">
               {batch.phase === "sfw"

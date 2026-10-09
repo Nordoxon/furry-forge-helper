@@ -95,6 +95,7 @@ export async function buildPack(
   items: ImageRow[],
   characterId: string | null = null,
   packNumber: number | null = null,
+  description = "",
 ): Promise<PackRow> {
   const { data: userData } = await supabase.auth.getUser();
   const userId = userData.user?.id;
@@ -110,6 +111,7 @@ export async function buildPack(
       title: title || new Date().toLocaleDateString("ru-RU"),
       character_id: characterId,
       pack_number: packNumber,
+      description,
       sfw_count: sfw,
       nsfw_count: nsfw,
       status: "building",
