@@ -23,6 +23,7 @@ import json
 import os
 import queue
 import secrets
+import shutil
 import struct
 import subprocess
 import sys
