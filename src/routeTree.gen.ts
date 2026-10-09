@@ -21,6 +21,7 @@ import { Route as ApiPublicAgentClaimRouteImport } from './routes/api/public/age
 import { Route as ApiPublicAgentGenRouteImport } from './routes/api/public/agent/gen'
 import { Route as ApiPublicAgentIngestRouteImport } from './routes/api/public/agent/ingest'
 import { Route as ApiPublicAgentPacksRouteImport } from './routes/api/public/agent/packs'
+import { Route as ApiPublicAgentSeriesRouteImport } from './routes/api/public/agent/series'
 import { Route as ApiPublicAgentStatusRouteImport } from './routes/api/public/agent/status'
 import { Route as ApiPublicAgentZipRouteImport } from './routes/api/public/agent/zip'
 import { Route as ApiPublicEvaluatorDatasetRouteImport } from './routes/api/public/evaluator/dataset'
@@ -90,6 +91,11 @@ const ApiPublicAgentPacksRoute = ApiPublicAgentPacksRouteImport.update({
   path: '/api/public/agent/packs',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicAgentSeriesRoute = ApiPublicAgentSeriesRouteImport.update({
+  id: '/api/public/agent/series',
+  path: '/api/public/agent/series',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicAgentStatusRoute = ApiPublicAgentStatusRouteImport.update({
   id: '/api/public/agent/status',
   path: '/api/public/agent/status',
@@ -151,6 +157,7 @@ export interface FileRoutesByFullPath {
   '/api/public/agent/gen': typeof ApiPublicAgentGenRoute
   '/api/public/agent/ingest': typeof ApiPublicAgentIngestRoute
   '/api/public/agent/packs': typeof ApiPublicAgentPacksRoute
+  '/api/public/agent/series': typeof ApiPublicAgentSeriesRoute
   '/api/public/agent/status': typeof ApiPublicAgentStatusRoute
   '/api/public/agent/zip': typeof ApiPublicAgentZipRoute
   '/api/public/evaluator/dataset': typeof ApiPublicEvaluatorDatasetRoute
@@ -173,6 +180,7 @@ export interface FileRoutesByTo {
   '/api/public/agent/gen': typeof ApiPublicAgentGenRoute
   '/api/public/agent/ingest': typeof ApiPublicAgentIngestRoute
   '/api/public/agent/packs': typeof ApiPublicAgentPacksRoute
+  '/api/public/agent/series': typeof ApiPublicAgentSeriesRoute
   '/api/public/agent/status': typeof ApiPublicAgentStatusRoute
   '/api/public/agent/zip': typeof ApiPublicAgentZipRoute
   '/api/public/evaluator/dataset': typeof ApiPublicEvaluatorDatasetRoute
@@ -197,6 +205,7 @@ export interface FileRoutesById {
   '/api/public/agent/gen': typeof ApiPublicAgentGenRoute
   '/api/public/agent/ingest': typeof ApiPublicAgentIngestRoute
   '/api/public/agent/packs': typeof ApiPublicAgentPacksRoute
+  '/api/public/agent/series': typeof ApiPublicAgentSeriesRoute
   '/api/public/agent/status': typeof ApiPublicAgentStatusRoute
   '/api/public/agent/zip': typeof ApiPublicAgentZipRoute
   '/api/public/evaluator/dataset': typeof ApiPublicEvaluatorDatasetRoute
@@ -221,6 +230,7 @@ export interface FileRouteTypes {
     | '/api/public/agent/gen'
     | '/api/public/agent/ingest'
     | '/api/public/agent/packs'
+    | '/api/public/agent/series'
     | '/api/public/agent/status'
     | '/api/public/agent/zip'
     | '/api/public/evaluator/dataset'
@@ -243,6 +253,7 @@ export interface FileRouteTypes {
     | '/api/public/agent/gen'
     | '/api/public/agent/ingest'
     | '/api/public/agent/packs'
+    | '/api/public/agent/series'
     | '/api/public/agent/status'
     | '/api/public/agent/zip'
     | '/api/public/evaluator/dataset'
@@ -266,6 +277,7 @@ export interface FileRouteTypes {
     | '/api/public/agent/gen'
     | '/api/public/agent/ingest'
     | '/api/public/agent/packs'
+    | '/api/public/agent/series'
     | '/api/public/agent/status'
     | '/api/public/agent/zip'
     | '/api/public/evaluator/dataset'
@@ -284,6 +296,7 @@ export interface RootRouteChildren {
   ApiPublicAgentGenRoute: typeof ApiPublicAgentGenRoute
   ApiPublicAgentIngestRoute: typeof ApiPublicAgentIngestRoute
   ApiPublicAgentPacksRoute: typeof ApiPublicAgentPacksRoute
+  ApiPublicAgentSeriesRoute: typeof ApiPublicAgentSeriesRoute
   ApiPublicAgentStatusRoute: typeof ApiPublicAgentStatusRoute
   ApiPublicAgentZipRoute: typeof ApiPublicAgentZipRoute
   ApiPublicEvaluatorDatasetRoute: typeof ApiPublicEvaluatorDatasetRoute
@@ -381,6 +394,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicAgentPacksRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/agent/series': {
+      id: '/api/public/agent/series'
+      path: '/api/public/agent/series'
+      fullPath: '/api/public/agent/series'
+      preLoaderRoute: typeof ApiPublicAgentSeriesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/agent/status': {
       id: '/api/public/agent/status'
       path: '/api/public/agent/status'
@@ -475,6 +495,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicAgentGenRoute: ApiPublicAgentGenRoute,
   ApiPublicAgentIngestRoute: ApiPublicAgentIngestRoute,
   ApiPublicAgentPacksRoute: ApiPublicAgentPacksRoute,
+  ApiPublicAgentSeriesRoute: ApiPublicAgentSeriesRoute,
   ApiPublicAgentStatusRoute: ApiPublicAgentStatusRoute,
   ApiPublicAgentZipRoute: ApiPublicAgentZipRoute,
   ApiPublicEvaluatorDatasetRoute: ApiPublicEvaluatorDatasetRoute,
