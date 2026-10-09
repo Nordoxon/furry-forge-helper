@@ -9,35 +9,35 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
-import { Route as AuthenticatedSetupRouteImport } from './routes/_authenticated/setup'
-import { Route as AuthenticatedQueueRouteImport } from './routes/_authenticated/queue'
-import { Route as AuthenticatedPacksRouteImport } from './routes/_authenticated/packs'
-import { Route as AuthenticatedLibraryRouteImport } from './routes/_authenticated/library'
 import { Route as AuthenticatedCharactersRouteImport } from './routes/_authenticated/characters'
-import { Route as ApiPublicObserverResultRouteImport } from './routes/api/public/observer/result'
-import { Route as ApiPublicObserverNextRouteImport } from './routes/api/public/observer/next'
-import { Route as ApiPublicObserverHeartbeatRouteImport } from './routes/api/public/observer/heartbeat'
-import { Route as ApiPublicEvaluatorDatasetRouteImport } from './routes/api/public/evaluator/dataset'
-import { Route as ApiPublicAgentZipRouteImport } from './routes/api/public/agent/zip'
-import { Route as ApiPublicAgentStatusRouteImport } from './routes/api/public/agent/status'
-import { Route as ApiPublicAgentPacksRouteImport } from './routes/api/public/agent/packs'
-import { Route as ApiPublicAgentIngestRouteImport } from './routes/api/public/agent/ingest'
-import { Route as ApiPublicAgentGenRouteImport } from './routes/api/public/agent/gen'
+import { Route as AuthenticatedLibraryRouteImport } from './routes/_authenticated/library'
+import { Route as AuthenticatedPacksRouteImport } from './routes/_authenticated/packs'
+import { Route as AuthenticatedQueueRouteImport } from './routes/_authenticated/queue'
+import { Route as AuthenticatedSetupRouteImport } from './routes/_authenticated/setup'
 import { Route as ApiPublicAgentClaimRouteImport } from './routes/api/public/agent/claim'
-import { Route as ApiPublicAgentJobStatusRouteImport } from './routes/api/public/agent/job/status'
-import { Route as ApiPublicAgentJobHeartbeatRouteImport } from './routes/api/public/agent/job/heartbeat'
+import { Route as ApiPublicAgentGenRouteImport } from './routes/api/public/agent/gen'
+import { Route as ApiPublicAgentIngestRouteImport } from './routes/api/public/agent/ingest'
+import { Route as ApiPublicAgentPacksRouteImport } from './routes/api/public/agent/packs'
+import { Route as ApiPublicAgentStatusRouteImport } from './routes/api/public/agent/status'
+import { Route as ApiPublicAgentZipRouteImport } from './routes/api/public/agent/zip'
+import { Route as ApiPublicEvaluatorDatasetRouteImport } from './routes/api/public/evaluator/dataset'
+import { Route as ApiPublicObserverHeartbeatRouteImport } from './routes/api/public/observer/heartbeat'
+import { Route as ApiPublicObserverNextRouteImport } from './routes/api/public/observer/next'
+import { Route as ApiPublicObserverResultRouteImport } from './routes/api/public/observer/result'
 import { Route as ApiPublicAgentJobClaimRouteImport } from './routes/api/public/agent/job/claim'
+import { Route as ApiPublicAgentJobHeartbeatRouteImport } from './routes/api/public/agent/job/heartbeat'
+import { Route as ApiPublicAgentJobStatusRouteImport } from './routes/api/public/agent/job/status'
 
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
-  id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
@@ -45,19 +45,9 @@ const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedSetupRoute = AuthenticatedSetupRouteImport.update({
-  id: '/setup',
-  path: '/setup',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedQueueRoute = AuthenticatedQueueRouteImport.update({
-  id: '/queue',
-  path: '/queue',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedPacksRoute = AuthenticatedPacksRouteImport.update({
-  id: '/packs',
-  path: '/packs',
+const AuthenticatedCharactersRoute = AuthenticatedCharactersRouteImport.update({
+  id: '/characters',
+  path: '/characters',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedLibraryRoute = AuthenticatedLibraryRouteImport.update({
@@ -65,51 +55,24 @@ const AuthenticatedLibraryRoute = AuthenticatedLibraryRouteImport.update({
   path: '/library',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedCharactersRoute = AuthenticatedCharactersRouteImport.update({
-  id: '/characters',
-  path: '/characters',
+const AuthenticatedPacksRoute = AuthenticatedPacksRouteImport.update({
+  id: '/packs',
+  path: '/packs',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const ApiPublicObserverResultRoute = ApiPublicObserverResultRouteImport.update({
-  id: '/api/public/observer/result',
-  path: '/api/public/observer/result',
-  getParentRoute: () => rootRouteImport,
+const AuthenticatedQueueRoute = AuthenticatedQueueRouteImport.update({
+  id: '/queue',
+  path: '/queue',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const ApiPublicObserverNextRoute = ApiPublicObserverNextRouteImport.update({
-  id: '/api/public/observer/next',
-  path: '/api/public/observer/next',
-  getParentRoute: () => rootRouteImport,
+const AuthenticatedSetupRoute = AuthenticatedSetupRouteImport.update({
+  id: '/setup',
+  path: '/setup',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const ApiPublicObserverHeartbeatRoute =
-  ApiPublicObserverHeartbeatRouteImport.update({
-    id: '/api/public/observer/heartbeat',
-    path: '/api/public/observer/heartbeat',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicEvaluatorDatasetRoute =
-  ApiPublicEvaluatorDatasetRouteImport.update({
-    id: '/api/public/evaluator/dataset',
-    path: '/api/public/evaluator/dataset',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicAgentZipRoute = ApiPublicAgentZipRouteImport.update({
-  id: '/api/public/agent/zip',
-  path: '/api/public/agent/zip',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiPublicAgentStatusRoute = ApiPublicAgentStatusRouteImport.update({
-  id: '/api/public/agent/status',
-  path: '/api/public/agent/status',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiPublicAgentPacksRoute = ApiPublicAgentPacksRouteImport.update({
-  id: '/api/public/agent/packs',
-  path: '/api/public/agent/packs',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiPublicAgentIngestRoute = ApiPublicAgentIngestRouteImport.update({
-  id: '/api/public/agent/ingest',
-  path: '/api/public/agent/ingest',
+const ApiPublicAgentClaimRoute = ApiPublicAgentClaimRouteImport.update({
+  id: '/api/public/agent/claim',
+  path: '/api/public/agent/claim',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicAgentGenRoute = ApiPublicAgentGenRouteImport.update({
@@ -117,14 +80,51 @@ const ApiPublicAgentGenRoute = ApiPublicAgentGenRouteImport.update({
   path: '/api/public/agent/gen',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicAgentClaimRoute = ApiPublicAgentClaimRouteImport.update({
-  id: '/api/public/agent/claim',
-  path: '/api/public/agent/claim',
+const ApiPublicAgentIngestRoute = ApiPublicAgentIngestRouteImport.update({
+  id: '/api/public/agent/ingest',
+  path: '/api/public/agent/ingest',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicAgentJobStatusRoute = ApiPublicAgentJobStatusRouteImport.update({
-  id: '/api/public/agent/job/status',
-  path: '/api/public/agent/job/status',
+const ApiPublicAgentPacksRoute = ApiPublicAgentPacksRouteImport.update({
+  id: '/api/public/agent/packs',
+  path: '/api/public/agent/packs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicAgentStatusRoute = ApiPublicAgentStatusRouteImport.update({
+  id: '/api/public/agent/status',
+  path: '/api/public/agent/status',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicAgentZipRoute = ApiPublicAgentZipRouteImport.update({
+  id: '/api/public/agent/zip',
+  path: '/api/public/agent/zip',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicEvaluatorDatasetRoute =
+  ApiPublicEvaluatorDatasetRouteImport.update({
+    id: '/api/public/evaluator/dataset',
+    path: '/api/public/evaluator/dataset',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicObserverHeartbeatRoute =
+  ApiPublicObserverHeartbeatRouteImport.update({
+    id: '/api/public/observer/heartbeat',
+    path: '/api/public/observer/heartbeat',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicObserverNextRoute = ApiPublicObserverNextRouteImport.update({
+  id: '/api/public/observer/next',
+  path: '/api/public/observer/next',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicObserverResultRoute = ApiPublicObserverResultRouteImport.update({
+  id: '/api/public/observer/result',
+  path: '/api/public/observer/result',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicAgentJobClaimRoute = ApiPublicAgentJobClaimRouteImport.update({
+  id: '/api/public/agent/job/claim',
+  path: '/api/public/agent/job/claim',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicAgentJobHeartbeatRoute =
@@ -133,9 +133,9 @@ const ApiPublicAgentJobHeartbeatRoute =
     path: '/api/public/agent/job/heartbeat',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiPublicAgentJobClaimRoute = ApiPublicAgentJobClaimRouteImport.update({
-  id: '/api/public/agent/job/claim',
-  path: '/api/public/agent/job/claim',
+const ApiPublicAgentJobStatusRoute = ApiPublicAgentJobStatusRouteImport.update({
+  id: '/api/public/agent/job/status',
+  path: '/api/public/agent/job/status',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -297,18 +297,18 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/auth': {
-      id: '/auth'
-      path: '/auth'
-      fullPath: '/auth'
-      preLoaderRoute: typeof AuthRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/_authenticated': {
       id: '/_authenticated'
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/': {
@@ -318,25 +318,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/setup': {
-      id: '/_authenticated/setup'
-      path: '/setup'
-      fullPath: '/setup'
-      preLoaderRoute: typeof AuthenticatedSetupRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/queue': {
-      id: '/_authenticated/queue'
-      path: '/queue'
-      fullPath: '/queue'
-      preLoaderRoute: typeof AuthenticatedQueueRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/packs': {
-      id: '/_authenticated/packs'
-      path: '/packs'
-      fullPath: '/packs'
-      preLoaderRoute: typeof AuthenticatedPacksRouteImport
+    '/_authenticated/characters': {
+      id: '/_authenticated/characters'
+      path: '/characters'
+      fullPath: '/characters'
+      preLoaderRoute: typeof AuthenticatedCharactersRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/library': {
@@ -346,67 +332,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedLibraryRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/characters': {
-      id: '/_authenticated/characters'
-      path: '/characters'
-      fullPath: '/characters'
-      preLoaderRoute: typeof AuthenticatedCharactersRouteImport
+    '/_authenticated/packs': {
+      id: '/_authenticated/packs'
+      path: '/packs'
+      fullPath: '/packs'
+      preLoaderRoute: typeof AuthenticatedPacksRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/api/public/observer/result': {
-      id: '/api/public/observer/result'
-      path: '/api/public/observer/result'
-      fullPath: '/api/public/observer/result'
-      preLoaderRoute: typeof ApiPublicObserverResultRouteImport
-      parentRoute: typeof rootRouteImport
+    '/_authenticated/queue': {
+      id: '/_authenticated/queue'
+      path: '/queue'
+      fullPath: '/queue'
+      preLoaderRoute: typeof AuthenticatedQueueRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/api/public/observer/next': {
-      id: '/api/public/observer/next'
-      path: '/api/public/observer/next'
-      fullPath: '/api/public/observer/next'
-      preLoaderRoute: typeof ApiPublicObserverNextRouteImport
-      parentRoute: typeof rootRouteImport
+    '/_authenticated/setup': {
+      id: '/_authenticated/setup'
+      path: '/setup'
+      fullPath: '/setup'
+      preLoaderRoute: typeof AuthenticatedSetupRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/api/public/observer/heartbeat': {
-      id: '/api/public/observer/heartbeat'
-      path: '/api/public/observer/heartbeat'
-      fullPath: '/api/public/observer/heartbeat'
-      preLoaderRoute: typeof ApiPublicObserverHeartbeatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/evaluator/dataset': {
-      id: '/api/public/evaluator/dataset'
-      path: '/api/public/evaluator/dataset'
-      fullPath: '/api/public/evaluator/dataset'
-      preLoaderRoute: typeof ApiPublicEvaluatorDatasetRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/agent/zip': {
-      id: '/api/public/agent/zip'
-      path: '/api/public/agent/zip'
-      fullPath: '/api/public/agent/zip'
-      preLoaderRoute: typeof ApiPublicAgentZipRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/agent/status': {
-      id: '/api/public/agent/status'
-      path: '/api/public/agent/status'
-      fullPath: '/api/public/agent/status'
-      preLoaderRoute: typeof ApiPublicAgentStatusRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/agent/packs': {
-      id: '/api/public/agent/packs'
-      path: '/api/public/agent/packs'
-      fullPath: '/api/public/agent/packs'
-      preLoaderRoute: typeof ApiPublicAgentPacksRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/agent/ingest': {
-      id: '/api/public/agent/ingest'
-      path: '/api/public/agent/ingest'
-      fullPath: '/api/public/agent/ingest'
-      preLoaderRoute: typeof ApiPublicAgentIngestRouteImport
+    '/api/public/agent/claim': {
+      id: '/api/public/agent/claim'
+      path: '/api/public/agent/claim'
+      fullPath: '/api/public/agent/claim'
+      preLoaderRoute: typeof ApiPublicAgentClaimRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/agent/gen': {
@@ -416,18 +367,67 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicAgentGenRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/agent/claim': {
-      id: '/api/public/agent/claim'
-      path: '/api/public/agent/claim'
-      fullPath: '/api/public/agent/claim'
-      preLoaderRoute: typeof ApiPublicAgentClaimRouteImport
+    '/api/public/agent/ingest': {
+      id: '/api/public/agent/ingest'
+      path: '/api/public/agent/ingest'
+      fullPath: '/api/public/agent/ingest'
+      preLoaderRoute: typeof ApiPublicAgentIngestRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/agent/job/status': {
-      id: '/api/public/agent/job/status'
-      path: '/api/public/agent/job/status'
-      fullPath: '/api/public/agent/job/status'
-      preLoaderRoute: typeof ApiPublicAgentJobStatusRouteImport
+    '/api/public/agent/packs': {
+      id: '/api/public/agent/packs'
+      path: '/api/public/agent/packs'
+      fullPath: '/api/public/agent/packs'
+      preLoaderRoute: typeof ApiPublicAgentPacksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/agent/status': {
+      id: '/api/public/agent/status'
+      path: '/api/public/agent/status'
+      fullPath: '/api/public/agent/status'
+      preLoaderRoute: typeof ApiPublicAgentStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/agent/zip': {
+      id: '/api/public/agent/zip'
+      path: '/api/public/agent/zip'
+      fullPath: '/api/public/agent/zip'
+      preLoaderRoute: typeof ApiPublicAgentZipRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/evaluator/dataset': {
+      id: '/api/public/evaluator/dataset'
+      path: '/api/public/evaluator/dataset'
+      fullPath: '/api/public/evaluator/dataset'
+      preLoaderRoute: typeof ApiPublicEvaluatorDatasetRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/observer/heartbeat': {
+      id: '/api/public/observer/heartbeat'
+      path: '/api/public/observer/heartbeat'
+      fullPath: '/api/public/observer/heartbeat'
+      preLoaderRoute: typeof ApiPublicObserverHeartbeatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/observer/next': {
+      id: '/api/public/observer/next'
+      path: '/api/public/observer/next'
+      fullPath: '/api/public/observer/next'
+      preLoaderRoute: typeof ApiPublicObserverNextRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/observer/result': {
+      id: '/api/public/observer/result'
+      path: '/api/public/observer/result'
+      fullPath: '/api/public/observer/result'
+      preLoaderRoute: typeof ApiPublicObserverResultRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/agent/job/claim': {
+      id: '/api/public/agent/job/claim'
+      path: '/api/public/agent/job/claim'
+      fullPath: '/api/public/agent/job/claim'
+      preLoaderRoute: typeof ApiPublicAgentJobClaimRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/agent/job/heartbeat': {
@@ -437,11 +437,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicAgentJobHeartbeatRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/agent/job/claim': {
-      id: '/api/public/agent/job/claim'
-      path: '/api/public/agent/job/claim'
-      fullPath: '/api/public/agent/job/claim'
-      preLoaderRoute: typeof ApiPublicAgentJobClaimRouteImport
+    '/api/public/agent/job/status': {
+      id: '/api/public/agent/job/status'
+      path: '/api/public/agent/job/status'
+      fullPath: '/api/public/agent/job/status'
+      preLoaderRoute: typeof ApiPublicAgentJobStatusRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
