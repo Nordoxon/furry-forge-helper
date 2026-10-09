@@ -63,14 +63,34 @@ function SeriesPage() {
     <div className="flex min-h-dvh flex-col">
       <main className="mx-auto w-full max-w-2xl flex-1 space-y-5 p-4">
         <h1 className="text-xl font-semibold">Режим работы</h1>
-        <Tabs value={settings.data?.mode ?? "pack"} onValueChange={(v) => setMode.mutate(v)}>
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="pack">Паки 8+23</TabsTrigger>
-            <TabsTrigger value="series">Отдельные эксклюзивы</TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          {[
+            { v: "pack", t: "Паки 8+23", d: "Персонаж → 8 SFW + 23 NSFW → ZIP" },
+            { v: "series", t: "Отдельные эксклюзивы", d: "Серия персонажей в одной сцене" },
+          ].map((m) => {
+            const on = (settings.data?.mode ?? "pack") === m.v;
+            return (
+              <button
+                key={m.v}
+                type="button"
+                onClick={() => !on && setMode.mutate(m.v)}
+                className={`flex min-h-14 items-center gap-3 rounded-lg border-2 p-3 text-left transition-colors ${
+                  on ? "border-primary bg-primary/10" : "border-border"
+                }`}
+              >
+                <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${on ? "border-primary bg-primary" : "border-muted-foreground"}`}>
+                  {on && <Check className="h-3 w-3 text-primary-foreground" />}
+                </span>
+                <span className="min-w-0">
+                  <span className="block font-medium">{m.t}</span>
+                  <span className="block text-xs text-muted-foreground">{m.d}</span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
         <p className="text-xs text-muted-foreground">
-          Агент генерирует только для выбранного режима. Работает в режиме очереди Forge (FORGE_QUEUE = True).
+          Агент генерирует только для выбранного режима. Нужен FORGE_QUEUE = True.
         </p>
 
         {settings.data && <NumberingCard s={settings.data} />}
@@ -183,19 +203,25 @@ function NewSeries({ onCreated }: { onCreated: (id: string) => void }) {
   return (
     <section className="space-y-2 rounded-lg border border-border p-3">
       <h2 className="font-medium">Новая серия — общая сцена</h2>
-      <Input placeholder="Название сцены (Beach Sunset)" value={f.scene_name} onChange={set("scene_name")} />
-      <Input placeholder="Фон (beach, sunset, ocean)" value={f.scene_background} onChange={set("scene_background")} />
-      <Input placeholder="Поза/композиция (standing, looking at viewer)" value={f.scene_composition} onChange={set("scene_composition")} />
-      <Label className="text-xs">Промпт ({"{character}"}, {"{background}"}, {"{composition}"}, {"{scene}"})</Label>
+      <Label className="text-xs">Название сцены → {"{scene}"}</Label>
+      <Input placeholder="Beach Sunset" value={f.scene_name} onChange={set("scene_name")} />
+      <Label className="text-xs">Фон → {"{background}"}</Label>
+      <Input placeholder="beach, sunset, ocean" value={f.scene_background} onChange={set("scene_background")} />
+      <Label className="text-xs">Поза/композиция → {"{composition}"}</Label>
+      <Input placeholder="standing, looking at viewer" value={f.scene_composition} onChange={set("scene_composition")} />
+      <Label className="text-xs">Промпт</Label>
       <Textarea rows={3} value={f.prompt} onChange={set("prompt")} />
+      <p className="text-[11px] text-muted-foreground">
+        В промпт попадает только то, что указано метками в фигурных скобках. {"{character}"} — имя персонажа. Если метки в промпте нет, поле не используется.
+      </p>
       <Label className="text-xs">Негативный промпт</Label>
       <Textarea rows={2} value={f.negative_prompt} onChange={set("negative_prompt")} />
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         <Input placeholder="Ширина" value={f.width} onChange={set("width")} />
         <Input placeholder="Высота" value={f.height} onChange={set("height")} />
         <Input placeholder="Steps" value={f.steps} onChange={set("steps")} />
         <Input placeholder="CFG" value={f.cfg} onChange={set("cfg")} />
-        <Input placeholder="Sampler" value={f.sampler} onChange={set("sampler")} className="col-span-2" />
+        <Input placeholder="Sampler" value={f.sampler} onChange={set("sampler")} className="col-span-2 sm:col-span-2" />
       </div>
       <Label className="text-xs">Вариантов на персонажа</Label>
       <Input inputMode="numeric" value={f.variants} onChange={set("variants")} />
@@ -239,8 +265,8 @@ function SeriesView({ series }: { series: Series }) {
 
   return (
     <section className="space-y-3">
-      <div className="flex items-center justify-between gap-2">
-        <div>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="min-w-0">
           <h2 className="font-semibold">{series.scene_name || "Серия"}</h2>
           <p className="text-xs text-muted-foreground">
             {done}/{all.length} на DeviantArt · {series.variants} вар. на персонажа
