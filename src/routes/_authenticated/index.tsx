@@ -26,6 +26,9 @@ import { batchState, resetBatch, type BatchState } from "@/lib/batch";
 import { pauseGeneration, startGeneration } from "@/lib/generation";
 import { recallCharacter, rememberCharacter } from "@/lib/styles";
 import { SearchableSelect } from "@/components/searchable-select";
+import { SeriesTriage } from "@/components/series-triage";
+import { fetchSettings } from "@/lib/series";
+import { useSwipe } from "@/hooks/use-swipe";
 
 
 export const Route = createFileRoute("/_authenticated/")({
@@ -56,6 +59,7 @@ function TriagePage() {
 
   const inbox = useQuery({ queryKey: ["inbox"], queryFn: fetchInbox, refetchInterval: 20000 });
   const chars = useQuery({ queryKey: ["characters"], queryFn: fetchCharacters });
+  const userSettings = useQuery({ queryKey: ["user-settings"], queryFn: fetchSettings });
 
   // после обновления страницы открываем последнего выбранного персонажа
   useEffect(() => {
@@ -176,6 +180,25 @@ function TriagePage() {
     }
   }
 
+  const swipe = useSwipe(() => void act("rejected"), () => void act("approved"));
+
+  if (userSettings.data?.mode === "series") {
+    return (
+      <div className="flex min-h-screen flex-col">
+        <header className="sticky top-0 z-30 border-b border-border/60 bg-background/80 px-4 py-3 backdrop-blur-xl">
+          <div className="mx-auto max-w-2xl">
+            <h1 className="font-display text-lg font-semibold leading-tight">Отбор эксклюзивов</h1>
+            <p className="text-xs text-muted-foreground">Режим «Отдельные эксклюзивы» · переключить можно во вкладке «Эксклюзивы»</p>
+          </div>
+        </header>
+        <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-4">
+          <SeriesTriage />
+        </main>
+        <BottomNav />
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-30 border-b border-border/60 bg-background/80 px-4 py-3 backdrop-blur-xl">
@@ -273,7 +296,10 @@ function TriagePage() {
               <>
                 <KindPicker kind={kind} auto={batch.activeKind} onKind={setKindOverride} />
 
-                <Card item={current} />
+                <div {...swipe.handlers} style={swipe.style} className="touch-pan-y select-none">
+                  <Card item={current} />
+                </div>
+                <p className="mt-2 text-center text-[11px] text-muted-foreground">Свайп ← мимо · → годится</p>
 
                 {reasonsOpen && (
                   <ReasonPanel

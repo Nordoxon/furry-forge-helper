@@ -118,7 +118,7 @@ export function SeriesTriage() {
     <>
       <div className="mb-3 rounded-xl border border-border/60 bg-card px-3 py-2.5">
         <div className="flex items-center justify-between text-xs">
-          <span className="truncate font-medium">{series.name || series.scene_name || "Серия"}</span>
+          <span className="truncate font-medium">{series.title || series.scene_name || "Серия"}</span>
           <span className="text-muted-foreground">выбрано {ready}/{total}</span>
         </div>
         <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
