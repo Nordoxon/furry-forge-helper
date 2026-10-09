@@ -239,11 +239,63 @@ function NewSeries({ onCreated }: { onCreated: (id: string) => void }) {
   );
 }
 
+function EditScene({ series, onDone }: { series: Series; onDone: () => void }) {
+  const [f, setF] = useState({
+    scene_name: series.scene_name,
+    scene_background: series.scene_background,
+    scene_composition: series.scene_composition,
+    prompt: series.prompt,
+    negative_prompt: series.negative_prompt,
+    variants: String(series.variants),
+  });
+  const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF({ ...f, [k]: e.target.value });
+  const save = useMutation({
+    mutationFn: () =>
+      updateSeries(series.id, {
+        scene_name: f.scene_name,
+        title: f.scene_name,
+        scene_background: f.scene_background,
+        scene_composition: f.scene_composition,
+        prompt: f.prompt,
+        negative_prompt: f.negative_prompt,
+        variants: Math.max(1, Number(f.variants) || 3),
+      }),
+    onSuccess: () => {
+      toast.success("Сцена сохранена");
+      onDone();
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
+  return (
+    <div className="space-y-2 rounded-xl border border-border/60 bg-card p-3">
+      <Label className="text-xs">Название сцены → {"{scene}"}</Label>
+      <Input value={f.scene_name} onChange={set("scene_name")} />
+      <Label className="text-xs">Фон → {"{background}"}</Label>
+      <Input value={f.scene_background} onChange={set("scene_background")} />
+      <Label className="text-xs">Поза / композиция → {"{composition}"}</Label>
+      <Input value={f.scene_composition} onChange={set("scene_composition")} />
+      <Label className="text-xs">Промпт</Label>
+      <Textarea rows={3} value={f.prompt} onChange={set("prompt")} />
+      <Label className="text-xs">Негативный промпт</Label>
+      <Textarea rows={2} value={f.negative_prompt} onChange={set("negative_prompt")} />
+      <Label className="text-xs">Вариантов на персонажа</Label>
+      <Input type="number" min={1} value={f.variants} onChange={set("variants")} />
+      <p className="text-xs text-muted-foreground">Изменения действуют на новые генерации.</p>
+      <div className="flex gap-2">
+        <Button className="flex-1" onClick={() => save.mutate()} disabled={save.isPending}>Сохранить</Button>
+        <Button variant="outline" onClick={onDone}>Отмена</Button>
+      </div>
+    </div>
+  );
+}
+
+
 function SeriesView({ series }: { series: Series }) {
   const qc = useQueryClient();
   const items = useQuery({ queryKey: ["series-items", series.id], queryFn: () => fetchItems(series.id), refetchInterval: 8000 });
   const variants = useQuery({ queryKey: ["series-variants", series.id], queryFn: () => fetchVariants(series.id), refetchInterval: 8000 });
   const [more, setMore] = useState("");
+  const [editing, setEditing] = useState(false);
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["series-items", series.id] });
     qc.invalidateQueries({ queryKey: ["series-variants", series.id] });
