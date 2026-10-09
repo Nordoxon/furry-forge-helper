@@ -427,11 +427,30 @@ function ItemCard({ item, series, variants, onChange }: { item: SeriesItem; seri
               <RefreshCw className="h-4 w-4" />
             </Button>
           )}
-          {item.status === "waiting" && (
-            <Button size="sm" variant="ghost" onClick={() => act.mutate(() => deleteItem(item.id))}>
-              <Trash2 className="h-4 w-4" />
+          {item.selected_image_id && item.status !== "published" && (
+            <Button
+              size="sm"
+              variant="outline"
+              title="Отменить выбор"
+              onClick={() => {
+                if (confirm(`Отменить выбор для ${item.name}? Все варианты снова появятся в отборе.`))
+                  act.mutate(() => unchooseVariant(item));
+              }}
+            >
+              <Undo2 className="h-4 w-4" />
             </Button>
           )}
+          <Button
+            size="sm"
+            variant="ghost"
+            title="Удалить персонажа"
+            onClick={() => {
+              if (confirm(`Удалить ${item.name} из серии? Готовые картинки останутся.`))
+                act.mutate(() => deleteItem(item.id));
+            }}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
         </div>
       </div>
 
