@@ -160,10 +160,10 @@ function apply(ctx: CanvasRenderingContext2D, img: HTMLCanvasElement, r: Rect) {
     ctx.fillStyle = "#000";
     ctx.fillRect(r.x, r.y, r.w, r.h);
   } else if (r.tool === "blur") {
-    ctx.filter = `blur(${Math.max(8, img.naturalWidth / 40)}px)`;
+    ctx.filter = `blur(${Math.max(8, img.width / 40)}px)`;
     ctx.drawImage(img, 0, 0);
   } else {
-    const s = Math.max(8, Math.round(img.naturalWidth / 40));
+    const s = Math.max(8, Math.round(img.width / 40));
     const tmp = document.createElement("canvas");
     tmp.width = Math.max(1, Math.ceil(r.w / s));
     tmp.height = Math.max(1, Math.ceil(r.h / s));
