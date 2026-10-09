@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Loader2, Pause, Pencil, Play, Plus, RefreshCw, Trash2 } from "lucide-react";
+import { Check, Loader2, Pause, Pencil, Play, Plus, RefreshCw, Trash2, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +25,7 @@ import {
   saveSettings,
   signed,
   updateItem,
+  unchooseVariant,
   updateSeries,
   uploadCensored,
   type Series,
