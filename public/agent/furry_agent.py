@@ -60,8 +60,8 @@ SKIP_DIRS = {"upscaled", ".git", "__pycache__", "tmp", "temp"}  # папки, к
 SCAN_INTERVAL = 60                              # скрипт сам проверяет папку outputs на новые изображения (минимум раз в минуту)
 POLL_INTERVAL = 8                               # сек между опросами очереди
 
-PREVIEW_MAX_SIDE = 640                          # размер превью для телефона
-PREVIEW_QUALITY = 72
+PREVIEW_MAX_SIDE = 1216                         # полный размер кадра 832×1216, без уменьшения
+PREVIEW_QUALITY = 92
 
 A1111_URL = "http://127.0.0.1:7860"
 # Путь к webui-user.bat: если Stable Diffusion не отвечает, агент сам его запустит.
