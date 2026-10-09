@@ -2044,6 +2044,16 @@ def forge_queue_loop():
                 time.sleep(FORGE_UPLOAD_WAIT)
                 continue
 
+            # Stable Diffusion не отвечает — не берём задание, а пробуем запустить и ждём
+            try:
+                requests.get(f"{forge_base()}/sdapi/v1/progress?skip_current_image=true", timeout=10)
+            except requests.exceptions.RequestException:
+                log("Stable Diffusion не отвечает на", forge_base(),
+                    "— задания не беру. Проверьте, что он запущен с --api")
+                if not sd_try_launch():
+                    time.sleep(30)
+                continue
+
             res = forge_claim_job()
             if not res:
                 time.sleep(FORGE_ERROR_WAIT)
