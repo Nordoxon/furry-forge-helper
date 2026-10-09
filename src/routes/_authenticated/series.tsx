@@ -263,6 +263,15 @@ function SeriesView({ series }: { series: Series }) {
   const all = items.data ?? [];
   const done = all.filter((i) => i.status === "published").length;
 
+  const remove = useMutation({
+    mutationFn: () => deleteSeries(series.id),
+    onSuccess: () => {
+      toast.success("Сцена удалена");
+      qc.invalidateQueries({ queryKey: ["series"] });
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
+
   return (
     <section className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -272,11 +281,27 @@ function SeriesView({ series }: { series: Series }) {
             {done}/{all.length} на DeviantArt · {series.variants} вар. на персонажа
           </p>
         </div>
-        <Button onClick={() => toggle.mutate()} variant={series.status === "running" ? "outline" : "default"}>
-          {series.status === "running" ? <Pause className="mr-2 h-4 w-4" /> : <Play className="mr-2 h-4 w-4" />}
-          {series.status === "running" ? "Пауза" : "Запустить"}
-        </Button>
+        <div className="flex gap-2">
+          <Button size="icon" variant="outline" aria-label="Редактировать сцену" onClick={() => setEditing((v) => !v)}>
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button
+            size="icon"
+            variant="outline"
+            aria-label="Удалить сцену"
+            onClick={() => {
+              if (confirm("Удалить сцену и список её персонажей? Готовые картинки останутся.")) remove.mutate();
+            }}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+          <Button onClick={() => toggle.mutate()} variant={series.status === "running" ? "outline" : "default"}>
+            {series.status === "running" ? <Pause className="mr-2 h-4 w-4" /> : <Play className="mr-2 h-4 w-4" />}
+            {series.status === "running" ? "Пауза" : "Запустить"}
+          </Button>
+        </div>
       </div>
+      {editing && <EditScene series={series} onDone={() => { setEditing(false); refresh(); }} />}
       {all.map((it) => (
         <ItemCard
           key={it.id}

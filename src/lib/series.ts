@@ -113,6 +113,18 @@ export async function deleteItem(id: string) {
   if (error) throw error;
 }
 
+export async function deleteSeries(id: string) {
+  await supabase
+    .from("generation_jobs")
+    .update({ status: "CANCELLED" })
+    .in("status", ["QUEUED"])
+    .in("series_item_id", (await supabase.from("series_items").select("id").eq("series_id", id)).data?.map((i) => i.id) ?? []);
+  const r1 = await supabase.from("series_items").delete().eq("series_id", id);
+  if (r1.error) throw r1.error;
+  const r2 = await supabase.from("series").delete().eq("id", id);
+  if (r2.error) throw r2.error;
+}
+
 export function renderTitle(tpl: string, n: number, character: string) {
   return tpl.replaceAll("{number}", String(n)).replaceAll("{character}", character);
 }
