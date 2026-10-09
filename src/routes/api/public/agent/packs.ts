@@ -73,6 +73,7 @@ export const Route = createFileRoute("/api/public/agent/packs")({
             sfw_count: pack.sfw_count,
             nsfw_count: pack.nsfw_count,
             caption: `${pack.sfw_count} SFW + ${pack.nsfw_count} NSFW images`,
+            description: pack.description ?? "",
             cover: coverImg
               ? {
                   asset_name: coverImg.asset_name,

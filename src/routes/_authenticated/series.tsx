@@ -377,6 +377,23 @@ function SeriesView({ series }: { series: Series }) {
 
 type Variant = { id: string; preview_path: string | null; status: string };
 
+function DescriptionField({ value, onSave }: { value: string; onSave: (v: string) => void }) {
+  const [v, setV] = useState(value);
+  useEffect(() => setV(value), [value]);
+  const dirty = v !== value;
+  return (
+    <div className="space-y-1">
+      <Label className="text-xs">Описание для DeviantArt</Label>
+      <Textarea rows={3} value={v} onChange={(e) => setV(e.target.value)} placeholder="Текст будет передан на DA без изменений" />
+      {dirty && (
+        <Button size="sm" variant="outline" onClick={() => onSave(v)}>
+          Сохранить описание
+        </Button>
+      )}
+    </div>
+  );
+}
+
 function Thumb({ path, onClick, selected }: { path: string | null; onClick?: () => void; selected?: boolean }) {
   const [url, setUrl] = useState<string | null>(null);
   useEffect(() => {
@@ -473,6 +490,13 @@ function ItemCard({ item, series, variants, onChange }: { item: SeriesItem; seri
       )}
 
       {item.title && <p className="text-xs">{item.title}</p>}
+
+      {item.status !== "published" && (
+        <DescriptionField
+          value={(item as { description?: string }).description ?? ""}
+          onSave={(d) => act.mutate(() => updateItem(item.id, { description: d } as never))}
+        />
+      )}
 
       {item.status === "chosen" && (
         <Button size="sm" onClick={() => act.mutate(() => updateItem(item.id, { status: "selected" }))}>

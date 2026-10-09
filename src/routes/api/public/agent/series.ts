@@ -50,6 +50,7 @@ export const Route = createFileRoute("/api/public/agent/series")({
               item_id: it.id,
               preview_url: signed.signedUrl,
               title: it.title,
+              description: it.description ?? "",
               tags: it.tags,
               original_local_path: it.original_local_path,
             });

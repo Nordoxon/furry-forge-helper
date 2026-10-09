@@ -478,6 +478,18 @@ def da_token():
     return STATE["da"]["access_token"]
 
 
+def _da_description(text):
+    """DA описание — HTML: без этого переносы строк склеиваются, а < > & ломают текст."""
+    import html as _html
+    import re as _re
+    text = text.replace("\r\n", "\n").strip()
+    if not text:
+        return ""
+    if _re.search(r"<(br|p|b|i|a|div|span|strong|em)\b", text, _re.I):
+        return text  # пользователь вставил готовый HTML — передаём как есть
+    return _html.escape(text, quote=False).replace("\n", "<br />")
+
+
 def da_publish(path, job):
     """Загружаем файл в Sta.sh с нужным именем (без папок — прямо в корень)."""
     token = da_token()
@@ -488,8 +500,9 @@ def da_publish(path, job):
 
     data = {
         "title": title,
-        "artist_comments": job.get("description", ""),
+        "artist_comments": _da_description(job.get("description") or ""),
     }
+    log(f"DeviantArt: описание {len(data['artist_comments'])} симв.")
 
 
     for i, tag in enumerate(job.get("tags", [])[:30]):
@@ -1802,7 +1815,7 @@ def process_packs():
                         cover_path,
                         {
                             "asset_name": f"{pack.get('title') or label} cover",
-                            "description": pack.get("caption") or "",
+                            "description": pack.get("description") or "",
                             "tags": [],
                             "gallery_folder": "",
                             "is_mature": False,
@@ -2165,7 +2178,15 @@ def process_series():
                 resp.raise_for_status()
                 with open(tmp, "wb") as f:
                     f.write(resp.content)
-                url = da_publish(tmp, {"title": t.get("title"), "tags": t.get("tags") or [], "is_mature": False})
+                url = da_publish(
+                    tmp,
+                    {
+                        "title": t.get("title"),
+                        "description": t.get("description") or "",
+                        "tags": t.get("tags") or [],
+                        "is_mature": False,
+                    },
+                )
                 series_report(item_id, "published", deviation_url=url)
                 try:
                     os.remove(tmp)
