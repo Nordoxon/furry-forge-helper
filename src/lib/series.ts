@@ -155,6 +155,15 @@ export async function chooseVariant(item: SeriesItem, series: Series, imageId: s
     .neq("id", imageId);
 }
 
+/** Отмена выбора: варианты снова ждут решения, номер персонажа сохраняется. */
+export async function unchooseVariant(item: SeriesItem) {
+  await updateItem(item.id, { selected_image_id: null, status: "choosing", error: null });
+  await supabase
+    .from("images")
+    .update({ status: "new", reviewed_at: null, decision_source: null })
+    .eq("series_item_id", item.id);
+}
+
 export async function uploadCensored(item: SeriesItem, blob: Blob) {
   const user_id = await uid();
   const path = `${user_id}/series/${item.id}-${Date.now()}.jpg`;
