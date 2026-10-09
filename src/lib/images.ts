@@ -27,7 +27,7 @@ export async function fetchInbox() {
   const { data, error } = await supabase
     .from("images")
     .select("*")
-    .eq("status", "new")
+    .eq("status", "new").is("series_item_id", null)
     .order("created_at", { ascending: true })
     .limit(200);
   if (error) throw error;
