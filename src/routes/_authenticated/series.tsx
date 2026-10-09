@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Loader2, Pause, Play, Plus, RefreshCw, Trash2 } from "lucide-react";
+import { Check, Loader2, Pause, Pencil, Play, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +17,7 @@ import {
   chooseVariant,
   createSeries,
   deleteItem,
+  deleteSeries,
   fetchItems,
   fetchSeriesList,
   fetchSettings,
@@ -239,11 +240,63 @@ function NewSeries({ onCreated }: { onCreated: (id: string) => void }) {
   );
 }
 
+function EditScene({ series, onDone }: { series: Series; onDone: () => void }) {
+  const [f, setF] = useState({
+    scene_name: series.scene_name,
+    scene_background: series.scene_background,
+    scene_composition: series.scene_composition,
+    prompt: series.prompt,
+    negative_prompt: series.negative_prompt,
+    variants: String(series.variants),
+  });
+  const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF({ ...f, [k]: e.target.value });
+  const save = useMutation({
+    mutationFn: () =>
+      updateSeries(series.id, {
+        scene_name: f.scene_name,
+        title: f.scene_name,
+        scene_background: f.scene_background,
+        scene_composition: f.scene_composition,
+        prompt: f.prompt,
+        negative_prompt: f.negative_prompt,
+        variants: Math.max(1, Number(f.variants) || 3),
+      }),
+    onSuccess: () => {
+      toast.success("Сцена сохранена");
+      onDone();
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
+  return (
+    <div className="space-y-2 rounded-xl border border-border/60 bg-card p-3">
+      <Label className="text-xs">Название сцены → {"{scene}"}</Label>
+      <Input value={f.scene_name} onChange={set("scene_name")} />
+      <Label className="text-xs">Фон → {"{background}"}</Label>
+      <Input value={f.scene_background} onChange={set("scene_background")} />
+      <Label className="text-xs">Поза / композиция → {"{composition}"}</Label>
+      <Input value={f.scene_composition} onChange={set("scene_composition")} />
+      <Label className="text-xs">Промпт</Label>
+      <Textarea rows={3} value={f.prompt} onChange={set("prompt")} />
+      <Label className="text-xs">Негативный промпт</Label>
+      <Textarea rows={2} value={f.negative_prompt} onChange={set("negative_prompt")} />
+      <Label className="text-xs">Вариантов на персонажа</Label>
+      <Input type="number" min={1} value={f.variants} onChange={set("variants")} />
+      <p className="text-xs text-muted-foreground">Изменения действуют на новые генерации.</p>
+      <div className="flex gap-2">
+        <Button className="flex-1" onClick={() => save.mutate()} disabled={save.isPending}>Сохранить</Button>
+        <Button variant="outline" onClick={onDone}>Отмена</Button>
+      </div>
+    </div>
+  );
+}
+
+
 function SeriesView({ series }: { series: Series }) {
   const qc = useQueryClient();
   const items = useQuery({ queryKey: ["series-items", series.id], queryFn: () => fetchItems(series.id), refetchInterval: 8000 });
   const variants = useQuery({ queryKey: ["series-variants", series.id], queryFn: () => fetchVariants(series.id), refetchInterval: 8000 });
   const [more, setMore] = useState("");
+  const [editing, setEditing] = useState(false);
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["series-items", series.id] });
     qc.invalidateQueries({ queryKey: ["series-variants", series.id] });
@@ -263,6 +316,15 @@ function SeriesView({ series }: { series: Series }) {
   const all = items.data ?? [];
   const done = all.filter((i) => i.status === "published").length;
 
+  const remove = useMutation({
+    mutationFn: () => deleteSeries(series.id),
+    onSuccess: () => {
+      toast.success("Сцена удалена");
+      qc.invalidateQueries({ queryKey: ["series"] });
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
+
   return (
     <section className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -272,11 +334,27 @@ function SeriesView({ series }: { series: Series }) {
             {done}/{all.length} на DeviantArt · {series.variants} вар. на персонажа
           </p>
         </div>
-        <Button onClick={() => toggle.mutate()} variant={series.status === "running" ? "outline" : "default"}>
-          {series.status === "running" ? <Pause className="mr-2 h-4 w-4" /> : <Play className="mr-2 h-4 w-4" />}
-          {series.status === "running" ? "Пауза" : "Запустить"}
-        </Button>
+        <div className="flex gap-2">
+          <Button size="icon" variant="outline" aria-label="Редактировать сцену" onClick={() => setEditing((v) => !v)}>
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button
+            size="icon"
+            variant="outline"
+            aria-label="Удалить сцену"
+            onClick={() => {
+              if (confirm("Удалить сцену и список её персонажей? Готовые картинки останутся.")) remove.mutate();
+            }}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+          <Button onClick={() => toggle.mutate()} variant={series.status === "running" ? "outline" : "default"}>
+            {series.status === "running" ? <Pause className="mr-2 h-4 w-4" /> : <Play className="mr-2 h-4 w-4" />}
+            {series.status === "running" ? "Пауза" : "Запустить"}
+          </Button>
+        </div>
       </div>
+      {editing && <EditScene series={series} onDone={() => { setEditing(false); refresh(); }} />}
       {all.map((it) => (
         <ItemCard
           key={it.id}
