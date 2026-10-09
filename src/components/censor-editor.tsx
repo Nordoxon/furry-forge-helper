@@ -27,6 +27,7 @@ export function CensorEditor({
   const [tool, setTool] = useState<Tool>("blur");
   const [ready, setReady] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [small, setSmall] = useState(false);
 
   useEffect(() => {
     if (!open || !src) return;
@@ -43,6 +44,7 @@ export function CensorEditor({
       uctx.imageSmoothingQuality = "high";
       uctx.drawImage(img, 0, 0, up.width, up.height);
       imgRef.current = up;
+      setSmall(Math.max(img.naturalWidth, img.naturalHeight) < 1216);
       setReady(true);
     };
     img.src = src;
@@ -118,6 +120,11 @@ export function CensorEditor({
               if (r.w > 4 && r.h > 4) setRects((x) => [...x, r]);
             }}
           />
+        )}
+        {small && (
+          <p className="rounded-md border border-destructive p-2 text-xs text-destructive">
+            Этот кадр пришёл с ПК уменьшенным. Значит, на ПК работает старый скрипт: скачайте его заново с сайта и перезапустите.
+          </p>
         )}
         <p className="text-xs text-muted-foreground">Проведите пальцем, чтобы закрыть область.</p>
         <Button
