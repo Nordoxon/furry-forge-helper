@@ -70,9 +70,10 @@ export async function seriesPlan(supabase: DB, userId: string) {
     if (item.status !== "generating") {
       await supabase.from("series_items").update({ status: "generating" }).eq("id", item.id);
     }
+    const style = await resolveStyle(supabase, item.name, item.character_id);
     const settings = {
       ...((series.settings as Record<string, unknown>) ?? {}),
-      style: item.name,
+      style,
     };
     const prompt = renderSeriesPrompt(series.prompt, {
       character: item.name,
@@ -94,4 +95,24 @@ export async function seriesPlan(supabase: DB, userId: string) {
     } as const;
   }
   return { job: null, reason: "Все персонажи серии сгенерированы" } as const;
+}
+
+/** Имя в серии — «Blastoise», а в styles.csv стиль называется «CHAR — Blastoise». */
+export async function resolveStyle(supabase: DB, name: string, characterId: string | null) {
+  if (characterId) {
+    const { data } = await supabase.from("characters").select("gen_style").eq("id", characterId).maybeSingle();
+    if (data?.gen_style) return data.gen_style;
+  }
+  const { data: styles } = await supabase.from("gen_styles").select("name");
+  return matchStyle(name, (styles ?? []).map((s) => s.name));
+}
+
+export function matchStyle(name: string, styles: string[]) {
+  const n = name.trim().toLowerCase();
+  const strip = (s: string) => s.replace(/^\s*char\s*[—–-]\s*/i, "").trim().toLowerCase();
+  return (
+    styles.find((s) => s.toLowerCase() === n) ??
+    styles.find((s) => strip(s) === n) ??
+    `CHAR — ${name.trim()}`
+  );
 }
