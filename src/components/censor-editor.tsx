@@ -21,7 +21,7 @@ export function CensorEditor({
   onSave: (blob: Blob) => Promise<void>;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const imgRef = useRef<HTMLImageElement | null>(null);
+  const imgRef = useRef<HTMLCanvasElement | null>(null);
   const [rects, setRects] = useState<Rect[]>([]);
   const [draft, setDraft] = useState<Rect | null>(null);
   const [tool, setTool] = useState<Tool>("blur");
@@ -35,7 +35,15 @@ export function CensorEditor({
     const img = new Image();
     img.crossOrigin = "anonymous";
     img.onload = () => {
-      imgRef.current = img;
+      // превью из облака маленькое (640px) — растягиваем до размера генерации минимум 832×1216
+      const k = Math.max(1, 832 / img.naturalWidth, 1216 / img.naturalHeight);
+      const up = document.createElement("canvas");
+      up.width = Math.round(img.naturalWidth * k);
+      up.height = Math.round(img.naturalHeight * k);
+      const uctx = up.getContext("2d")!;
+      uctx.imageSmoothingQuality = "high";
+      uctx.drawImage(img, 0, 0, up.width, up.height);
+      imgRef.current = up;
       setReady(true);
     };
     img.src = src;
@@ -45,8 +53,8 @@ export function CensorEditor({
     const c = canvasRef.current;
     const img = imgRef.current;
     if (!c || !img || !ready) return;
-    c.width = img.naturalWidth;
-    c.height = img.naturalHeight;
+    c.width = img.width;
+    c.height = img.height;
     const ctx = c.getContext("2d")!;
     ctx.filter = "none";
     ctx.drawImage(img, 0, 0);
@@ -143,7 +151,7 @@ function norm(a: { x: number; y: number }, b: { x: number; y: number }, tool: To
   return { x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), w: Math.abs(a.x - b.x), h: Math.abs(a.y - b.y), tool };
 }
 
-function apply(ctx: CanvasRenderingContext2D, img: HTMLImageElement, r: Rect) {
+function apply(ctx: CanvasRenderingContext2D, img: HTMLCanvasElement, r: Rect) {
   ctx.save();
   ctx.beginPath();
   ctx.rect(r.x, r.y, r.w, r.h);
@@ -152,10 +160,10 @@ function apply(ctx: CanvasRenderingContext2D, img: HTMLImageElement, r: Rect) {
     ctx.fillStyle = "#000";
     ctx.fillRect(r.x, r.y, r.w, r.h);
   } else if (r.tool === "blur") {
-    ctx.filter = `blur(${Math.max(8, img.naturalWidth / 40)}px)`;
+    ctx.filter = `blur(${Math.max(8, img.width / 40)}px)`;
     ctx.drawImage(img, 0, 0);
   } else {
-    const s = Math.max(8, Math.round(img.naturalWidth / 40));
+    const s = Math.max(8, Math.round(img.width / 40));
     const tmp = document.createElement("canvas");
     tmp.width = Math.max(1, Math.ceil(r.w / s));
     tmp.height = Math.max(1, Math.ceil(r.h / s));
