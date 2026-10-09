@@ -35,8 +35,7 @@ export function CensorEditor({
     const img = new Image();
     img.crossOrigin = "anonymous";
     img.onload = () => {
-      // превью из облака маленькое (640px) — растягиваем до размера генерации минимум 832×1216
-      const k = Math.max(1, 832 / img.naturalWidth, 1216 / img.naturalHeight);
+      const k = 1; // без растягивания — берём кадр как есть
       const up = document.createElement("canvas");
       up.width = Math.round(img.naturalWidth * k);
       up.height = Math.round(img.naturalHeight * k);
