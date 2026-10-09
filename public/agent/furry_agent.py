@@ -61,7 +61,7 @@ SCAN_INTERVAL = 60                              # скрипт сам прове
 POLL_INTERVAL = 8                               # сек между опросами очереди
 
 PREVIEW_MAX_SIDE = 1216                         # полный размер кадра 832×1216, без уменьшения
-PREVIEW_QUALITY = 72
+PREVIEW_QUALITY = 92
 
 A1111_URL = "http://127.0.0.1:7860"
 # Путь к webui-user.bat: если Stable Diffusion не отвечает, агент сам его запустит.
