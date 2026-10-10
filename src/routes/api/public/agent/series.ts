@@ -51,7 +51,15 @@ export const Route = createFileRoute("/api/public/agent/series")({
               preview_url: signed.signedUrl,
               title: it.title,
               description: it.description ?? "",
-              tags: it.tags,
+              // теги для DA: текущие общие теги эксклюзивов + имя персонажа
+              tags: await (async () => {
+                const { data: st } = await supabase
+                  .from("user_settings")
+                  .select("default_tags")
+                  .eq("user_id", userId)
+                  .maybeSingle();
+                return Array.from(new Set([...(st?.default_tags ?? []), it.name.trim()].filter(Boolean))).slice(0, 30);
+              })(),
               original_local_path: it.original_local_path,
             });
           }
