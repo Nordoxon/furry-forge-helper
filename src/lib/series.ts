@@ -133,8 +133,13 @@ export function renderTitle(tpl: string, n: number, character: string) {
 export async function chooseVariant(item: SeriesItem, series: Series, imageId: string) {
   const settings = await fetchSettings();
   const n = item.exclusive_number ?? settings.next_exclusive_number;
-  // теги только для DeviantArt: общие теги эксклюзивов + имя персонажа
-  const tags = Array.from(new Set([...settings.default_tags, item.name.trim()].filter(Boolean))).slice(0, 30);
+  // теги для DeviantArt: у созданного персонажа — его личные; иначе общие теги + имя
+  let tags: string[] = [];
+  if (item.character_id) {
+    const { data } = await supabase.from("characters").select("base_tags").eq("id", item.character_id).maybeSingle();
+    tags = (data?.base_tags ?? []).slice(0, 30);
+  }
+  if (!tags.length) tags = Array.from(new Set([...settings.default_tags, item.name.trim()].filter(Boolean))).slice(0, 30);
   await updateItem(item.id, {
     selected_image_id: imageId,
     exclusive_number: n,
