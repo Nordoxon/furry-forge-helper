@@ -139,7 +139,8 @@ function NumberingCard({ s }: { s: { title_template: string; next_exclusive_numb
       <Input value={tpl} onChange={(e) => setTpl(e.target.value)} />
       <Label className="text-xs">Следующий номер эксклюзива</Label>
       <Input inputMode="numeric" value={num} onChange={(e) => setNum(e.target.value)} />
-      <Label className="text-xs">Теги по умолчанию (через запятую)</Label>
+      <Label className="text-xs">Общие теги для всех эксклюзивов (через запятую)</Label>
+      <p className="text-xs text-muted-foreground">Если персонаж не создан отдельно, к этим тегам добавится его имя.</p>
       <Input value={tags} onChange={(e) => setTags(e.target.value)} />
       <Button size="sm" onClick={() => save.mutate()} disabled={save.isPending}>Сохранить</Button>
     </section>
