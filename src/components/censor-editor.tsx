@@ -163,7 +163,7 @@ function apply(ctx: CanvasRenderingContext2D, img: HTMLCanvasElement, r: Rect) {
   ctx.rect(r.x, r.y, r.w, r.h);
   ctx.clip();
   if (r.tool === "black") {
-    ctx.fillStyle = "#000";
+    ctx.fillStyle = "#fff";
     ctx.fillRect(r.x, r.y, r.w, r.h);
   } else if (r.tool === "blur") {
     ctx.filter = `blur(${Math.max(8, img.width / 40)}px)`;
