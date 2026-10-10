@@ -138,6 +138,8 @@ export async function chooseVariant(item: SeriesItem, series: Series, imageId: s
     const { data } = await supabase.from("characters").select("base_tags").eq("id", item.character_id).maybeSingle();
     charTags = data?.base_tags ?? [];
   }
+  // нет своего персонажа с тегами — берём общие теги и добавляем имя персонажа
+  if (!charTags.length && item.name.trim()) charTags = [item.name.trim()];
   const tags = Array.from(new Set([...settings.default_tags, ...charTags])).slice(0, 30);
   await updateItem(item.id, {
     selected_image_id: imageId,
