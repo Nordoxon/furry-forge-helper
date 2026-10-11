@@ -2328,16 +2328,39 @@ def _step(name, fn, page, item_id):
             time.sleep(2)
 
 
+def _listing_manual(t, reason):
+    """Ручной путь: открываем работу в ОБЫЧНОМ браузере и папку с оригиналом. Продажу оформляете вы."""
+    log("листинг:", reason, "— переключаюсь на ручное оформление")
+    url = t.get("deviation_url") or "https://www.deviantart.com/"
+    try:
+        webbrowser.open(url)
+        log("листинг: работа открыта в вашем браузере:", url)
+    except Exception as e:
+        log("листинг: не удалось открыть браузер:", e)
+    orig = t.get("original_local_path")
+    if orig and os.path.exists(orig) and os.name == "nt":
+        try:
+            subprocess.Popen(f'explorer /select,"{orig}"')
+            log("листинг: оригинал для прикрепления:", orig)
+        except Exception:
+            pass
+    log("листинг: нажмите Sell Deviation → Exclusive, прикрепите оригинал и затем «Продажа оформлена» на сайте")
+    return "manual"
+
+
 def listing(t):
-    """Оформление продажи Exclusive через окно браузера (Playwright, свой профиль)."""
+    """Оформление продажи Exclusive через окно браузера (Playwright, свой профиль).
+    Возвращает "listed" или "manual" (если DeviantArt не пускает управляемое окно)."""
     item_id = t["item_id"]
+    if not LISTING_BROWSER:
+        return _listing_manual(t, "автозаполнение выключено (LISTING_BROWSER = False)")
     try:
         from playwright.sync_api import sync_playwright
     except ImportError:
-        raise RuntimeError("Не установлен Playwright: pip install playwright && playwright install chromium")
+        return _listing_manual(t, "не установлен Playwright")
     chrome = _real_chrome_exe()
     if not chrome:
-        raise RuntimeError("Google Chrome не найден. Установите Chrome с google.com/chrome и запустите скрипт снова")
+        return _listing_manual(t, "Google Chrome не найден")
     with sync_playwright() as pw:
         # Запускаем настоящий chrome.exe САМИ (как при ручном запуске),
         # а Playwright только подключается к нему по отладочному порту.
