@@ -1077,7 +1077,7 @@ def _gen_pw():
     return pw
 
 
-SCRIPT_VERSION = "2026-10-11 chrome-exe"
+SCRIPT_VERSION = "2026-10-11 chrome-cdp"
 
 
 def _real_chrome_exe():
@@ -2335,18 +2335,33 @@ def listing(t):
     if not chrome:
         raise RuntimeError("Google Chrome не найден. Установите Chrome с google.com/chrome и запустите скрипт снова")
     with sync_playwright() as pw:
-        try:
+        # Запускаем настоящий chrome.exe САМИ (как при ручном запуске),
+        # а Playwright только подключается к нему по отладочному порту.
+        cdp = "http://127.0.0.1:9223"
+        def cdp_up():
+            try:
+                requests.get(cdp + "/json/version", timeout=2).raise_for_status()
+                return True
+            except Exception:
+                return False
+        if not cdp_up():
             log("листинг: запускаю Google Chrome:", chrome)
-            ctx = pw.chromium.launch_persistent_context(
-                DA_PROFILE_DIR, headless=False, executable_path=chrome,
-                ignore_default_args=["--enable-automation"],
-                args=["--disable-blink-features=AutomationControlled", "--no-first-run", "--no-default-browser-check"],
-                viewport={"width": 1366, "height": 900},
+            os.makedirs(DA_PROFILE_DIR, exist_ok=True)
+            subprocess.Popen(
+                [chrome, "--remote-debugging-port=9223", f"--user-data-dir={os.path.abspath(DA_PROFILE_DIR)}",
+                 "--no-first-run", "--no-default-browser-check", "about:blank"],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
             )
+            end = time.time() + 30
+            while time.time() < end and not cdp_up():
+                time.sleep(1)
+        try:
+            browser = pw.chromium.connect_over_cdp(cdp, timeout=20000)
+            ctx = browser.contexts[0] if browser.contexts else browser.new_context()
         except Exception as e:
-            log(f"Ошибка запуска Chrome: {e}")
-            raise RuntimeError(f"Не удалось запустить Google Chrome ({chrome}): {str(e)[:160]}. Закройте окна Chrome с профилем da_profile и повторите")
-        page = ctx.pages[0] if ctx.pages else ctx.new_page()
+            log(f"Ошибка подключения к Chrome: {e}")
+            raise RuntimeError("Не удалось подключиться к Google Chrome. Закройте окно Chrome с профилем da_profile (или удалите папку da_profile) и повторите")
+        page = ctx.new_page()
         page.set_default_timeout(LISTING_STEP_TIMEOUT)
         try:
             _step("открываю работу", lambda: page.goto(t["deviation_url"], wait_until="domcontentloaded"), page, item_id)
