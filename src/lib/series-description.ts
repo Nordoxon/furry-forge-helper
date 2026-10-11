@@ -18,3 +18,17 @@ export function rectsToPreset(rects: { x: number; y: number; w: number; h: numbe
   const p = (v: number, d: number) => Math.round((v / d) * 10000) / 100;
   return rects.map((r) => ({ x1: p(r.x, width), y1: p(r.y, height), x2: p(r.x + r.w, width), y2: p(r.y + r.h, height) }));
 }
+
+/** Ссылка на вручную опубликованную работу: https:// на deviantart.com или sta.sh. Возвращает обрезанную ссылку или null. */
+export function validateDeviationUrl(raw: string): string | null {
+  const v = raw.trim();
+  try {
+    const u = new URL(v);
+    if (u.protocol !== "https:") return null;
+    const h = u.hostname.toLowerCase();
+    const ok = h === "deviantart.com" || h.endsWith(".deviantart.com") || h === "sta.sh" || h.endsWith(".sta.sh");
+    return ok ? v : null;
+  } catch {
+    return null;
+  }
+}

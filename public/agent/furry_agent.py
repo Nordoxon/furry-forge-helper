@@ -2346,30 +2346,74 @@ def listing(t):
             _step("allow resales", lambda: toggle("resale", t.get("allow_resales")), page, item_id)
             _step("early access", lambda: toggle("early access", t.get("early_access")), page, item_id)
 
+            form_url = page.url
+
             def attach():
                 inputs = page.locator('input[type="file"]')
                 if inputs.count() and t.get("original_local_path") and os.path.exists(t["original_local_path"]):
                     inputs.first.set_input_files(t["original_local_path"])
                     return
-                raise RuntimeError("в форме нет поля для файла оригинала")
+                # путь со ссылкой: ищем черновик SOURCE — {title} на sta.sh в той же сессии
+                want = f"SOURCE — {t.get('title') or ''}"
+                href = t.get("source_stash_url") or ""
+                if not href:
+                    src_page = ctx.new_page()
+                    try:
+                        src_page.goto("https://sta.sh/", wait_until="domcontentloaded")
+                        src_page.wait_for_timeout(3000)
+                        link = src_page.get_by_text(want, exact=False).first
+                        link.wait_for(timeout=LISTING_STEP_TIMEOUT)
+                        href = link.evaluate("el => (el.closest('a') || el.querySelector('a') || {}).href || ''")
+                    finally:
+                        src_page.close()
+                page.bring_to_front()
+                if page.url != form_url:
+                    page.goto(form_url, wait_until="domcontentloaded")
+                if not href.startswith("https://sta.sh/"):
+                    _shot(page, item_id)
+                    raise RuntimeError("не найден ни файловый input, ни поле URL исходника")
+                field = page.locator('input[type="url"]')
+                if not field.count():
+                    field = page.locator(
+                        'input[type="text"][placeholder*="URL" i], input[type="text"][placeholder*="link" i], input[type="text"][placeholder*="sta.sh" i], '
+                        'input[type="text"][aria-label*="URL" i], input[type="text"][aria-label*="link" i], input[type="text"][aria-label*="sta.sh" i]'
+                    )
+                if not field.count():
+                    for lbl in ("URL", "link", "sta.sh"):
+                        f2 = page.get_by_label(lbl, exact=False)
+                        if f2.count():
+                            field = f2
+                            break
+                if not field.count():
+                    _shot(page, item_id)
+                    raise RuntimeError("не найден ни файловый input, ни поле URL исходника")
+                field.first.fill(href)
 
             _step("прикрепляю оригинал", attach, page, item_id)
 
             if t.get("listing_confirm", True):
-                log("листинг: форма заполнена. Проверьте и нажмите финальную кнопку сами (жду до 10 минут)")
-                end = time.time() + LISTING_CONFIRM_WAIT
-                ok = False
-                while time.time() < end:
-                    if page.get_by_text("for sale", exact=False).count() or page.get_by_text("Exclusive", exact=False).count() and not page.locator('input[type="file"]').count():
-                        ok = True
-                        break
-                    time.sleep(3)
-                if not ok:
-                    _shot(page, item_id)
-                    raise RuntimeError("финальная кнопка не нажата за 10 минут")
+                log("листинг: форма заполнена. Проверьте и нажмите финальную кнопку сами")
             else:
                 _step("финальная отправка", lambda: page.get_by_role("button", name="Submit").last.click(), page, item_id)
                 page.wait_for_timeout(5000)
+
+            # успех = на странице работы появилась кнопка End Sale (жду до 10 минут)
+            end = time.time() + LISTING_CONFIRM_WAIT
+            ok = False
+            while time.time() < end:
+                try:
+                    page.goto(t["deviation_url"], wait_until="domcontentloaded")
+                    page.wait_for_timeout(4000)
+                    if page.get_by_role("button", name="End Sale").count() or page.get_by_text("End Sale", exact=True).count():
+                        ok = True
+                        break
+                except Exception:
+                    pass
+                time.sleep(15)
+            if not ok:
+                _shot(page, item_id)
+                raise RuntimeError("кнопка End Sale не появилась за 10 минут")
+            log("листинг: подтвердилось кнопкой End Sale")
             log("листинг: готово")
         finally:
             try:
