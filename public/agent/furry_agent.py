@@ -167,8 +167,25 @@ def save_state(state):
 STATE = load_state()
 
 
+LOG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "agent_log.txt")
+LOG_MAX_BYTES = 5 * 1024 * 1024  # 5 МБ, затем файл переименовывается в agent_log.old.txt
+_log_lock = threading.Lock()
+
+
 def log(*a):
-    print(time.strftime("[%H:%M:%S]"), *a, flush=True)
+    line = " ".join([time.strftime("[%H:%M:%S]")] + [str(x) for x in a])
+    print(line, flush=True)
+    try:
+        with _log_lock:
+            if os.path.exists(LOG_FILE) and os.path.getsize(LOG_FILE) > LOG_MAX_BYTES:
+                old = LOG_FILE.replace(".txt", ".old.txt")
+                if os.path.exists(old):
+                    os.remove(old)
+                os.replace(LOG_FILE, old)
+            with open(LOG_FILE, "a", encoding="utf-8") as f:
+                f.write(time.strftime("%Y-%m-%d ") + line + "\n")
+    except Exception:
+        pass
 
 
 # ─────────────────────── 1. отправка превью ──────────────────────
@@ -496,7 +513,7 @@ def da_publish(path, job):
 
     title = job.get("asset_name") or job.get("title") or os.path.splitext(os.path.basename(path))[0]
     tpl = job.get("template") or {}
-    stack = ""
+    stack = job.get("gallery_folder") or ""
 
     data = {
         "title": title,
@@ -551,6 +568,7 @@ def da_publish(path, job):
     if not itemid:
         raise RuntimeError(f"stash/submit не вернул itemid: {res}")
     log("DeviantArt: в Sta.sh, itemid =", itemid, "стек:", res.get("stackid", "-"))
+    job["_itemid"] = itemid
 
     if not tpl.get("auto_publish"):
         if tpl.get("add_watermark") or tpl.get("display_resolution"):
@@ -558,7 +576,7 @@ def da_publish(path, job):
                 "DeviantArt: размер показа и водяной знак применяются API только "
                 "при публикации; в черновике Sta.sh их нужно выбрать вручную."
             )
-        return "https://sta.sh/"
+        return "" if job.get("_series") else "https://sta.sh/"
 
 
     # Автопубликация в галерею (включена в шаблоне)
@@ -610,7 +628,7 @@ def da_publish(path, job):
 
     if stack:
 
-        fid = da_folder_id(token, stack)
+        fid = da_folder_ensure(token, stack) if job.get("_series") else da_folder_id(token, stack)
         if fid:
             pub["galleryids[0]"] = fid
         else:
@@ -618,7 +636,7 @@ def da_publish(path, job):
 
     log(f"DeviantArt: публикую «{title}»")
     pres = da_publish_request(token, pub)
-    url = pres.get("url") or "https://www.deviantart.com/"
+    url = pres.get("url") or ("" if job.get("_series") else "https://www.deviantart.com/")
     log("DeviantArt: опубликовано ->", url)
     return url
 
@@ -2149,8 +2167,219 @@ def series_report(item_id, status, **extra):
         log("серия: не удалось отправить отчёт:", e)
 
 
+# ───────── эксклюзивы: автоцензура, оригинал в Sta.sh, листинг ─────────
+CENSOR_PIXEL_BLOCK = 24        # средний размер квадрата пикселизации (px)
+CENSOR_BLUR_RADIUS = 12        # радиус размытия
+LISTING_LOGIN_WAIT = 300       # сколько ждать входа в DeviantArt в окне браузера (сек)
+LISTING_CONFIRM_WAIT = 600     # сколько ждать, пока вы сами нажмёте финальную кнопку (сек)
+LISTING_STEP_TIMEOUT = 30000   # таймаут одного шага в браузере (мс)
+DA_PROFILE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "da_profile")
+DA_SCREENSHOTS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "da_screenshots")
+
+
+def censor_image(src_bytes, preset, style, watermark, out_path):
+    from PIL import ImageDraw, ImageFilter, ImageFont
+    im = Image.open(io.BytesIO(src_bytes)).convert("RGB")
+    w, h = im.size
+    for r in preset or []:
+        x1 = int(max(0, min(r["x1"], r["x2"])) * w / 100)
+        x2 = int(min(100, max(r["x1"], r["x2"])) * w / 100)
+        y1 = int(max(0, min(r["y1"], r["y2"])) * h / 100)
+        y2 = int(min(100, max(r["y1"], r["y2"])) * h / 100)
+        if x2 - x1 < 2 or y2 - y1 < 2:
+            continue
+        box = (x1, y1, x2, y2)
+        reg = im.crop(box)
+        if style == "blur":
+            reg = reg.filter(ImageFilter.GaussianBlur(CENSOR_BLUR_RADIUS))
+        else:
+            bw = max(1, (x2 - x1) // CENSOR_PIXEL_BLOCK)
+            bh = max(1, (y2 - y1) // CENSOR_PIXEL_BLOCK)
+            reg = reg.resize((bw, bh), Image.BILINEAR).resize((x2 - x1, y2 - y1), Image.NEAREST)
+        im.paste(reg, box)
+    if watermark:
+        layer = Image.new("RGBA", im.size, (0, 0, 0, 0))
+        d = ImageDraw.Draw(layer)
+        size = max(16, w // 14)
+        try:
+            font = ImageFont.truetype("arialbd.ttf", size)
+        except Exception:
+            try:
+                font = ImageFont.truetype("DejaVuSans-Bold.ttf", size)
+            except Exception:
+                font = ImageFont.load_default()
+        tb = d.textbbox((0, 0), watermark, font=font)
+        tw, th = tb[2] - tb[0], tb[3] - tb[1]
+        pos = (w - tw - size // 2, h - th - size // 2)
+        d.text(pos, watermark, font=font, fill=(255, 255, 255, 170), stroke_width=max(1, size // 14), stroke_fill=(0, 0, 0, 110))
+        im = Image.alpha_composite(im.convert("RGBA"), layer).convert("RGB")
+    im.save(out_path, "JPEG", quality=92)
+
+
+def _series_job(t):
+    return {
+        "_series": True,
+        "title": t.get("title"),
+        "description": t.get("description") or "",
+        "tags": t.get("tags") or [],
+        "is_mature": bool(t.get("is_mature")),
+        "gallery_folder": t.get("gallery_folder") or "",
+        "template": {
+            "is_mature": bool(t.get("is_mature")),
+            "mature_level": t.get("mature_level") or "moderate",
+            "mature_classification": t.get("mature_classification") or [],
+            "is_ai_generated": True,
+            "noai": False,
+            "allow_comments": True,
+            "auto_publish": bool(t.get("auto_publish")),
+        },
+    }
+
+
+def _publish_preview(item_id, path, t):
+    job = _series_job(t)
+    url = da_publish(path, job)
+    itemid = job.get("_itemid")
+    if t.get("auto_publish") and url:
+        series_report(item_id, "preview_published", deviation_url=url, preview_stash_item_id=itemid)
+        log("серия: превью опубликовано ->", url)
+    else:
+        series_report(item_id, "preview_draft", preview_stash_item_id=itemid)
+        log("серия: превью оставлено черновиком в Sta.sh, itemid =", itemid)
+
+
+def source_upload(t):
+    item_id = t["item_id"]
+    state = STATE.setdefault("series_source", {})
+    if state.get(item_id):  # уже загружали — не дублируем
+        series_report(item_id, "source_uploaded", itemid=state[item_id])
+        return
+    token = da_token()
+    path = t["local_path"]
+    with open(path, "rb") as f:
+        r = requests.post(
+            "https://www.deviantart.com/api/v1/oauth2/stash/submit",
+            headers={"Authorization": f"Bearer {token}"},
+            data={"title": t.get("title") or "SOURCE", "is_ai_generated": "1", "noai": "0"},
+            files={"file": (os.path.basename(path), f, "image/png")},
+            timeout=900,
+        )
+    res = _da_check(r, "stash/submit (оригинал)")
+    itemid = res.get("itemid")
+    if not itemid:
+        raise RuntimeError(f"stash/submit не вернул itemid: {res}")
+    state[item_id] = itemid
+    save_state(STATE)
+    series_report(item_id, "source_uploaded", itemid=itemid, url="")
+    log("серия: оригинал загружен в Sta.sh, itemid =", itemid)
+
+
+def _shot(page, item_id):
+    try:
+        os.makedirs(DA_SCREENSHOTS, exist_ok=True)
+        p = os.path.join(DA_SCREENSHOTS, f"{item_id}_error.png")
+        page.screenshot(path=p)
+        log("листинг: скриншот ошибки ->", p)
+    except Exception:
+        pass
+
+
+def _step(name, fn, page, item_id):
+    """Шаг листинга: таймаут 30 сек, один повтор, затем понятная ошибка."""
+    for attempt in (1, 2):
+        try:
+            log(f"листинг: {name}" + (" (повтор)" if attempt == 2 else ""))
+            return fn()
+        except Exception as e:
+            if attempt == 2:
+                _shot(page, item_id)
+                raise RuntimeError(f"шаг «{name}» не удался: {str(e)[:200]}")
+            time.sleep(2)
+
+
+def listing(t):
+    """Оформление продажи Exclusive через окно браузера (Playwright, свой профиль)."""
+    item_id = t["item_id"]
+    try:
+        from playwright.sync_api import sync_playwright
+    except ImportError:
+        raise RuntimeError("Не установлен Playwright: pip install playwright && playwright install chromium")
+    with sync_playwright() as pw:
+        ctx = pw.chromium.launch_persistent_context(DA_PROFILE_DIR, headless=False, viewport={"width": 1366, "height": 900})
+        page = ctx.pages[0] if ctx.pages else ctx.new_page()
+        page.set_default_timeout(LISTING_STEP_TIMEOUT)
+        try:
+            _step("открываю работу", lambda: page.goto(t["deviation_url"], wait_until="domcontentloaded"), page, item_id)
+
+            def logged_in():
+                return page.locator('a[href*="/notifications"], [data-hook="user_link"], img[alt*="avatar" i]').count() > 0
+
+            if not logged_in():
+                log("листинг: Войдите в DeviantArt в открывшемся окне (жду до 5 минут)")
+                end = time.time() + LISTING_LOGIN_WAIT
+                while time.time() < end and not logged_in():
+                    time.sleep(3)
+                if not logged_in():
+                    _shot(page, item_id)
+                    raise RuntimeError("не выполнен вход в DeviantArt в окне браузера")
+                page.goto(t["deviation_url"], wait_until="domcontentloaded")
+
+            _step("кнопка Sell Deviation", lambda: page.get_by_role("button", name="Sell Deviation").first.click(), page, item_id)
+            _step("вариант Exclusives", lambda: page.get_by_text("Exclusive", exact=False).first.click(), page, item_id)
+
+            sale = {"fixed": "Fixed", "offers": "Offer", "both": "both"}.get(t.get("sale_type"), "Fixed")
+            _step(f"тип продажи ({sale})", lambda: page.get_by_text(sale, exact=False).first.click(), page, item_id)
+            _step("цена", lambda: page.get_by_role("spinbutton").first.fill(str(t.get("price"))), page, item_id)
+
+            def topic():
+                box = page.get_by_role("combobox").first
+                box.click()
+                page.get_by_text(t.get("topic") or "Adoptable", exact=False).first.click()
+
+            _step("topic", topic, page, item_id)
+
+            def toggle(label, want):
+                cb = page.get_by_label(label, exact=False).first
+                if cb.is_checked() != bool(want):
+                    cb.click()
+
+            _step("allow resales", lambda: toggle("resale", t.get("allow_resales")), page, item_id)
+            _step("early access", lambda: toggle("early access", t.get("early_access")), page, item_id)
+
+            def attach():
+                inputs = page.locator('input[type="file"]')
+                if inputs.count() and t.get("original_local_path") and os.path.exists(t["original_local_path"]):
+                    inputs.first.set_input_files(t["original_local_path"])
+                    return
+                raise RuntimeError("в форме нет поля для файла оригинала")
+
+            _step("прикрепляю оригинал", attach, page, item_id)
+
+            if t.get("listing_confirm", True):
+                log("листинг: форма заполнена. Проверьте и нажмите финальную кнопку сами (жду до 10 минут)")
+                end = time.time() + LISTING_CONFIRM_WAIT
+                ok = False
+                while time.time() < end:
+                    if page.get_by_text("for sale", exact=False).count() or page.get_by_text("Exclusive", exact=False).count() and not page.locator('input[type="file"]').count():
+                        ok = True
+                        break
+                    time.sleep(3)
+                if not ok:
+                    _shot(page, item_id)
+                    raise RuntimeError("финальная кнопка не нажата за 10 минут")
+            else:
+                _step("финальная отправка", lambda: page.get_by_role("button", name="Submit").last.click(), page, item_id)
+                page.wait_for_timeout(5000)
+            log("листинг: готово")
+        finally:
+            try:
+                ctx.close()
+            except Exception:
+                pass
+
+
 def process_series():
-    """Апскейл выбранного варианта (оригинал остаётся на ПК) и загрузка цензурного превью на DA."""
+    """Цепочка эксклюзива: апскейл → цензура → превью на DA → оригинал в Sta.sh → листинг."""
     try:
         r = requests.get(f"{API_BASE}/api/public/agent/series", headers=HEADERS, timeout=30)
         if r.status_code == 404:
@@ -2162,39 +2391,43 @@ def process_series():
         return False
     for t in tasks:
         item_id = t["item_id"]
+        kind = t["type"]
         try:
-            if t["type"] == "upscale":
+            os.makedirs(EXCLUSIVES_DIR, exist_ok=True)
+            if kind == "upscale":
                 log("серия: апскейл", t.get("out_name"))
                 up = upscale(t["local_path"], t.get("out_name"))
-                os.makedirs(EXCLUSIVES_DIR, exist_ok=True)
                 dst = os.path.join(EXCLUSIVES_DIR, os.path.basename(up))
                 shutil.move(up, dst)
                 series_report(item_id, "upscaled", original_local_path=dst)
                 log("серия: оригинал сохранён ->", dst)
-            elif t["type"] == "publish":
+            elif kind in ("publish", "censor_and_publish"):
                 tmp = os.path.join(EXCLUSIVES_DIR, f"preview_{item_id}.jpg")
-                os.makedirs(EXCLUSIVES_DIR, exist_ok=True)
                 resp = requests.get(t["preview_url"], timeout=120)
                 resp.raise_for_status()
-                with open(tmp, "wb") as f:
-                    f.write(resp.content)
-                url = da_publish(
-                    tmp,
-                    {
-                        "title": t.get("title"),
-                        "description": t.get("description") or "",
-                        "tags": t.get("tags") or [],
-                        "is_mature": False,
-                    },
-                )
-                series_report(item_id, "published", deviation_url=url)
+                if kind == "censor_and_publish":
+                    censor_image(resp.content, t.get("censor_preset"), t.get("censor_style"), t.get("watermark"), tmp)
+                    series_report(item_id, "censor_done")
+                    log("серия: автоцензура готова")
+                else:
+                    with open(tmp, "wb") as f:
+                        f.write(resp.content)
+                _publish_preview(item_id, tmp, t)
                 try:
                     os.remove(tmp)
                 except OSError:
                     pass
+            elif kind == "source_upload":
+                source_upload(t)
+            elif kind == "listing":
+                listing(t)
+                series_report(item_id, "listing_result", listing_status="listed")
         except Exception as e:
             log("серия: ошибка", e)
-            series_report(item_id, "error", error=str(e)[:300])
+            if kind in ("source_upload", "listing"):
+                series_report(item_id, "listing_result", listing_status="failed", error=str(e)[:300])
+            else:
+                series_report(item_id, "error", error=str(e)[:300])
     return bool(tasks)
 
 
