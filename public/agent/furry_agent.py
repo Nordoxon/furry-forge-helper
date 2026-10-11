@@ -88,18 +88,16 @@ UPSCALE_TIMEOUT = 900          # таймаут самого запроса ап
 
 # Эксклюзив (платная работа). DeviantArt не даёт выставить цену через API —
 # «Submit as Exclusive» + цена доступны только в окне публикации на сайте.
-# Поэтому эксклюзивы агент готовит в Sta.sh (имя, теги, описание, стек),
-# а цену и исходник вы задаёте вручную в окне Edit deviation.
+# Агент готовит работу (превью на DA) и оригинал в Sta.sh; цену, тип продажи
+# и прикрепление исходника вы задаёте сами в форме Exclusive в своём браузере.
 
 
 
 DA_CLIENT_ID = ""                               # DeviantArt application client_id
 DA_CLIENT_SECRET = ""                           # DeviantArt application client_secret
 DA_REDIRECT = "http://localhost:8721/callback"  # добавьте этот URI в настройках приложения
-LISTING_BROWSER = True        # True — скрипт пробует заполнить форму продажи сам в окне Chrome.
-                              # Если DeviantArt отвечает 403, скрипт сам переходит на ручной путь.
-                              # False — сразу ручной путь: работа открывается в вашем обычном браузере,
-                              # папка с оригиналом — в проводнике, а вы жмёте «Продажа оформлена» на сайте.
+LISTING_BROWSER = False       # True не поддерживается — DeviantArt отвечает 403 любому браузеру под
+                              # управлением скрипта (проверено 11.10.2026 на Chromium и на chrome.exe с CDP-портом).
 
 # ── АВТОГЕНЕРАЦИЯ (обход лимита batch count = 100) ──
 # Агент сам гоняет txt2img в Automatic1111 порциями и перезапускает цикл,
@@ -1081,7 +1079,7 @@ def _gen_pw():
     return pw
 
 
-SCRIPT_VERSION = "2026-10-11 chrome-cdp-403fallback"
+SCRIPT_VERSION = "2026-10-11 manual-listing"
 
 
 def _real_chrome_exe():
@@ -2335,6 +2333,8 @@ def _listing_manual(t, reason):
     try:
         webbrowser.open(url)
         log("листинг: работа открыта в вашем браузере:", url)
+        webbrowser.open("https://sta.sh/")
+        log("листинг: открыта вкладка sta.sh")
     except Exception as e:
         log("листинг: не удалось открыть браузер:", e)
     orig = t.get("original_local_path")
@@ -2344,214 +2344,15 @@ def _listing_manual(t, reason):
             log("листинг: оригинал для прикрепления:", orig)
         except Exception:
             pass
-    log("листинг: нажмите Sell Deviation → Exclusive, прикрепите оригинал и затем «Продажа оформлена» на сайте")
+    log("листинг: чек-лист — цена:", t.get("price"), "| тип продажи:", t.get("sale_type"), "| topic:", t.get("topic"))
+    log("листинг: оригинал:", orig or "—", "| черновик на sta.sh: «SOURCE — " + str(t.get("title") or "") + "» (Ctrl+F)")
+    log("листинг: нажмите Sell Deviation → Exclusives, прикрепите оригинал и затем «Продажа оформлена» на сайте")
     return "manual"
 
 
 def listing(t):
-    """Оформление продажи Exclusive через окно браузера (Playwright, свой профиль).
-    Возвращает "listed" или "manual" (если DeviantArt не пускает управляемое окно)."""
-    item_id = t["item_id"]
-    if not LISTING_BROWSER:
-        return _listing_manual(t, "автозаполнение выключено (LISTING_BROWSER = False)")
-    try:
-        from playwright.sync_api import sync_playwright
-    except ImportError:
-        return _listing_manual(t, "не установлен Playwright")
-    chrome = _real_chrome_exe()
-    if not chrome:
-        return _listing_manual(t, "Google Chrome не найден")
-    with sync_playwright() as pw:
-        # Запускаем настоящий chrome.exe САМИ (как при ручном запуске),
-        # а Playwright только подключается к нему по отладочному порту.
-        cdp = "http://127.0.0.1:9223"
-        def cdp_up():
-            try:
-                requests.get(cdp + "/json/version", timeout=2).raise_for_status()
-                return True
-            except Exception:
-                return False
-        if not cdp_up():
-            log("листинг: запускаю Google Chrome:", chrome)
-            os.makedirs(DA_PROFILE_DIR, exist_ok=True)
-            subprocess.Popen(
-                [chrome, "--remote-debugging-port=9223", f"--user-data-dir={os.path.abspath(DA_PROFILE_DIR)}",
-                 "--no-first-run", "--no-default-browser-check", "about:blank"],
-                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-            )
-            end = time.time() + 30
-            while time.time() < end and not cdp_up():
-                time.sleep(1)
-        try:
-            browser = pw.chromium.connect_over_cdp(cdp, timeout=20000)
-            ctx = browser.contexts[0] if browser.contexts else browser.new_context()
-        except Exception as e:
-            log(f"Ошибка подключения к Chrome: {e}")
-            raise RuntimeError("Не удалось подключиться к Google Chrome. Закройте окно Chrome с профилем da_profile (или удалите папку da_profile) и повторите")
-        page = ctx.new_page()
-        page.set_default_timeout(LISTING_STEP_TIMEOUT)
-        blocked = {"hit": False}
-
-        def on_resp(r):
-            try:
-                if r.request.resource_type == "document" and r.status == 403 and "deviantart.com" in r.url:
-                    blocked["hit"] = True
-            except Exception:
-                pass
-
-        page.on("response", on_resp)
-
-        def give_up_403():
-            _shot(page, item_id)
-            try:
-                browser.new_browser_cdp_session().send("Browser.close")  # закрываем окно, которое DA не пускает
-            except Exception:
-                pass
-            return _listing_manual(t, "DeviantArt ответил 403 в окне, которым управляет скрипт")
-
-        try:
-            _step("открываю работу", lambda: page.goto(t["deviation_url"], wait_until="domcontentloaded"), page, item_id)
-            if blocked["hit"]:
-                return give_up_403()
-
-            def logged_in():
-                return page.locator('a[href*="/notifications"], [data-hook="user_link"], img[alt*="avatar" i]').count() > 0
-
-            if not logged_in():
-                log("листинг: Войдите в DeviantArt в открывшемся окне (жду до 5 минут)")
-                end = time.time() + LISTING_LOGIN_WAIT
-                while time.time() < end and not logged_in():
-                    if blocked["hit"]:
-                        return give_up_403()
-                    time.sleep(3)
-                if blocked["hit"]:
-                    return give_up_403()
-                if not logged_in():
-                    _shot(page, item_id)
-                    raise RuntimeError("не выполнен вход в DeviantArt в окне браузера")
-                page.goto(t["deviation_url"], wait_until="domcontentloaded")
-                if blocked["hit"]:
-                    return give_up_403()
-
-            _step("кнопка Sell Deviation", lambda: page.get_by_role("button", name="Sell Deviation").first.click(), page, item_id)
-            _step("вариант Exclusives", lambda: page.get_by_text("Exclusive", exact=False).first.click(), page, item_id)
-
-            sale = {"fixed": "Fixed", "offers": "Offer", "both": "both"}.get(t.get("sale_type"), "Fixed")
-            _step(f"тип продажи ({sale})", lambda: page.get_by_text(sale, exact=False).first.click(), page, item_id)
-            _step("цена", lambda: page.get_by_role("spinbutton").first.fill(str(t.get("price"))), page, item_id)
-
-            def topic():
-                box = page.get_by_role("combobox").first
-                box.click()
-                page.get_by_text(t.get("topic") or "Adoptable", exact=False).first.click()
-
-            _step("topic", topic, page, item_id)
-
-            def toggle(label, want):
-                cb = page.get_by_label(label, exact=False).first
-                if cb.is_checked() != bool(want):
-                    cb.click()
-
-            _step("allow resales", lambda: toggle("resale", t.get("allow_resales")), page, item_id)
-            _step("early access", lambda: toggle("early access", t.get("early_access")), page, item_id)
-
-            form_url = page.url
-
-            def attach():
-                inputs = page.locator('input[type="file"]')
-                if inputs.count() and t.get("original_local_path") and os.path.exists(t["original_local_path"]):
-                    inputs.first.set_input_files(t["original_local_path"])
-                    return
-                # путь со ссылкой: ищем черновик SOURCE — {title} на sta.sh в той же сессии
-                want = f"SOURCE — {t.get('title') or ''}"
-                href = t.get("source_stash_url") or ""
-                if not href:
-                    src_page = ctx.new_page()
-                    try:
-                        src_page.goto("https://sta.sh/", wait_until="domcontentloaded")
-                        src_page.wait_for_timeout(3000)
-                        link = src_page.get_by_text(want, exact=False).first
-                        link.wait_for(timeout=LISTING_STEP_TIMEOUT)
-                        href = link.evaluate("el => (el.closest('a') || el.querySelector('a') || {}).href || ''")
-                    finally:
-                        src_page.close()
-                page.bring_to_front()
-                if page.url != form_url:
-                    page.goto(form_url, wait_until="domcontentloaded")
-                if not href.startswith("https://sta.sh/"):
-                    _shot(page, item_id)
-                    raise RuntimeError("не найден ни файловый input, ни поле URL исходника")
-                field = page.locator('input[type="url"]')
-                if not field.count():
-                    field = page.locator(
-                        'input[type="text"][placeholder*="URL" i], input[type="text"][placeholder*="link" i], input[type="text"][placeholder*="sta.sh" i], '
-                        'input[type="text"][aria-label*="URL" i], input[type="text"][aria-label*="link" i], input[type="text"][aria-label*="sta.sh" i]'
-                    )
-                if not field.count():
-                    for lbl in ("URL", "link", "sta.sh"):
-                        f2 = page.get_by_label(lbl, exact=False)
-                        if f2.count():
-                            field = f2
-                            break
-                if not field.count():
-                    _shot(page, item_id)
-                    raise RuntimeError("не найден ни файловый input, ни поле URL исходника")
-                field.first.fill(href)
-
-            _step("прикрепляю оригинал", attach, page, item_id)
-
-            if t.get("listing_confirm", True):
-                log("листинг: форма заполнена. Проверьте и нажмите финальную кнопку сами")
-                # Ожидание 1: без перезагрузки страницы ждём, пока форма исчезнет или сменится адрес
-                url_sel = (
-                    "input[type=url], "
-                    "input[type=text][placeholder*='URL' i], input[type=text][placeholder*='link' i], input[type=text][placeholder*='sta.sh' i], "
-                    "input[type=text][aria-label*='URL' i], input[type=text][aria-label*='link' i], input[type=text][aria-label*='sta.sh' i]"
-                )
-                end1 = time.time() + LISTING_CONFIRM_WAIT
-                gone = False
-                while time.time() < end1:
-                    try:
-                        if page.url != form_url:
-                            gone = True
-                            break
-                        if page.locator("input[type=file]").count() == 0 and page.locator(url_sel).count() == 0:
-                            gone = True
-                            break
-                    except Exception:
-                        pass
-                    page.wait_for_timeout(3000)
-                if not gone:
-                    _shot(page, item_id)
-                    raise RuntimeError("финальная кнопка не нажата за 10 минут")
-            else:
-                _step("финальная отправка", lambda: page.get_by_role("button", name="Submit").last.click(), page, item_id)
-                page.wait_for_timeout(5000)
-
-            # Ожидание 2: на странице работы появилась кнопка End Sale (жду до 10 минут)
-            end = time.time() + LISTING_CONFIRM_WAIT
-            ok = False
-            while time.time() < end:
-                try:
-                    page.goto(t["deviation_url"], wait_until="domcontentloaded")
-                    page.wait_for_timeout(4000)
-                    if page.get_by_role("button", name="End Sale").count() or page.get_by_text("End Sale", exact=True).count():
-                        ok = True
-                        break
-                except Exception:
-                    pass
-                time.sleep(15)
-            if not ok:
-                _shot(page, item_id)
-                raise RuntimeError("кнопка End Sale не появилась за 10 минут")
-            log("листинг: подтвердилось кнопкой End Sale")
-            log("листинг: готово")
-            return "listed"
-        finally:
-            try:
-                ctx.close()
-            except Exception:
-                pass
+    """Продажу Exclusive оформляет пользователь в своём браузере. Окна под управлением скрипта не открываются."""
+    return _listing_manual(t, "листинг выполняется вручную в вашем браузере")
 
 
 def process_series():
@@ -2599,7 +2400,7 @@ def process_series():
                 res = listing(t)
                 if res == "manual":
                     series_report(item_id, "listing_result", listing_status="manual",
-                                  error="оформите продажу вручную: работа открыта в вашем браузере на ПК")
+                                  error="оформите продажу вручную: открыты работа и sta.sh в вашем браузере на ПК")
                 else:
                     series_report(item_id, "listing_result", listing_status="listed")
         except Exception as e:
@@ -2633,7 +2434,6 @@ def main():
         raise SystemExit(1)
 
     log("агент запущен, версия:", SCRIPT_VERSION, "папка:", WATCH_DIR)
-    log("браузер для продажи:", _real_chrome_exe() or "Google Chrome НЕ НАЙДЕН")
     if FORGE_QUEUE:
         # новый режим: генерация напрямую через Forge API, по одному заданию
         threading.Thread(target=forge_queue_loop, daemon=True).start()
