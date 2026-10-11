@@ -96,6 +96,10 @@ UPSCALE_TIMEOUT = 900          # таймаут самого запроса ап
 DA_CLIENT_ID = ""                               # DeviantArt application client_id
 DA_CLIENT_SECRET = ""                           # DeviantArt application client_secret
 DA_REDIRECT = "http://localhost:8721/callback"  # добавьте этот URI в настройках приложения
+LISTING_BROWSER = True        # True — скрипт пробует заполнить форму продажи сам в окне Chrome.
+                              # Если DeviantArt отвечает 403, скрипт сам переходит на ручной путь.
+                              # False — сразу ручной путь: работа открывается в вашем обычном браузере,
+                              # папка с оригиналом — в проводнике, а вы жмёте «Продажа оформлена» на сайте.
 
 # ── АВТОГЕНЕРАЦИЯ (обход лимита batch count = 100) ──
 # Агент сам гоняет txt2img в Automatic1111 порциями и перезапускает цикл,
