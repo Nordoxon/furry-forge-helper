@@ -2393,11 +2393,33 @@ def listing(t):
 
             if t.get("listing_confirm", True):
                 log("листинг: форма заполнена. Проверьте и нажмите финальную кнопку сами")
+                # Ожидание 1: без перезагрузки страницы ждём, пока форма исчезнет или сменится адрес
+                url_sel = (
+                    "input[type=url], "
+                    "input[type=text][placeholder*='URL' i], input[type=text][placeholder*='link' i], input[type=text][placeholder*='sta.sh' i], "
+                    "input[type=text][aria-label*='URL' i], input[type=text][aria-label*='link' i], input[type=text][aria-label*='sta.sh' i]"
+                )
+                end1 = time.time() + LISTING_CONFIRM_WAIT
+                gone = False
+                while time.time() < end1:
+                    try:
+                        if page.url != form_url:
+                            gone = True
+                            break
+                        if page.locator("input[type=file]").count() == 0 and page.locator(url_sel).count() == 0:
+                            gone = True
+                            break
+                    except Exception:
+                        pass
+                    page.wait_for_timeout(3000)
+                if not gone:
+                    _shot(page, item_id)
+                    raise RuntimeError("финальная кнопка не нажата за 10 минут")
             else:
                 _step("финальная отправка", lambda: page.get_by_role("button", name="Submit").last.click(), page, item_id)
                 page.wait_for_timeout(5000)
 
-            # успех = на странице работы появилась кнопка End Sale (жду до 10 минут)
+            # Ожидание 2: на странице работы появилась кнопка End Sale (жду до 10 минут)
             end = time.time() + LISTING_CONFIRM_WAIT
             ok = False
             while time.time() < end:
