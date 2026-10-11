@@ -2305,7 +2305,14 @@ def listing(t):
     except ImportError:
         raise RuntimeError("Не установлен Playwright: pip install playwright && playwright install chromium")
     with sync_playwright() as pw:
-        ctx = pw.chromium.launch_persistent_context(DA_PROFILE_DIR, headless=False, viewport={"width": 1366, "height": 900})
+        try:
+            ctx = pw.chromium.launch_persistent_context(
+                DA_PROFILE_DIR, headless=False, channel="chrome",
+                viewport={"width": 1366, "height": 900},
+            )
+        except Exception as e:
+            log(f"Ошибка запуска Chrome: {e}")
+            raise RuntimeError("Google Chrome не найден. Установите Chrome с google.com/chrome и запустите скрипт снова")
         page = ctx.pages[0] if ctx.pages else ctx.new_page()
         page.set_default_timeout(LISTING_STEP_TIMEOUT)
         try:
