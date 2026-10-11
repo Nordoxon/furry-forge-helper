@@ -725,12 +725,18 @@ export type Database = {
           error: string | null
           exclusive_number: number | null
           id: string
+          listing_error: string | null
+          listing_started_at: string | null
+          listing_status: string
           name: string
           original_local_path: string | null
           position: number
+          preview_stash_item_id: number | null
           requested_variants: number
           selected_image_id: string | null
           series_id: string
+          source_stash_item_id: number | null
+          source_stash_url: string | null
           status: string
           tags: string[]
           title: string
@@ -746,12 +752,18 @@ export type Database = {
           error?: string | null
           exclusive_number?: number | null
           id?: string
+          listing_error?: string | null
+          listing_started_at?: string | null
+          listing_status?: string
           name: string
           original_local_path?: string | null
           position?: number
+          preview_stash_item_id?: number | null
           requested_variants?: number
           selected_image_id?: string | null
           series_id: string
+          source_stash_item_id?: number | null
+          source_stash_url?: string | null
           status?: string
           tags?: string[]
           title?: string
@@ -767,12 +779,18 @@ export type Database = {
           error?: string | null
           exclusive_number?: number | null
           id?: string
+          listing_error?: string | null
+          listing_started_at?: string | null
+          listing_status?: string
           name?: string
           original_local_path?: string | null
           position?: number
+          preview_stash_item_id?: number | null
           requested_variants?: number
           selected_image_id?: string | null
           series_id?: string
+          source_stash_item_id?: number | null
+          source_stash_url?: string | null
           status?: string
           tags?: string[]
           title?: string
@@ -825,7 +843,21 @@ export type Database = {
       }
       user_settings: {
         Row: {
+          allow_resales: boolean
+          auto_censor: boolean
+          auto_publish_exclusive: boolean
+          censor_preset: Json | null
+          censor_style: string
           default_tags: string[]
+          description_template: string
+          early_access: boolean
+          exclusive_price: number
+          exclusive_sale_type: string
+          exclusive_topic: string
+          gallery_folder: string
+          listing_confirm: boolean
+          mature_classification: string[]
+          mature_level: string
           mode: string
           next_exclusive_number: number
           title_template: string
@@ -833,7 +865,21 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          allow_resales?: boolean
+          auto_censor?: boolean
+          auto_publish_exclusive?: boolean
+          censor_preset?: Json | null
+          censor_style?: string
           default_tags?: string[]
+          description_template?: string
+          early_access?: boolean
+          exclusive_price?: number
+          exclusive_sale_type?: string
+          exclusive_topic?: string
+          gallery_folder?: string
+          listing_confirm?: boolean
+          mature_classification?: string[]
+          mature_level?: string
           mode?: string
           next_exclusive_number?: number
           title_template?: string
@@ -841,7 +887,21 @@ export type Database = {
           user_id: string
         }
         Update: {
+          allow_resales?: boolean
+          auto_censor?: boolean
+          auto_publish_exclusive?: boolean
+          censor_preset?: Json | null
+          censor_style?: string
           default_tags?: string[]
+          description_template?: string
+          early_access?: boolean
+          exclusive_price?: number
+          exclusive_sale_type?: string
+          exclusive_topic?: string
+          gallery_folder?: string
+          listing_confirm?: boolean
+          mature_classification?: string[]
+          mature_level?: string
           mode?: string
           next_exclusive_number?: number
           title_template?: string
