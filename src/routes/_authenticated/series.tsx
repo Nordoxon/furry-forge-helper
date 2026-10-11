@@ -30,6 +30,7 @@ import {
   uploadCensored,
   type Series,
   type SeriesItem,
+  type UserSettings,
 } from "@/lib/series";
 
 export const Route = createFileRoute("/_authenticated/series")({
@@ -96,6 +97,7 @@ function SeriesPage() {
         </p>
 
         {settings.data && <NumberingCard s={settings.data} />}
+        {settings.data && <ExclusiveSettingsCard s={settings.data} />}
 
         <NewSeries onCreated={(id) => setActiveId(id)} />
 
@@ -142,6 +144,108 @@ function NumberingCard({ s }: { s: { title_template: string; next_exclusive_numb
       <Label className="text-xs">Теги для DeviantArt (через запятую)</Label>
       <p className="text-xs text-muted-foreground">Для персонажей, которые не созданы отдельно: эти теги плюс имя. У созданного персонажа берутся его личные теги.</p>
       <Input value={tags} onChange={(e) => setTags(e.target.value)} />
+      <Button size="sm" onClick={() => save.mutate()} disabled={save.isPending}>Сохранить</Button>
+    </section>
+  );
+}
+
+const CLASSES = [
+  ["nudity", "Нагота"],
+  ["sexual", "Сексуальное"],
+  ["gore", "Жестокость"],
+  ["language", "Лексика"],
+  ["ideology", "Идеология"],
+] as const;
+
+function ExclusiveSettingsCard({ s }: { s: UserSettings }) {
+  const qc = useQueryClient();
+  const [f, setF] = useState({
+    exclusive_price: String(s.exclusive_price),
+    exclusive_sale_type: s.exclusive_sale_type,
+    exclusive_topic: s.exclusive_topic,
+    gallery_folder: s.gallery_folder,
+    auto_publish_exclusive: s.auto_publish_exclusive,
+    listing_confirm: s.listing_confirm,
+    auto_censor: s.auto_censor,
+    mature_level: s.mature_level,
+    mature_classification: s.mature_classification,
+    allow_resales: s.allow_resales,
+    early_access: s.early_access,
+    description_template: s.description_template,
+  });
+  const set = <K extends keyof typeof f>(k: K, v: (typeof f)[K]) => setF((x) => ({ ...x, [k]: v }));
+  const save = useMutation({
+    mutationFn: () => saveSettings({ ...f, exclusive_price: Math.max(0, Number(f.exclusive_price) || 0) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["user-settings"] });
+      toast.success("Сохранено");
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
+  const presetCount = Array.isArray(s.censor_preset) ? s.censor_preset.length : 0;
+  const sw = (k: "auto_publish_exclusive" | "listing_confirm" | "auto_censor" | "allow_resales" | "early_access", t: string, d?: string) => (
+    <label className="flex items-start justify-between gap-3 py-1">
+      <span className="min-w-0">
+        <span className="block text-sm">{t}</span>
+        {d && <span className="block text-xs text-muted-foreground">{d}</span>}
+      </span>
+      <Switch checked={f[k]} onCheckedChange={(v) => set(k, v)} />
+    </label>
+  );
+  return (
+    <section className="space-y-2 rounded-lg border border-border p-3">
+      <h2 className="font-medium">Продажа и публикация</h2>
+      {sw("auto_publish_exclusive", "Автоматическая цепочка", "Скрипт сам публикует превью, грузит оригинал в Sta.sh и заполняет продажу. Выключено — превью остаётся черновиком.")}
+      {sw("listing_confirm", "Подтверждать продажу самому", "Скрипт заполнит форму, а финальную кнопку нажмёте вы в окне на ПК.")}
+      {sw("auto_censor", "Автоцензура по шаблону", presetCount ? `В шаблоне областей: ${presetCount}` : "Шаблона пока нет — сохраните его в окне цензуры.")}
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <Label className="text-xs">Цена</Label>
+          <Input inputMode="decimal" value={f.exclusive_price} onChange={(e) => set("exclusive_price", e.target.value)} />
+        </div>
+        <div>
+          <Label className="text-xs">Тип продажи</Label>
+          <select className="h-10 w-full rounded-md border border-input bg-background px-2 text-sm" value={f.exclusive_sale_type} onChange={(e) => set("exclusive_sale_type", e.target.value)}>
+            <option value="fixed">Фиксированная цена</option>
+            <option value="offers">Предложения</option>
+            <option value="both">Оба</option>
+          </select>
+        </div>
+        <div>
+          <Label className="text-xs">Topic</Label>
+          <Input value={f.exclusive_topic} onChange={(e) => set("exclusive_topic", e.target.value)} />
+        </div>
+        <div>
+          <Label className="text-xs">Папка галереи</Label>
+          <Input value={f.gallery_folder} onChange={(e) => set("gallery_folder", e.target.value)} />
+        </div>
+      </div>
+      {sw("allow_resales", "Разрешить перепродажу")}
+      {sw("early_access", "Ранний доступ")}
+      <Label className="text-xs">Уровень mature</Label>
+      <select className="h-10 w-full rounded-md border border-input bg-background px-2 text-sm" value={f.mature_level} onChange={(e) => set("mature_level", e.target.value)}>
+        <option value="moderate">Moderate</option>
+        <option value="strict">Strict</option>
+      </select>
+      <div className="flex flex-wrap gap-2">
+        {CLASSES.map(([v, t]) => {
+          const on = f.mature_classification.includes(v);
+          return (
+            <Button
+              key={v}
+              size="sm"
+              type="button"
+              variant={on ? "default" : "outline"}
+              onClick={() => set("mature_classification", on ? f.mature_classification.filter((x) => x !== v) : [...f.mature_classification, v])}
+            >
+              {t}
+            </Button>
+          );
+        })}
+      </div>
+      <Label className="text-xs">Шаблон описания ({"{number}"}, {"{character}"}, {"{scene}"})</Label>
+      <p className="text-xs text-muted-foreground">Используется, если у персонажа нет своего описания.</p>
+      <Textarea rows={3} value={f.description_template} onChange={(e) => set("description_template", e.target.value)} />
       <Button size="sm" onClick={() => save.mutate()} disabled={save.isPending}>Сохранить</Button>
     </section>
   );
@@ -416,6 +520,8 @@ function ItemCard({ item, series, variants, onChange }: { item: SeriesItem; seri
   const [editor, setEditor] = useState(false);
   const [src, setSrc] = useState<string | null>(null);
   const selected = variants.find((v) => v.id === item.selected_image_id);
+  const qc = useQueryClient();
+  const settingsQ = useQuery({ queryKey: ["user-settings"], queryFn: fetchSettings });
   const act = useMutation({
     mutationFn: async (fn: () => Promise<unknown>) => fn(),
     onSuccess: onChange,
@@ -522,10 +628,37 @@ function ItemCard({ item, series, variants, onChange }: { item: SeriesItem; seri
           )}
         </div>
       )}
+      <Pipeline item={item} />
+      {!((item as { description?: string }).description ?? "").trim() && !settingsQ.data?.description_template?.trim() && item.selected_image_id && (
+        <p className="text-xs text-destructive">Нет описания и шаблона — работа уйдёт с пустым описанием.</p>
+      )}
+      {item.status === "published" && (
+        <div className="space-y-1">
+          <p className="text-xs">
+            Продажа: {LISTING[item.listing_status] ?? item.listing_status}
+            {item.listing_error ? ` — ${item.listing_error}` : ""}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {item.listing_status !== "listed" && (
+              <Button size="sm" variant="outline" onClick={() => act.mutate(() => updateItem(item.id, { listing_status: "pending", listing_error: null }))}>
+                Повторить листинг
+              </Button>
+            )}
+            <Button size="sm" variant="outline" asChild>
+              <a href="https://sta.sh/" target="_blank" rel="noreferrer">Открыть sta.sh</a>
+            </Button>
+            {item.listing_status !== "manual" && item.listing_status !== "listed" && (
+              <Button size="sm" variant="ghost" onClick={() => act.mutate(() => updateItem(item.id, { listing_status: "manual" }))}>
+                Отменить авто
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
       {item.original_local_path && <p className="break-all text-[11px] text-muted-foreground">Оригинал на ПК: {item.original_local_path}</p>}
       {item.deviation_url && (
         <a href={item.deviation_url} target="_blank" rel="noreferrer" className="text-xs text-primary underline">
-          Открыть на DeviantArt — прикрепите оригинал через Edit
+          Открыть работу на DeviantArt
         </a>
       )}
       {act.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
@@ -535,6 +668,11 @@ function ItemCard({ item, series, variants, onChange }: { item: SeriesItem; seri
         open={editor}
         onOpenChange={setEditor}
         watermark={series.watermark ? `#${item.exclusive_number ?? ""}` : ""}
+        onSaveTemplate={async (preset, style) => {
+          await saveSettings({ censor_preset: preset as never, censor_style: style });
+          qc.invalidateQueries({ queryKey: ["user-settings"] });
+          toast.success("Шаблон цензуры сохранён");
+        }}
         onSave={async (blob) => {
           await uploadCensored(item, blob);
           await updateItem(item.id, { status: "preview_ready", error: null });
@@ -542,6 +680,40 @@ function ItemCard({ item, series, variants, onChange }: { item: SeriesItem; seri
           onChange();
         }}
       />
+    </div>
+  );
+}
+
+const LISTING: Record<string, string> = {
+  pending: "ждёт",
+  in_progress: "оформляется на ПК",
+  listed: "выставлено",
+  failed: "ошибка",
+  manual: "вручную",
+};
+
+function Pipeline({ item }: { item: SeriesItem }) {
+  const order = ["selected", "upscaling", "upscaled", "preview_ready", "publishing", "draft", "published"];
+  const idx = order.indexOf(item.status);
+  if (idx < 0) return null;
+  const steps = [
+    { t: "Апскейл", done: idx >= 2 },
+    { t: "Цензура", done: idx >= 3 || !!item.censored_preview_path },
+    { t: "Опубликовано", done: item.status === "published" },
+    { t: "Оригинал", done: !!item.source_stash_item_id },
+    { t: "Листинг", done: item.listing_status === "listed" },
+  ];
+  return (
+    <div className="flex flex-wrap gap-1">
+      {steps.map((s) => (
+        <span
+          key={s.t}
+          className={`rounded-full border px-2 py-0.5 text-[11px] ${s.done ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}
+        >
+          {s.done ? "✓ " : ""}
+          {s.t}
+        </span>
+      ))}
     </div>
   );
 }
