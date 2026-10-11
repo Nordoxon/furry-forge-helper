@@ -1077,7 +1077,7 @@ def _gen_pw():
     return pw
 
 
-SCRIPT_VERSION = "2026-10-11 chrome-exe"
+SCRIPT_VERSION = "2026-10-11 chrome-cdp"
 
 
 def _real_chrome_exe():
