@@ -1082,30 +1082,6 @@ def _gen_pw():
 SCRIPT_VERSION = "2026-10-11 manual-listing"
 
 
-def _real_chrome_exe():
-    """Путь к установленному Google Chrome (не Chromium и не Edge)."""
-    cands = [
-        os.path.join(os.environ.get("PROGRAMFILES", r"C:\Program Files"), "Google", "Chrome", "Application", "chrome.exe"),
-        os.path.join(os.environ.get("PROGRAMFILES(X86)", r"C:\Program Files (x86)"), "Google", "Chrome", "Application", "chrome.exe"),
-        os.path.join(os.environ.get("LOCALAPPDATA", ""), "Google", "Chrome", "Application", "chrome.exe"),
-        r"C:\Program Files\Google\Chrome\Application\chrome.exe",
-    ]
-    try:
-        import winreg
-        for root in (winreg.HKEY_LOCAL_MACHINE, winreg.HKEY_CURRENT_USER):
-            try:
-                with winreg.OpenKey(root, r"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\chrome.exe") as k:
-                    cands.insert(0, winreg.QueryValue(k, None))
-            except OSError:
-                pass
-    except ImportError:
-        pass
-    for c in cands:
-        if c and os.path.isfile(c) and "chromium" not in c.lower():
-            return c
-    return None
-
-
 def _gen_chrome_exe():
     cands = [
         os.path.join(os.environ.get("PROGRAMFILES", r"C:\Program Files"), "Google", "Chrome", "Application", "chrome.exe"),
@@ -2199,10 +2175,6 @@ def series_report(item_id, status, **extra):
 # ───────── эксклюзивы: автоцензура, оригинал в Sta.sh, листинг ─────────
 CENSOR_PIXEL_BLOCK = 24        # средний размер квадрата пикселизации (px)
 CENSOR_BLUR_RADIUS = 12        # радиус размытия
-LISTING_LOGIN_WAIT = 300       # сколько ждать входа в DeviantArt в окне браузера (сек)
-LISTING_CONFIRM_WAIT = 600     # сколько ждать, пока вы сами нажмёте финальную кнопку (сек)
-LISTING_STEP_TIMEOUT = 30000   # таймаут одного шага в браузере (мс)
-DA_PROFILE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "da_profile")
 DA_SCREENSHOTS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "da_screenshots")
 
 
@@ -2301,29 +2273,6 @@ def source_upload(t):
     save_state(STATE)
     series_report(item_id, "source_uploaded", itemid=itemid, url="")
     log("серия: оригинал загружен в Sta.sh, itemid =", itemid)
-
-
-def _shot(page, item_id):
-    try:
-        os.makedirs(DA_SCREENSHOTS, exist_ok=True)
-        p = os.path.join(DA_SCREENSHOTS, f"{item_id}_error.png")
-        page.screenshot(path=p)
-        log("листинг: скриншот ошибки ->", p)
-    except Exception:
-        pass
-
-
-def _step(name, fn, page, item_id):
-    """Шаг листинга: таймаут 30 сек, один повтор, затем понятная ошибка."""
-    for attempt in (1, 2):
-        try:
-            log(f"листинг: {name}" + (" (повтор)" if attempt == 2 else ""))
-            return fn()
-        except Exception as e:
-            if attempt == 2:
-                _shot(page, item_id)
-                raise RuntimeError(f"шаг «{name}» не удался: {str(e)[:200]}")
-            time.sleep(2)
 
 
 def _listing_manual(t, reason):

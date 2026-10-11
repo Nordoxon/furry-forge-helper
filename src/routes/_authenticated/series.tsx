@@ -197,7 +197,6 @@ function ExclusiveSettingsCard({ s }: { s: UserSettings }) {
     <section className="space-y-2 rounded-lg border border-border p-3">
       <h2 className="font-medium">Продажа и публикация</h2>
       {sw("auto_publish_exclusive", "Автоматическая цепочка", "Скрипт сам публикует превью, грузит оригинал в Sta.sh и заполняет продажу. Выключено — превью остаётся черновиком.")}
-      {sw("listing_confirm", "Подтверждать продажу самому", "Скрипт заполнит форму, а финальную кнопку нажмёте вы в окне на ПК.")}
       {sw("auto_censor", "Автоцензура по шаблону", presetCount ? `В шаблоне областей: ${presetCount}` : "Шаблона пока нет — сохраните его в окне цензуры.")}
       <div className="grid grid-cols-2 gap-2">
         <div>
@@ -725,7 +724,7 @@ const LISTING: Record<string, string> = {
   in_progress: "оформляется на ПК",
   listed: "выставлено",
   failed: "ошибка",
-  manual: "оформите вручную",
+  manual: "у вас: листинг в браузере",
 };
 
 function Pipeline({ item }: { item: SeriesItem }) {
