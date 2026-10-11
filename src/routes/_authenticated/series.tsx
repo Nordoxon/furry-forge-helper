@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BottomNav } from "@/components/bottom-nav";
 import { CensorEditor } from "@/components/censor-editor";
+import { validateDeviationUrl } from "@/lib/series-description";
 import {
   ITEM_STATUS,
   addItems,
@@ -482,6 +483,33 @@ function SeriesView({ series }: { series: Series }) {
 
 type Variant = { id: string; preview_path: string | null; status: string };
 
+function ManualPublished({ onSave }: { onSave: (url: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [v, setV] = useState("");
+  if (!open)
+    return (
+      <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
+        Я опубликовал сам
+      </Button>
+    );
+  return (
+    <div className="flex gap-2">
+      <Input value={v} onChange={(e) => setV(e.target.value)} placeholder="https://www.deviantart.com/..." />
+      <Button
+        size="sm"
+        onClick={() => {
+          const url = validateDeviationUrl(v);
+          if (!url) return toast.error("Нужна ссылка https:// на deviantart.com или sta.sh");
+          onSave(url);
+          setOpen(false);
+        }}
+      >
+        Сохранить
+      </Button>
+    </div>
+  );
+}
+
 function DescriptionField({ value, onSave }: { value: string; onSave: (v: string) => void }) {
   const [v, setV] = useState(value);
   useEffect(() => setV(value), [value]);
@@ -627,6 +655,9 @@ function ItemCard({ item, series, variants, onChange }: { item: SeriesItem; seri
             </Button>
           )}
         </div>
+      )}
+      {item.status === "draft" && (
+        <ManualPublished onSave={(url) => act.mutate(() => updateItem(item.id, { status: "published", deviation_url: url, listing_status: "pending", listing_error: null } as never))} />
       )}
       <Pipeline item={item} />
       {!((item as { description?: string }).description ?? "").trim() && !settingsQ.data?.description_template?.trim() && item.selected_image_id && (

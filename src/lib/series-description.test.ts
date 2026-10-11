@@ -20,3 +20,11 @@ describe("rectsToPreset", () => {
     expect(rectsToPreset([{ x: 83.2, y: 121.6, w: 416, h: 608 }], 832, 1216)).toEqual([{ x1: 10, y1: 10, x2: 60, y2: 60 }]);
   });
 });
+
+import { validateDeviationUrl } from "./series-description";
+describe("validateDeviationUrl", () => {
+  it("trims and accepts deviantart", () => expect(validateDeviationUrl("  https://www.deviantart.com/a/art/x-1 ")).toBe("https://www.deviantart.com/a/art/x-1"));
+  it("accepts sta.sh", () => expect(validateDeviationUrl("https://sta.sh/0abc")).toBe("https://sta.sh/0abc"));
+  it("rejects http", () => expect(validateDeviationUrl("http://sta.sh/0abc")).toBeNull());
+  it("rejects other hosts", () => expect(validateDeviationUrl("https://evil.com/deviantart.com")).toBeNull());
+});
