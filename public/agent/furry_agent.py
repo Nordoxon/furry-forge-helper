@@ -1081,7 +1081,7 @@ def _gen_pw():
     return pw
 
 
-SCRIPT_VERSION = "2026-10-11 chrome-cdp"
+SCRIPT_VERSION = "2026-10-11 chrome-cdp-403fallback"
 
 
 def _real_chrome_exe():
@@ -2546,6 +2546,7 @@ def listing(t):
                 raise RuntimeError("кнопка End Sale не появилась за 10 минут")
             log("листинг: подтвердилось кнопкой End Sale")
             log("листинг: готово")
+            return "listed"
         finally:
             try:
                 ctx.close()
@@ -2595,8 +2596,12 @@ def process_series():
             elif kind == "source_upload":
                 source_upload(t)
             elif kind == "listing":
-                listing(t)
-                series_report(item_id, "listing_result", listing_status="listed")
+                res = listing(t)
+                if res == "manual":
+                    series_report(item_id, "listing_result", listing_status="manual",
+                                  error="оформите продажу вручную: работа открыта в вашем браузере на ПК")
+                else:
+                    series_report(item_id, "listing_result", listing_status="listed")
         except Exception as e:
             log("серия: ошибка", e)
             if kind in ("source_upload", "listing"):
