@@ -675,6 +675,11 @@ function ItemCard({ item, series, variants, onChange }: { item: SeriesItem; seri
                 Повторить листинг
               </Button>
             )}
+            {item.listing_status !== "listed" && (
+              <Button size="sm" onClick={() => act.mutate(() => updateItem(item.id, { listing_status: "listed", listing_error: null }))}>
+                Продажа оформлена
+              </Button>
+            )}
             <Button size="sm" variant="outline" asChild>
               <a href="https://sta.sh/" target="_blank" rel="noreferrer">Открыть sta.sh</a>
             </Button>
@@ -720,7 +725,7 @@ const LISTING: Record<string, string> = {
   in_progress: "оформляется на ПК",
   listed: "выставлено",
   failed: "ошибка",
-  manual: "вручную",
+  manual: "оформите вручную",
 };
 
 function Pipeline({ item }: { item: SeriesItem }) {

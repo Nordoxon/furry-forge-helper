@@ -182,7 +182,7 @@ export const Route = createFileRoute("/api/public/agent/series")({
             break;
           case "listing_result":
             patch = {
-              listing_status: b.listing_status === "listed" ? "listed" : "failed",
+              listing_status: b.listing_status === "listed" ? "listed" : b.listing_status === "manual" ? "manual" : "failed",
               listing_error: str(b.error),
             };
             break;
