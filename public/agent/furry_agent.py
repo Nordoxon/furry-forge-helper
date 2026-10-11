@@ -96,6 +96,10 @@ UPSCALE_TIMEOUT = 900          # таймаут самого запроса ап
 DA_CLIENT_ID = ""                               # DeviantArt application client_id
 DA_CLIENT_SECRET = ""                           # DeviantArt application client_secret
 DA_REDIRECT = "http://localhost:8721/callback"  # добавьте этот URI в настройках приложения
+LISTING_BROWSER = True        # True — скрипт пробует заполнить форму продажи сам в окне Chrome.
+                              # Если DeviantArt отвечает 403, скрипт сам переходит на ручной путь.
+                              # False — сразу ручной путь: работа открывается в вашем обычном браузере,
+                              # папка с оригиналом — в проводнике, а вы жмёте «Продажа оформлена» на сайте.
 
 # ── АВТОГЕНЕРАЦИЯ (обход лимита batch count = 100) ──
 # Агент сам гоняет txt2img в Automatic1111 порциями и перезапускает цикл,
@@ -1077,7 +1081,7 @@ def _gen_pw():
     return pw
 
 
-SCRIPT_VERSION = "2026-10-11 chrome-cdp"
+SCRIPT_VERSION = "2026-10-11 chrome-cdp-403fallback"
 
 
 def _real_chrome_exe():
@@ -2324,16 +2328,39 @@ def _step(name, fn, page, item_id):
             time.sleep(2)
 
 
+def _listing_manual(t, reason):
+    """Ручной путь: открываем работу в ОБЫЧНОМ браузере и папку с оригиналом. Продажу оформляете вы."""
+    log("листинг:", reason, "— переключаюсь на ручное оформление")
+    url = t.get("deviation_url") or "https://www.deviantart.com/"
+    try:
+        webbrowser.open(url)
+        log("листинг: работа открыта в вашем браузере:", url)
+    except Exception as e:
+        log("листинг: не удалось открыть браузер:", e)
+    orig = t.get("original_local_path")
+    if orig and os.path.exists(orig) and os.name == "nt":
+        try:
+            subprocess.Popen(f'explorer /select,"{orig}"')
+            log("листинг: оригинал для прикрепления:", orig)
+        except Exception:
+            pass
+    log("листинг: нажмите Sell Deviation → Exclusive, прикрепите оригинал и затем «Продажа оформлена» на сайте")
+    return "manual"
+
+
 def listing(t):
-    """Оформление продажи Exclusive через окно браузера (Playwright, свой профиль)."""
+    """Оформление продажи Exclusive через окно браузера (Playwright, свой профиль).
+    Возвращает "listed" или "manual" (если DeviantArt не пускает управляемое окно)."""
     item_id = t["item_id"]
+    if not LISTING_BROWSER:
+        return _listing_manual(t, "автозаполнение выключено (LISTING_BROWSER = False)")
     try:
         from playwright.sync_api import sync_playwright
     except ImportError:
-        raise RuntimeError("Не установлен Playwright: pip install playwright && playwright install chromium")
+        return _listing_manual(t, "не установлен Playwright")
     chrome = _real_chrome_exe()
     if not chrome:
-        raise RuntimeError("Google Chrome не найден. Установите Chrome с google.com/chrome и запустите скрипт снова")
+        return _listing_manual(t, "Google Chrome не найден")
     with sync_playwright() as pw:
         # Запускаем настоящий chrome.exe САМИ (как при ручном запуске),
         # а Playwright только подключается к нему по отладочному порту.
@@ -2363,8 +2390,29 @@ def listing(t):
             raise RuntimeError("Не удалось подключиться к Google Chrome. Закройте окно Chrome с профилем da_profile (или удалите папку da_profile) и повторите")
         page = ctx.new_page()
         page.set_default_timeout(LISTING_STEP_TIMEOUT)
+        blocked = {"hit": False}
+
+        def on_resp(r):
+            try:
+                if r.request.resource_type == "document" and r.status == 403 and "deviantart.com" in r.url:
+                    blocked["hit"] = True
+            except Exception:
+                pass
+
+        page.on("response", on_resp)
+
+        def give_up_403():
+            _shot(page, item_id)
+            try:
+                browser.new_browser_cdp_session().send("Browser.close")  # закрываем окно, которое DA не пускает
+            except Exception:
+                pass
+            return _listing_manual(t, "DeviantArt ответил 403 в окне, которым управляет скрипт")
+
         try:
             _step("открываю работу", lambda: page.goto(t["deviation_url"], wait_until="domcontentloaded"), page, item_id)
+            if blocked["hit"]:
+                return give_up_403()
 
             def logged_in():
                 return page.locator('a[href*="/notifications"], [data-hook="user_link"], img[alt*="avatar" i]').count() > 0
@@ -2373,11 +2421,17 @@ def listing(t):
                 log("листинг: Войдите в DeviantArt в открывшемся окне (жду до 5 минут)")
                 end = time.time() + LISTING_LOGIN_WAIT
                 while time.time() < end and not logged_in():
+                    if blocked["hit"]:
+                        return give_up_403()
                     time.sleep(3)
+                if blocked["hit"]:
+                    return give_up_403()
                 if not logged_in():
                     _shot(page, item_id)
                     raise RuntimeError("не выполнен вход в DeviantArt в окне браузера")
                 page.goto(t["deviation_url"], wait_until="domcontentloaded")
+                if blocked["hit"]:
+                    return give_up_403()
 
             _step("кнопка Sell Deviation", lambda: page.get_by_role("button", name="Sell Deviation").first.click(), page, item_id)
             _step("вариант Exclusives", lambda: page.get_by_text("Exclusive", exact=False).first.click(), page, item_id)
@@ -2492,6 +2546,7 @@ def listing(t):
                 raise RuntimeError("кнопка End Sale не появилась за 10 минут")
             log("листинг: подтвердилось кнопкой End Sale")
             log("листинг: готово")
+            return "listed"
         finally:
             try:
                 ctx.close()
@@ -2541,8 +2596,12 @@ def process_series():
             elif kind == "source_upload":
                 source_upload(t)
             elif kind == "listing":
-                listing(t)
-                series_report(item_id, "listing_result", listing_status="listed")
+                res = listing(t)
+                if res == "manual":
+                    series_report(item_id, "listing_result", listing_status="manual",
+                                  error="оформите продажу вручную: работа открыта в вашем браузере на ПК")
+                else:
+                    series_report(item_id, "listing_result", listing_status="listed")
         except Exception as e:
             log("серия: ошибка", e)
             if kind in ("source_upload", "listing"):
