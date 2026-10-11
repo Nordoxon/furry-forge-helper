@@ -1077,6 +1077,33 @@ def _gen_pw():
     return pw
 
 
+SCRIPT_VERSION = "2026-10-11 chrome-exe"
+
+
+def _real_chrome_exe():
+    """Путь к установленному Google Chrome (не Chromium и не Edge)."""
+    cands = [
+        os.path.join(os.environ.get("PROGRAMFILES", r"C:\Program Files"), "Google", "Chrome", "Application", "chrome.exe"),
+        os.path.join(os.environ.get("PROGRAMFILES(X86)", r"C:\Program Files (x86)"), "Google", "Chrome", "Application", "chrome.exe"),
+        os.path.join(os.environ.get("LOCALAPPDATA", ""), "Google", "Chrome", "Application", "chrome.exe"),
+        r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+    ]
+    try:
+        import winreg
+        for root in (winreg.HKEY_LOCAL_MACHINE, winreg.HKEY_CURRENT_USER):
+            try:
+                with winreg.OpenKey(root, r"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\chrome.exe") as k:
+                    cands.insert(0, winreg.QueryValue(k, None))
+            except OSError:
+                pass
+    except ImportError:
+        pass
+    for c in cands:
+        if c and os.path.isfile(c) and "chromium" not in c.lower():
+            return c
+    return None
+
+
 def _gen_chrome_exe():
     cands = [
         os.path.join(os.environ.get("PROGRAMFILES", r"C:\Program Files"), "Google", "Chrome", "Application", "chrome.exe"),
@@ -2304,15 +2331,21 @@ def listing(t):
         from playwright.sync_api import sync_playwright
     except ImportError:
         raise RuntimeError("Не установлен Playwright: pip install playwright && playwright install chromium")
+    chrome = _real_chrome_exe()
+    if not chrome:
+        raise RuntimeError("Google Chrome не найден. Установите Chrome с google.com/chrome и запустите скрипт снова")
     with sync_playwright() as pw:
         try:
+            log("листинг: запускаю Google Chrome:", chrome)
             ctx = pw.chromium.launch_persistent_context(
-                DA_PROFILE_DIR, headless=False, channel="chrome",
+                DA_PROFILE_DIR, headless=False, executable_path=chrome,
+                ignore_default_args=["--enable-automation"],
+                args=["--disable-blink-features=AutomationControlled", "--no-first-run", "--no-default-browser-check"],
                 viewport={"width": 1366, "height": 900},
             )
         except Exception as e:
             log(f"Ошибка запуска Chrome: {e}")
-            raise RuntimeError("Google Chrome не найден. Установите Chrome с google.com/chrome и запустите скрипт снова")
+            raise RuntimeError(f"Не удалось запустить Google Chrome ({chrome}): {str(e)[:160]}. Закройте окна Chrome с профилем da_profile и повторите")
         page = ctx.pages[0] if ctx.pages else ctx.new_page()
         page.set_default_timeout(LISTING_STEP_TIMEOUT)
         try:
@@ -2525,7 +2558,8 @@ def main():
         print("\nОткройте furry_agent.py в блокноте и поправьте блок НАСТРОЙКИ вверху файла.")
         raise SystemExit(1)
 
-    log("агент запущен, папка:", WATCH_DIR)
+    log("агент запущен, версия:", SCRIPT_VERSION, "папка:", WATCH_DIR)
+    log("браузер для продажи:", _real_chrome_exe() or "Google Chrome НЕ НАЙДЕН")
     if FORGE_QUEUE:
         # новый режим: генерация напрямую через Forge API, по одному заданию
         threading.Thread(target=forge_queue_loop, daemon=True).start()
