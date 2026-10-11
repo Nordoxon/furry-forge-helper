@@ -197,7 +197,6 @@ function ExclusiveSettingsCard({ s }: { s: UserSettings }) {
     <section className="space-y-2 rounded-lg border border-border p-3">
       <h2 className="font-medium">Продажа и публикация</h2>
       {sw("auto_publish_exclusive", "Автоматическая цепочка", "Скрипт сам публикует превью, грузит оригинал в Sta.sh и заполняет продажу. Выключено — превью остаётся черновиком.")}
-      {sw("listing_confirm", "Подтверждать продажу самому", "Скрипт заполнит форму, а финальную кнопку нажмёте вы в окне на ПК.")}
       {sw("auto_censor", "Автоцензура по шаблону", presetCount ? `В шаблоне областей: ${presetCount}` : "Шаблона пока нет — сохраните его в окне цензуры.")}
       <div className="grid grid-cols-2 gap-2">
         <div>
@@ -667,8 +666,19 @@ function ItemCard({ item, series, variants, onChange }: { item: SeriesItem; seri
         <div className="space-y-1">
           <p className="text-xs">
             Продажа: {LISTING[item.listing_status] ?? item.listing_status}
-            {item.listing_error ? ` — ${item.listing_error}` : ""}
+            {item.listing_error && item.listing_status !== "manual" ? ` — ${item.listing_error}` : ""}
           </p>
+          {item.listing_status === "manual" && (
+            <ol className="list-decimal space-y-0.5 rounded-md border border-border bg-muted/40 p-2 pl-6 text-xs">
+              <li>В открывшемся браузере на странице работы нажмите «Sell Deviation» → «Exclusives».</li>
+              <li>
+                Источник — перетащите файл оригинала (проводник уже открыт{item.original_local_path ? `, путь ${item.original_local_path}` : ""}) или вставьте ссылку черновика «SOURCE — {item.title}» (кнопка «Открыть sta.sh», на sta.sh — Ctrl+F по названию).
+              </li>
+              <li>Цена {settingsQ.data?.exclusive_price ?? "—"}, тип продажи и topic — по разделу «Продажа и публикация».</li>
+              <li>Сверьте описание и mature-флаги, подтвердите публикацию.</li>
+              <li>Вернитесь на карточку и нажмите «Продажа оформлена».</li>
+            </ol>
+          )}
           <div className="flex flex-wrap gap-2">
             {item.listing_status !== "listed" && (
               <Button size="sm" variant="outline" onClick={() => act.mutate(() => updateItem(item.id, { listing_status: "pending", listing_error: null }))}>
@@ -725,7 +735,7 @@ const LISTING: Record<string, string> = {
   in_progress: "оформляется на ПК",
   listed: "выставлено",
   failed: "ошибка",
-  manual: "оформите вручную",
+  manual: "у вас: листинг в браузере",
 };
 
 function Pipeline({ item }: { item: SeriesItem }) {

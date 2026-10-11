@@ -138,7 +138,6 @@ export const Route = createFileRoute("/api/public/agent/series")({
                 topic: s.exclusive_topic ?? "Adoptable",
                 allow_resales: s.allow_resales ?? true,
                 early_access: s.early_access ?? false,
-                listing_confirm: s.listing_confirm ?? true,
               });
             }
           }
