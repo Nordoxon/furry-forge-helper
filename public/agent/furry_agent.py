@@ -2367,8 +2367,29 @@ def listing(t):
             raise RuntimeError("Не удалось подключиться к Google Chrome. Закройте окно Chrome с профилем da_profile (или удалите папку da_profile) и повторите")
         page = ctx.new_page()
         page.set_default_timeout(LISTING_STEP_TIMEOUT)
+        blocked = {"hit": False}
+
+        def on_resp(r):
+            try:
+                if r.request.resource_type == "document" and r.status == 403 and "deviantart.com" in r.url:
+                    blocked["hit"] = True
+            except Exception:
+                pass
+
+        page.on("response", on_resp)
+
+        def give_up_403():
+            _shot(page, item_id)
+            try:
+                browser.new_browser_cdp_session().send("Browser.close")  # закрываем окно, которое DA не пускает
+            except Exception:
+                pass
+            return _listing_manual(t, "DeviantArt ответил 403 в окне, которым управляет скрипт")
+
         try:
             _step("открываю работу", lambda: page.goto(t["deviation_url"], wait_until="domcontentloaded"), page, item_id)
+            if blocked["hit"]:
+                return give_up_403()
 
             def logged_in():
                 return page.locator('a[href*="/notifications"], [data-hook="user_link"], img[alt*="avatar" i]').count() > 0
@@ -2377,11 +2398,17 @@ def listing(t):
                 log("листинг: Войдите в DeviantArt в открывшемся окне (жду до 5 минут)")
                 end = time.time() + LISTING_LOGIN_WAIT
                 while time.time() < end and not logged_in():
+                    if blocked["hit"]:
+                        return give_up_403()
                     time.sleep(3)
+                if blocked["hit"]:
+                    return give_up_403()
                 if not logged_in():
                     _shot(page, item_id)
                     raise RuntimeError("не выполнен вход в DeviantArt в окне браузера")
                 page.goto(t["deviation_url"], wait_until="domcontentloaded")
+                if blocked["hit"]:
+                    return give_up_403()
 
             _step("кнопка Sell Deviation", lambda: page.get_by_role("button", name="Sell Deviation").first.click(), page, item_id)
             _step("вариант Exclusives", lambda: page.get_by_text("Exclusive", exact=False).first.click(), page, item_id)
