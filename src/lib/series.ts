@@ -192,5 +192,6 @@ export const ITEM_STATUS: Record<string, string> = {
   preview_ready: "ждёт загрузки на DA",
   publishing: "загрузка на DA",
   published: "на DeviantArt",
+  draft: "черновик в Sta.sh",
   error: "ошибка",
 };

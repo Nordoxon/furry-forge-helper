@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Loader2, Undo2 } from "lucide-react";
+import { rectsToPreset, type CensorRect } from "@/lib/series-description";
 
 type Tool = "blur" | "pixel" | "black";
 type Rect = { x: number; y: number; w: number; h: number; tool: Tool };
@@ -13,12 +14,14 @@ export function CensorEditor({
   onOpenChange,
   watermark,
   onSave,
+  onSaveTemplate,
 }: {
   src: string | null;
   open: boolean;
   onOpenChange: (v: boolean) => void;
   watermark: string;
   onSave: (blob: Blob) => Promise<void>;
+  onSaveTemplate?: (preset: CensorRect[], style: "pixel" | "blur") => Promise<void>;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imgRef = useRef<HTMLCanvasElement | null>(null);
@@ -127,6 +130,23 @@ export function CensorEditor({
           </p>
         )}
         <p className="text-xs text-muted-foreground">Проведите пальцем, чтобы закрыть область.</p>
+        {onSaveTemplate && (
+          <div className="space-y-1">
+            <Button
+              variant="outline"
+              className="w-full"
+              disabled={!ready || !rects.length}
+              onClick={() => {
+                const c = canvasRef.current!;
+                const style = rects.some((r) => r.tool === "blur") ? "blur" : "pixel";
+                void onSaveTemplate(rectsToPreset(rects, c.width, c.height), style);
+              }}
+            >
+              Сохранить как шаблон
+            </Button>
+            <p className="text-xs text-muted-foreground">Шаблон нужен для автоматической цензуры.</p>
+          </div>
+        )}
         <Button
           disabled={!ready || saving}
           onClick={() => {
